@@ -32,6 +32,7 @@
     align-items: center;
     justify-content: center;
     transition: all var(--transition-fast);
+    color: transparent;
 }
 .apprenti-card.selected .check-mark {
     background: var(--color-primary);
@@ -60,7 +61,7 @@
         {% if apprentis is empty %}
             <div class="empty-state">
                 <p>Aucun apprenti disponible pour inscription.</p>
-                <p class="text-muted">Tous les apprentis sont déjà inscrits à cette session, ou aucun utilisateur n'a le rôle "Apprenti".</p>
+                <p class="text-muted">Tous les apprentis sont déjà inscrits à cette session, ou aucun utilisateur n'a le rôle "Apprenant".</p>
                 <div class="btn-group" style="justify-content: center; margin-top: var(--spacing-lg);">
                     <a href="{{ path('admin_user_new') }}" class="btn btn--primary">Créer un nouvel utilisateur</a>
                     <a href="{{ path('admin_inscription_index', {sessionId: session.id}) }}" class="btn btn--secondary">Retour</a>
@@ -119,7 +120,7 @@
                 <div class="tabs">
                     <div class="tabs__content">
                         <div class="tab-pane__header">
-                            <h3 style="color: var(--color-primary);">👥 Apprentis disponibles</h3>
+                            <h3 style="color: var(--color-primary);">👥 Apprenants disponibles</h3>
                             <div>
                                 <span id="countSelected">0</span> sélectionné(s) sur {{ apprentis|length }}
                             </div>
@@ -127,9 +128,9 @@
                         
                         <div class="form-grid" id="apprentisList" style="margin-top: var(--spacing-lg);">
                             {% for apprenti in apprentis %}
-                                <label class="apprenti-card" data-search="{{ apprenti.nom|lower }} {{ apprenti.prenom|lower }} {{ apprenti.email|lower }}">
-                                    <input type="checkbox" name="apprentis[]" value="{{ apprenti.id }}">
-                                    <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                                <div class="apprenti-card" data-search="{{ apprenti.nom|lower }} {{ apprenti.prenom|lower }} {{ apprenti.email|lower }}">
+                                    <input type="checkbox" name="apprentis[]" value="{{ apprenti.id }}" id="apprenti_{{ apprenti.id }}">
+                                    <label for="apprenti_{{ apprenti.id }}" style="display: flex; align-items: center; gap: var(--spacing-md); cursor: pointer; margin: 0;">
                                         <div class="check-mark">✓</div>
                                         <div style="flex: 1;">
                                             <div style="font-weight: var(--font-weight-semibold);">
@@ -139,8 +140,8 @@
                                                 {{ apprenti.email }}
                                             </div>
                                         </div>
-                                    </div>
-                                </label>
+                                    </label>
+                                </div>
                             {% endfor %}
                         </div>
                         
@@ -175,16 +176,9 @@
 <script>
 // Gestion de la sélection des cartes
 document.querySelectorAll('.apprenti-card').forEach(card => {
-    card.addEventListener('click', function(e) {
-        if (e.target.tagName === 'INPUT') return; // Laisser le checkbox gérer
-        
-        const checkbox = this.querySelector('input[type="checkbox"]');
-        checkbox.checked = !checkbox.checked;
-        this.classList.toggle('selected', checkbox.checked);
-        updateCount();
-    });
-    
     const checkbox = card.querySelector('input[type="checkbox"]');
+    
+    // Écouter le changement du checkbox (déclenché par le label)
     checkbox.addEventListener('change', function() {
         card.classList.toggle('selected', this.checked);
         updateCount();

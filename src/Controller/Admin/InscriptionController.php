@@ -78,9 +78,9 @@ class InscriptionController extends AbstractController
         }
         
         // Récupérer tous les apprentis actifs
-        $roleApprenti = $this->roleRepo->findOneBy(['code' => 'ROLE_APPRENTI']);
-        $tousApprentis = $roleApprenti 
-            ? $this->userRepo->findByRoleCode('ROLE_APPRENTI')
+        $roleApprenant = $this->roleRepo->findOneBy(['code' => 'ROLE_APPRENANT']);
+        $tousApprentis = $roleApprenant 
+            ? $this->userRepo->findByRoleCode('ROLE_APPRENANT')
             : [];
         
         // Filtrer ceux déjà inscrits

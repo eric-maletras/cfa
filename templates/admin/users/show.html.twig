@@ -4,6 +4,41 @@
 
 {% block stylesheets %}
 <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.inscription-card {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--color-background);
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--color-primary);
+    margin-bottom: var(--spacing-sm);
+}
+.inscription-card--terminee {
+    border-left-color: var(--color-info);
+    opacity: 0.8;
+}
+.inscription-card--annulee,
+.inscription-card--abandonnee {
+    border-left-color: var(--color-danger);
+    opacity: 0.6;
+}
+.inscription-card--en_attente {
+    border-left-color: var(--color-warning);
+}
+.inscription-card__info {
+    flex: 1;
+}
+.inscription-card__title {
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: 0.25rem;
+}
+.inscription-card__meta {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+</style>
 {% endblock %}
 
 {% block body %}
@@ -82,7 +117,7 @@
                                         </p>
                                     {% endif %}
                                     
-                                    {% if role.droits is not empty %}
+                                    {% if role.droits is defined and role.droits is not empty %}
                                         <details>
                                             <summary style="cursor: pointer; color: var(--color-text-secondary); font-size: var(--font-size-sm);">
                                                 {{ role.droits|length }} permission(s)
@@ -101,6 +136,89 @@
                 {% endif %}
             </div>
         </div>
+
+        {# Section Inscriptions aux formations (si apprenant) #}
+        {% set isApprenant = false %}
+        {% for role in user.rolesEntities %}
+            {% if role.code == 'ROLE_APPRENANT' %}
+                {% set isApprenant = true %}
+            {% endif %}
+        {% endfor %}
+        
+        {% if isApprenant or (user.inscriptions is defined and user.inscriptions|length > 0) %}
+        <div class="tabs" style="margin-bottom: var(--spacing-xl);">
+            <div class="tabs__content">
+                <div class="tab-pane__header">
+                    <h2>📚 Inscriptions aux formations</h2>
+                </div>
+                
+                {% if user.inscriptions is not defined or user.inscriptions|length == 0 %}
+                    <div class="empty-state" style="margin-top: var(--spacing-lg);">
+                        <p>Cet apprenant n'est inscrit à aucune formation.</p>
+                    </div>
+                {% else %}
+                    <div style="margin-top: var(--spacing-lg);">
+                        {% for inscription in user.inscriptions %}
+                            <div class="inscription-card inscription-card--{{ inscription.statut }}">
+                                <div class="inscription-card__info">
+                                    <div class="inscription-card__title">
+                                        {{ inscription.session.libelle }}
+                                        {% if inscription.option %}
+                                            <span class="badge">{{ inscription.option }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="inscription-card__meta">
+                                        {{ inscription.session.formation.intituleCourt ?? inscription.session.formation.intitule }}
+                                        • {{ inscription.session.periodeFormatee }}
+                                    </div>
+                                    {% if inscription.numeroContrat %}
+                                        <div class="inscription-card__meta">
+                                            Contrat : {{ inscription.numeroContrat }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <span class="status status--{{ inscription.statutColor }}">
+                                        {{ inscription.statutLibelle }}
+                                    </span>
+                                </div>
+                                <div>
+                                    <a href="{{ path('admin_inscription_index', {sessionId: inscription.session.id}) }}" 
+                                       class="btn btn--outline btn--sm" title="Voir la session">
+                                        →
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    {# Résumé #}
+                    <div style="margin-top: var(--spacing-lg); padding-top: var(--spacing-md); border-top: 1px solid var(--border-color);">
+                        <div class="form-grid">
+                            {% set inscriptionsActives = 0 %}
+                            {% set inscriptionsTerminees = 0 %}
+                            {% for inscription in user.inscriptions %}
+                                {% if inscription.statut == 'validee' %}
+                                    {% set inscriptionsActives = inscriptionsActives + 1 %}
+                                {% elseif inscription.statut == 'terminee' %}
+                                    {% set inscriptionsTerminees = inscriptionsTerminees + 1 %}
+                                {% endif %}
+                            {% endfor %}
+                            <div>
+                                <strong>Total inscriptions :</strong> {{ user.inscriptions|length }}
+                            </div>
+                            <div>
+                                <strong>En cours :</strong> {{ inscriptionsActives }}
+                            </div>
+                            <div>
+                                <strong>Terminées :</strong> {{ inscriptionsTerminees }}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
 
         {# Activité et actions #}
         <div class="tabs">
