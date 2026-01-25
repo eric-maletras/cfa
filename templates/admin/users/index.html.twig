@@ -1,0 +1,166 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gestion des utilisateurs{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_dashboard') }}" class="btn btn--secondary btn--sm">
+                    ← Retour au tableau de bord
+                </a>
+            </div>
+            <h1 class="dashboard__title">👥 Gestion des utilisateurs</h1>
+            <p class="dashboard__subtitle">Gérer les comptes utilisateurs et leurs rôles</p>
+        </header>
+
+        {# Filtres #}
+        <div class="tabs" style="margin-bottom: var(--spacing-xl);">
+            <div class="tabs__content">
+                <form method="get" action="{{ path('admin_user_index') }}" class="form-grid">
+                    <div class="form-group">
+                        <label for="recherche">Rechercher</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="recherche" 
+                               name="q" 
+                               value="{{ recherche }}"
+                               placeholder="Nom, prénom ou email...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="filtreRole">Rôle</label>
+                        <select class="form-control" id="filtreRole" name="role">
+                            <option value="">Tous les rôles</option>
+                            {% for role in roles %}
+                                <option value="{{ role.id }}" {% if filtreRole == role.id ~ '' %}selected{% endif %}>
+                                    {{ role.libelle }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="filtreStatut">Statut</label>
+                        <select class="form-control" id="filtreStatut" name="statut">
+                            <option value="">Tous</option>
+                            <option value="1" {% if filtreStatut == '1' %}selected{% endif %}>Actifs</option>
+                            <option value="0" {% if filtreStatut == '0' %}selected{% endif %}>Inactifs</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="display: flex; align-items: flex-end; gap: var(--spacing-sm);">
+                        <button type="submit" class="btn btn--primary btn--sm">Filtrer</button>
+                        <a href="{{ path('admin_user_index') }}" class="btn btn--secondary btn--sm">Réinitialiser</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {# Actions et compteur #}
+        <div class="tab-pane__header">
+            <h2>{{ users|length }} utilisateur(s)</h2>
+            <a href="{{ path('admin_user_new') }}" class="btn btn--primary">+ Nouvel utilisateur</a>
+        </div>
+
+        {# Tableau des utilisateurs #}
+        {% if users is empty %}
+            <div class="empty-state">
+                <p>Aucun utilisateur ne correspond aux critères de recherche.</p>
+                <a href="{{ path('admin_user_new') }}" class="btn btn--primary">Créer un utilisateur</a>
+            </div>
+        {% else %}
+            <div class="tabs">
+                <div class="tabs__content">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Email</th>
+                                    <th>Rôles</th>
+                                    <th>Statut</th>
+                                    <th>Dernière connexion</th>
+                                    <th class="actions-col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                    <tr class="{{ not user.actif ? 'row--inactive' : '' }}">
+                                        <td>
+                                            <a href="{{ path('admin_user_show', {id: user.id}) }}">
+                                                <strong>{{ user.nomComplet }}</strong>
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <a href="mailto:{{ user.email }}" class="text-muted">
+                                                {{ user.email }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            {% for role in user.rolesEntities %}
+                                                <span class="badge badge--{{ role.code == 'ROLE_ADMIN' ? 'danger' : (role.code == 'ROLE_FORMATEUR' ? 'info' : 'success') }}">
+                                                    {{ role.libelle }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">Aucun rôle</span>
+                                            {% endfor %}
+                                        </td>
+                                        <td>
+                                            {% if user.actif %}
+                                                <span class="status status--success">Actif</span>
+                                            {% else %}
+                                                <span class="status status--danger">Inactif</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if user.derniereConnexion %}
+                                                <span class="text-muted">{{ user.derniereConnexion|date('d/m/Y H:i') }}</span>
+                                            {% else %}
+                                                <span class="text-muted">Jamais</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="actions-col">
+                                            <div class="btn-group">
+                                                <a href="{{ path('admin_user_edit', {id: user.id}) }}" 
+                                                   class="btn btn--outline btn--sm" title="Modifier">✏️</a>
+                                                
+                                                <a href="{{ path('admin_user_roles', {id: user.id}) }}" 
+                                                   class="btn btn--outline btn--sm" title="Rôles">🔐</a>
+                                                
+                                                <form method="post" 
+                                                      action="{{ path('admin_user_toggle', {id: user.id}) }}" 
+                                                      style="display: inline;"
+                                                      onsubmit="return confirm('{{ user.actif ? 'Désactiver' : 'Activer' }} cet utilisateur ?');">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ user.id) }}">
+                                                    <button type="submit" class="btn btn--outline btn--sm" title="{{ user.actif ? 'Désactiver' : 'Activer' }}">
+                                                        {{ user.actif ? '⏸️' : '▶️' }}
+                                                    </button>
+                                                </form>
+                                                
+                                                <form method="post" 
+                                                      action="{{ path('admin_user_delete', {id: user.id}) }}" 
+                                                      style="display: inline;"
+                                                      onsubmit="return confirm('Supprimer l\'utilisateur {{ user.nomComplet|e('js') }} ?');">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ user.id) }}">
+                                                    <button type="submit" class="btn btn--danger btn--sm" title="Supprimer">🗑️</button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

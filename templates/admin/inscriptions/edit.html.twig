@@ -1,0 +1,152 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Modifier inscription - {{ inscription.user.nomComplet }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container container--narrow">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_inscription_index', {sessionId: session.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour aux inscriptions
+                </a>
+            </div>
+            <h1 class="dashboard__title">✏️ Modifier l'inscription</h1>
+            <p class="dashboard__subtitle">
+                {{ inscription.user.nomComplet }} - {{ session.code }}
+            </p>
+        </header>
+
+        <div class="form-grid" style="margin-bottom: var(--spacing-xl);">
+            {# Infos apprenti #}
+            <div class="tabs">
+                <div class="tabs__content">
+                    <h4 style="color: var(--color-primary); margin-bottom: var(--spacing-md);">👤 Apprenti</h4>
+                    <p><strong>{{ inscription.user.nomComplet }}</strong></p>
+                    <p class="text-muted">{{ inscription.user.email }}</p>
+                </div>
+            </div>
+            
+            {# Infos session #}
+            <div class="tabs">
+                <div class="tabs__content">
+                    <h4 style="color: var(--color-primary); margin-bottom: var(--spacing-md);">📚 Session</h4>
+                    <p><strong>{{ session.libelle }}</strong></p>
+                    <p class="text-muted">{{ session.periodeFormatee }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-container">
+            {{ form_start(form, {'attr': {'class': 'admin-form', 'novalidate': 'novalidate'}}) }}
+            
+            {# Section Inscription #}
+            <div class="form-section">
+                <h3 class="form-section__title">Informations d'inscription</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form_label(form.dateInscription) }}
+                        {{ form_widget(form.dateInscription) }}
+                        {{ form_errors(form.dateInscription) }}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form_label(form.statut) }}
+                        {{ form_widget(form.statut) }}
+                        {{ form_errors(form.statut) }}
+                    </div>
+                    
+                    {% if form.option is defined %}
+                        <div class="form-group">
+                            {{ form_label(form.option) }}
+                            {{ form_widget(form.option) }}
+                            {{ form_errors(form.option) }}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="form-group">
+                        {{ form_label(form.numeroContrat) }}
+                        {{ form_widget(form.numeroContrat) }}
+                        {{ form_errors(form.numeroContrat) }}
+                    </div>
+                </div>
+            </div>
+            
+            {# Section Dates effectives #}
+            <div class="form-section">
+                <h3 class="form-section__title">Dates effectives</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form_label(form.dateDebutEffective) }}
+                        {{ form_widget(form.dateDebutEffective) }}
+                        {{ form_errors(form.dateDebutEffective) }}
+                        <span class="form-help">Session : {{ session.dateDebut|date('d/m/Y') }}</span>
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form_label(form.dateFinEffective) }}
+                        {{ form_widget(form.dateFinEffective) }}
+                        {{ form_errors(form.dateFinEffective) }}
+                        <span class="form-help">Session : {{ session.dateFin|date('d/m/Y') }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            {# Section Notes #}
+            <div class="form-section">
+                <h3 class="form-section__title">Notes et commentaires</h3>
+                <div class="form-group">
+                    {{ form_label(form.motif) }}
+                    {{ form_widget(form.motif) }}
+                    {{ form_errors(form.motif) }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form_label(form.commentaire) }}
+                    {{ form_widget(form.commentaire) }}
+                    {{ form_errors(form.commentaire) }}
+                </div>
+            </div>
+            
+            {# Boutons #}
+            <div class="form-actions">
+                <a href="{{ path('admin_inscription_index', {sessionId: session.id}) }}" class="btn btn--secondary">
+                    Annuler
+                </a>
+                <button type="submit" class="btn btn--primary">
+                    Enregistrer les modifications
+                </button>
+            </div>
+            
+            {{ form_end(form) }}
+        </div>
+        
+        {# Informations système #}
+        <div class="tabs" style="margin-top: var(--spacing-xl);">
+            <div class="tabs__content">
+                <h4 style="color: var(--color-primary); margin-bottom: var(--spacing-md);">📊 Informations système</h4>
+                <div class="form-grid">
+                    <div>
+                        <strong>Créée le :</strong><br>
+                        <span class="text-muted">{{ inscription.createdAt|date('d/m/Y à H:i') }}</span>
+                        {% if inscription.createdBy %}
+                            <br><small class="text-muted">par {{ inscription.createdBy.nomComplet }}</small>
+                        {% endif %}
+                    </div>
+                    {% if inscription.updatedAt %}
+                        <div>
+                            <strong>Modifiée le :</strong><br>
+                            <span class="text-muted">{{ inscription.updatedAt|date('d/m/Y à H:i') }}</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

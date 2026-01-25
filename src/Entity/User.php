@@ -39,6 +39,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'derniere_connexion', nullable: true)]
     private ?\DateTimeImmutable $derniereConnexion = null;
 
+    #[ORM\Column(name: 'must_change_password', options: ['default' => false])]
+    private bool $mustChangePassword = false;
+
     /**
      * @var Collection<int, Role>
      */
@@ -46,9 +49,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\JoinTable(name: 'user_role')]
     private Collection $rolesEntities;
 
+    /**
+     * Inscriptions de l'utilisateur (si apprenti)
+     * @var Collection<int, Inscription>
+    */
+    #[ORM\OneToMany(targetEntity: Inscription::class, mappedBy: 'user', orphanRemoval: true)]
+    private Collection $inscriptions;
+
     public function __construct()
     {
         $this->rolesEntities = new ArrayCollection();
+        $this->inscriptions = new ArrayCollection();
         $this->dateCreation = new \DateTimeImmutable();
     }
 
@@ -138,6 +149,19 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->derniereConnexion = $derniereConnexion;
         return $this;
     }
+    
+    public function isMustChangePassword(): bool
+    {
+        return $this->mustChangePassword;
+    }
+
+    public function setMustChangePassword(bool $mustChangePassword): static
+    {
+        $this->mustChangePassword = $mustChangePassword;
+        return $this;
+    }
+
+    
 
     /**
      * @return Collection<int, Role>
@@ -159,6 +183,51 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->rolesEntities->removeElement($role);
         return $this;
+    }
+
+    /**
+     * @return Collection<int, Inscription>
+    */
+    public function getInscriptions(): Collection
+    {
+        return $this->inscriptions;
+    }
+
+    public function addInscription(Inscription $inscription): static
+    {
+        if (!$this->inscriptions->contains($inscription)) {
+             $this->inscriptions->add($inscription);
+             $inscription->setUser($this);
+        }
+        return $this;
+    }
+
+    public function removeInscription(Inscription $inscription): static
+    {
+        if ($this->inscriptions->removeElement($inscription)) {
+             if ($inscription->getUser() === $this) {
+                  $inscription->setUser(null);
+             }
+        }
+        return $this;
+    }
+
+    /**
+    * Vérifie si l'utilisateur est un apprenti (a le rôle ROLE_APPRENTI)
+    */
+    public function isApprenti(): bool
+    {
+        return in_array('ROLE_APPRENTI', $this->getRoles());
+    }
+
+    /**
+     * Retourne les inscriptions actives (validées et en cours)
+    */
+    public function getInscriptionsActives(): Collection
+    {
+        return $this->inscriptions->filter(
+            fn(Inscription $i) => $i->isActive()
+        );
     }
 
     /**

@@ -1,0 +1,293 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Inscriptions - {{ session.code }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_session_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour aux sessions
+                </a>
+            </div>
+            <h1 class="dashboard__title">📋 Inscriptions</h1>
+            <p class="dashboard__subtitle">
+                Session : <strong>{{ session.libelle }}</strong> ({{ session.code }})
+            </p>
+        </header>
+
+        {# Statistiques rapides #}
+        <div class="form-grid" style="margin-bottom: var(--spacing-xl);">
+            <div class="tabs">
+                <div class="tabs__content" style="text-align: center;">
+                    <div style="font-size: var(--font-size-2xl); font-weight: bold; color: var(--color-success);">
+                        {{ stats.validee|default(0) }}
+                    </div>
+                    <div class="text-muted">Validées</div>
+                </div>
+            </div>
+            <div class="tabs">
+                <div class="tabs__content" style="text-align: center;">
+                    <div style="font-size: var(--font-size-2xl); font-weight: bold; color: var(--color-warning);">
+                        {{ stats.en_attente|default(0) }}
+                    </div>
+                    <div class="text-muted">En attente</div>
+                </div>
+            </div>
+            <div class="tabs">
+                <div class="tabs__content" style="text-align: center;">
+                    <div style="font-size: var(--font-size-2xl); font-weight: bold; color: var(--color-primary);">
+                        {{ stats.validee|default(0) + stats.en_attente|default(0) }}{% if session.effectifMax %} / {{ session.effectifMax }}{% endif %}
+                    </div>
+                    <div class="text-muted">Effectif{% if session.effectifMax %} (max){% endif %}</div>
+                </div>
+            </div>
+        </div>
+
+        {# Filtres #}
+        <div class="tabs" style="margin-bottom: var(--spacing-xl);">
+            <div class="tabs__content">
+                <form method="get" action="{{ path('admin_inscription_index', {sessionId: session.id}) }}" class="form-grid">
+                    <div class="form-group">
+                        <label for="recherche">Rechercher</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="recherche" 
+                               name="q" 
+                               value="{{ recherche }}"
+                               placeholder="Nom, prénom ou email...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="filtreStatut">Statut</label>
+                        <select class="form-control" id="filtreStatut" name="statut">
+                            <option value="">Tous les statuts</option>
+                            {% for code, libelle in statuts %}
+                                <option value="{{ code }}" {% if filtreStatut == code %}selected{% endif %}>
+                                    {{ libelle }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="display: flex; align-items: flex-end; gap: var(--spacing-sm);">
+                        <button type="submit" class="btn btn--primary btn--sm">Filtrer</button>
+                        <a href="{{ path('admin_inscription_index', {sessionId: session.id}) }}" class="btn btn--secondary btn--sm">Réinitialiser</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {# Actions #}
+        <div class="tab-pane__header">
+            <h2>{{ inscriptions|length }} inscription(s)</h2>
+            <div class="btn-group">
+                <a href="{{ path('admin_inscription_ajouter', {sessionId: session.id}) }}" class="btn btn--primary">
+                    + Inscrire des apprentis
+                </a>
+                <a href="{{ path('admin_inscription_export', {sessionId: session.id}) }}" class="btn btn--secondary" target="_blank">
+                    🖨️ Liste imprimable
+                </a>
+            </div>
+        </div>
+
+        {# Tableau des inscriptions #}
+        {% if inscriptions is empty %}
+            <div class="empty-state">
+                <p>Aucune inscription pour cette session.</p>
+                <a href="{{ path('admin_inscription_ajouter', {sessionId: session.id}) }}" class="btn btn--primary">
+                    Inscrire des apprentis
+                </a>
+            </div>
+        {% else %}
+            {# Formulaire validation en masse #}
+            <form method="post" action="{{ path('admin_inscription_valider_masse', {sessionId: session.id}) }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('valider_masse') }}">
+                
+                <div class="tabs">
+                    <div class="tabs__content">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px;">
+                                            <input type="checkbox" id="selectAll" title="Tout sélectionner">
+                                        </th>
+                                        <th>Apprenti</th>
+                                        <th>Email</th>
+                                        <th>Option</th>
+                                        <th>Date inscription</th>
+                                        <th>Statut</th>
+                                        <th class="actions-col">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for inscription in inscriptions %}
+                                        <tr>
+                                            <td>
+                                                {% if inscription.statut == 'en_attente' %}
+                                                    <input type="checkbox" 
+                                                           name="inscriptions[]" 
+                                                           value="{{ inscription.id }}"
+                                                           class="inscription-checkbox">
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <strong>{{ inscription.user.nomComplet }}</strong>
+                                                {% if inscription.numeroContrat %}
+                                                    <br><small class="text-muted">Contrat: {{ inscription.numeroContrat }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="mailto:{{ inscription.user.email }}" class="text-muted">
+                                                    {{ inscription.user.email }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                {% if inscription.option %}
+                                                    <span class="badge">{{ inscription.option }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {{ inscription.dateInscription|date('d/m/Y') }}
+                                            </td>
+                                            <td>
+                                                <span class="status status--{{ inscription.statutColor }}">
+                                                    {{ inscription.statutLibelle }}
+                                                </span>
+                                                {% if inscription.motif %}
+                                                    <br><small class="text-muted" title="{{ inscription.motif }}">
+                                                        {{ inscription.motif|length > 30 ? inscription.motif|slice(0, 30) ~ '...' : inscription.motif }}
+                                                    </small>
+                                                {% endif %}
+                                            </td>
+                                            <td class="actions-col">
+                                                <div class="btn-group">
+                                                    {# Modifier #}
+                                                    <a href="{{ path('admin_inscription_edit', {sessionId: session.id, id: inscription.id}) }}" 
+                                                       class="btn btn--outline btn--sm" title="Modifier">✏️</a>
+                                                    
+                                                    {# Actions rapides selon statut #}
+                                                    {% if inscription.statut == 'en_attente' %}
+                                                        <form method="post" 
+                                                              action="{{ path('admin_inscription_statut', {sessionId: session.id, id: inscription.id}) }}" 
+                                                              style="display: inline;">
+                                                            <input type="hidden" name="_token" value="{{ csrf_token('statut' ~ inscription.id) }}">
+                                                            <input type="hidden" name="statut" value="validee">
+                                                            <button type="submit" class="btn btn--outline btn--sm" title="Valider" 
+                                                                    style="color: var(--color-success);">✓</button>
+                                                        </form>
+                                                    {% endif %}
+                                                    
+                                                    {% if inscription.isAnnulable %}
+                                                        <button type="button" 
+                                                                class="btn btn--outline btn--sm" 
+                                                                title="Annuler"
+                                                                onclick="openAnnulerModal({{ inscription.id }}, '{{ inscription.user.nomComplet|e('js') }}')"
+                                                                style="color: var(--color-warning);">✗</button>
+                                                    {% endif %}
+                                                    
+                                                    {# Supprimer #}
+                                                    <form method="post" 
+                                                          action="{{ path('admin_inscription_delete', {sessionId: session.id, id: inscription.id}) }}" 
+                                                          style="display: inline;"
+                                                          onsubmit="return confirm('Supprimer l\'inscription de {{ inscription.user.nomComplet|e('js') }} ?');">
+                                                        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ inscription.id) }}">
+                                                        <button type="submit" class="btn btn--danger btn--sm" title="Supprimer">🗑️</button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        {# Bouton validation en masse #}
+                        {% if stats.en_attente|default(0) > 0 %}
+                            <div style="margin-top: var(--spacing-lg); padding-top: var(--spacing-lg); border-top: 1px solid var(--border-color);">
+                                <button type="submit" class="btn btn--primary" id="btnValiderMasse" disabled>
+                                    ✓ Valider les inscriptions sélectionnées
+                                </button>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+</section>
+
+{# Modal annulation #}
+<div id="modalAnnuler" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: var(--spacing-xl); border-radius: var(--border-radius-lg); max-width: 500px; width: 90%;">
+        <h3 style="margin-bottom: var(--spacing-lg);">Annuler l'inscription</h3>
+        <p id="modalAnnulerNom"></p>
+        <form id="formAnnuler" method="post">
+            <input type="hidden" name="_token" id="tokenAnnuler">
+            <input type="hidden" name="statut" value="annulee">
+            <div class="form-group">
+                <label for="motifAnnulation">Motif d'annulation</label>
+                <textarea name="motif" id="motifAnnulation" class="form-control" rows="3" required></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn--secondary" onclick="closeAnnulerModal()">Annuler</button>
+                <button type="submit" class="btn btn--danger">Confirmer l'annulation</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+// Sélection globale
+document.getElementById('selectAll')?.addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.inscription-checkbox');
+    checkboxes.forEach(cb => cb.checked = this.checked);
+    updateBtnValider();
+});
+
+// Mise à jour du bouton valider
+document.querySelectorAll('.inscription-checkbox').forEach(cb => {
+    cb.addEventListener('change', updateBtnValider);
+});
+
+function updateBtnValider() {
+    const checked = document.querySelectorAll('.inscription-checkbox:checked').length;
+    const btn = document.getElementById('btnValiderMasse');
+    if (btn) {
+        btn.disabled = checked === 0;
+        btn.textContent = checked > 0 
+            ? `✓ Valider ${checked} inscription(s) sélectionnée(s)`
+            : '✓ Valider les inscriptions sélectionnées';
+    }
+}
+
+// Modal annulation
+function openAnnulerModal(id, nom) {
+    document.getElementById('modalAnnulerNom').textContent = `Annuler l'inscription de ${nom} ?`;
+    document.getElementById('formAnnuler').action = `{{ path('admin_inscription_statut', {sessionId: session.id, id: 0}) }}`.replace('/0/', `/${id}/`);
+    document.getElementById('tokenAnnuler').value = '{{ csrf_token('statut0') }}'.replace('statut0', `statut${id}`);
+    document.getElementById('modalAnnuler').style.display = 'flex';
+}
+
+function closeAnnulerModal() {
+    document.getElementById('modalAnnuler').style.display = 'none';
+    document.getElementById('motifAnnulation').value = '';
+}
+
+// Fermer modal en cliquant à l'extérieur
+document.getElementById('modalAnnuler')?.addEventListener('click', function(e) {
+    if (e.target === this) closeAnnulerModal();
+});
+</script>
+{% endblock %}

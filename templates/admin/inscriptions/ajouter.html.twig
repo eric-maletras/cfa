@@ -1,0 +1,237 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Inscrire des apprentis - {{ session.code }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.apprenti-card {
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+.apprenti-card:hover {
+    border-color: var(--color-primary);
+    background: var(--color-off-white);
+}
+.apprenti-card.selected {
+    border-color: var(--color-primary);
+    background: rgba(var(--color-primary-rgb), 0.1);
+}
+.apprenti-card input[type="checkbox"] {
+    display: none;
+}
+.apprenti-card .check-mark {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+}
+.apprenti-card.selected .check-mark {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_inscription_index', {sessionId: session.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour aux inscriptions
+                </a>
+            </div>
+            <h1 class="dashboard__title">➕ Inscrire des apprentis</h1>
+            <p class="dashboard__subtitle">
+                Session : <strong>{{ session.libelle }}</strong>
+            </p>
+        </header>
+
+        {% if apprentis is empty %}
+            <div class="empty-state">
+                <p>Aucun apprenti disponible pour inscription.</p>
+                <p class="text-muted">Tous les apprentis sont déjà inscrits à cette session, ou aucun utilisateur n'a le rôle "Apprenti".</p>
+                <div class="btn-group" style="justify-content: center; margin-top: var(--spacing-lg);">
+                    <a href="{{ path('admin_user_new') }}" class="btn btn--primary">Créer un nouvel utilisateur</a>
+                    <a href="{{ path('admin_inscription_index', {sessionId: session.id}) }}" class="btn btn--secondary">Retour</a>
+                </div>
+            </div>
+        {% else %}
+            <form method="post" action="{{ path('admin_inscription_ajouter', {sessionId: session.id}) }}">
+                {# Options d'inscription #}
+                <div class="tabs" style="margin-bottom: var(--spacing-xl);">
+                    <div class="tabs__content">
+                        <h3 style="color: var(--color-primary); margin-bottom: var(--spacing-lg);">⚙️ Options d'inscription</h3>
+                        <div class="form-grid">
+                            {% if options is not empty %}
+                                <div class="form-group">
+                                    <label for="option">Option / Spécialité</label>
+                                    <select name="option" id="option" class="form-control">
+                                        <option value="">Aucune option</option>
+                                        {% for opt in options %}
+                                            <option value="{{ opt }}">{{ opt }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="form-group">
+                                <label for="statut">Statut initial</label>
+                                <select name="statut" id="statut" class="form-control">
+                                    {% for code, libelle in statuts %}
+                                        <option value="{{ code }}" {% if code == 'validee' %}selected{% endif %}>
+                                            {{ libelle }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <span class="form-help">
+                                    "Validée" inscrit directement l'apprenti. "En attente" nécessite une validation ultérieure.
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Recherche #}
+                <div class="tabs" style="margin-bottom: var(--spacing-xl);">
+                    <div class="tabs__content">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label for="searchApprenti">🔍 Rechercher un apprenti</label>
+                            <input type="text" 
+                                   id="searchApprenti" 
+                                   class="form-control" 
+                                   placeholder="Filtrer par nom, prénom ou email...">
+                        </div>
+                    </div>
+                </div>
+
+                {# Liste des apprentis disponibles #}
+                <div class="tabs">
+                    <div class="tabs__content">
+                        <div class="tab-pane__header">
+                            <h3 style="color: var(--color-primary);">👥 Apprentis disponibles</h3>
+                            <div>
+                                <span id="countSelected">0</span> sélectionné(s) sur {{ apprentis|length }}
+                            </div>
+                        </div>
+                        
+                        <div class="form-grid" id="apprentisList" style="margin-top: var(--spacing-lg);">
+                            {% for apprenti in apprentis %}
+                                <label class="apprenti-card" data-search="{{ apprenti.nom|lower }} {{ apprenti.prenom|lower }} {{ apprenti.email|lower }}">
+                                    <input type="checkbox" name="apprentis[]" value="{{ apprenti.id }}">
+                                    <div style="display: flex; align-items: center; gap: var(--spacing-md);">
+                                        <div class="check-mark">✓</div>
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: var(--font-weight-semibold);">
+                                                {{ apprenti.nomComplet }}
+                                            </div>
+                                            <div class="text-muted" style="font-size: var(--font-size-sm);">
+                                                {{ apprenti.email }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        
+                        <div id="noResults" style="display: none; text-align: center; padding: var(--spacing-xl); color: var(--color-text-secondary);">
+                            Aucun apprenti ne correspond à votre recherche.
+                        </div>
+                    </div>
+                </div>
+
+                {# Boutons d'action #}
+                <div class="form-actions" style="margin-top: var(--spacing-xl);">
+                    <a href="{{ path('admin_inscription_index', {sessionId: session.id}) }}" class="btn btn--secondary">
+                        Annuler
+                    </a>
+                    <button type="button" class="btn btn--secondary" onclick="selectAll()">
+                        Tout sélectionner
+                    </button>
+                    <button type="button" class="btn btn--secondary" onclick="deselectAll()">
+                        Tout désélectionner
+                    </button>
+                    <button type="submit" class="btn btn--primary" id="btnInscrire" disabled>
+                        Inscrire les apprentis sélectionnés
+                    </button>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+// Gestion de la sélection des cartes
+document.querySelectorAll('.apprenti-card').forEach(card => {
+    card.addEventListener('click', function(e) {
+        if (e.target.tagName === 'INPUT') return; // Laisser le checkbox gérer
+        
+        const checkbox = this.querySelector('input[type="checkbox"]');
+        checkbox.checked = !checkbox.checked;
+        this.classList.toggle('selected', checkbox.checked);
+        updateCount();
+    });
+    
+    const checkbox = card.querySelector('input[type="checkbox"]');
+    checkbox.addEventListener('change', function() {
+        card.classList.toggle('selected', this.checked);
+        updateCount();
+    });
+});
+
+// Compteur de sélection
+function updateCount() {
+    const count = document.querySelectorAll('.apprenti-card input:checked').length;
+    document.getElementById('countSelected').textContent = count;
+    
+    const btn = document.getElementById('btnInscrire');
+    btn.disabled = count === 0;
+    btn.textContent = count > 0 
+        ? `Inscrire ${count} apprenti(s)` 
+        : 'Inscrire les apprentis sélectionnés';
+}
+
+// Sélection/désélection globale
+function selectAll() {
+    document.querySelectorAll('.apprenti-card:not([style*="display: none"]) input').forEach(cb => {
+        cb.checked = true;
+        cb.closest('.apprenti-card').classList.add('selected');
+    });
+    updateCount();
+}
+
+function deselectAll() {
+    document.querySelectorAll('.apprenti-card input').forEach(cb => {
+        cb.checked = false;
+        cb.closest('.apprenti-card').classList.remove('selected');
+    });
+    updateCount();
+}
+
+// Recherche en temps réel
+document.getElementById('searchApprenti')?.addEventListener('input', function() {
+    const search = this.value.toLowerCase().trim();
+    let visibleCount = 0;
+    
+    document.querySelectorAll('.apprenti-card').forEach(card => {
+        const match = card.dataset.search.includes(search);
+        card.style.display = match ? '' : 'none';
+        if (match) visibleCount++;
+    });
+    
+    document.getElementById('noResults').style.display = visibleCount === 0 ? 'block' : 'none';
+});
+</script>
+{% endblock %}

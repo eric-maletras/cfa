@@ -1,0 +1,117 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Rôles de {{ user.nomComplet }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container container--narrow">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_user_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la liste
+                </a>
+            </div>
+            <h1 class="dashboard__title">🔐 Gestion des rôles</h1>
+            <p class="dashboard__subtitle">Utilisateur : <strong>{{ user.nomComplet }}</strong> ({{ user.email }})</p>
+        </header>
+
+        <div class="form-container">
+            <form method="post" action="{{ path('admin_user_roles', {id: user.id}) }}" class="admin-form">
+                <input type="hidden" name="_token" value="{{ csrf_token('roles' ~ user.id) }}">
+                
+                <p class="text-muted" style="margin-bottom: var(--spacing-xl);">
+                    Cochez les rôles à attribuer à cet utilisateur. Les rôles déterminent les modules accessibles 
+                    et les permissions dans l'application.
+                </p>
+                
+                <div class="form-grid">
+                    {% for role in roles %}
+                        <div class="tabs" style="border-left: 4px solid {{ role.id in userRoleIds ? 'var(--color-primary)' : 'var(--border-color)' }}; {{ role.id in userRoleIds ? 'background: var(--color-off-white);' : '' }}">
+                            <div class="tabs__content">
+                                <div class="form-check-wrapper" style="margin-bottom: var(--spacing-sm);">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           name="roles[]" 
+                                           value="{{ role.id }}" 
+                                           id="role_{{ role.id }}"
+                                           {{ role.id in userRoleIds ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="role_{{ role.id }}" style="font-weight: var(--font-weight-semibold);">
+                                        <span class="badge badge--{{ role.code == 'ROLE_ADMIN' ? 'danger' : (role.code == 'ROLE_FORMATEUR' ? 'info' : 'success') }}">
+                                            {{ role.libelle }}
+                                        </span>
+                                    </label>
+                                </div>
+                                
+                                {% if role.description %}
+                                    <p class="text-muted" style="font-size: var(--font-size-sm); margin-bottom: var(--spacing-sm);">
+                                        {{ role.description }}
+                                    </p>
+                                {% endif %}
+                                
+                                {# Modules accessibles #}
+                                {% if role.modules is defined and role.modules is not empty %}
+                                    <div style="margin-top: var(--spacing-sm);">
+                                        <strong style="font-size: var(--font-size-xs);">Modules accessibles :</strong>
+                                        <div style="margin-top: var(--spacing-xs);">
+                                            {% for module in role.modules %}
+                                                <span class="badge" style="margin-right: var(--spacing-xs); margin-bottom: var(--spacing-xs);">
+                                                    {{ module.nom }}
+                                                </span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                                
+                                {# Droits/Permissions #}
+                                {% if role.droits is not empty %}
+                                    <details style="margin-top: var(--spacing-sm);">
+                                        <summary style="cursor: pointer; color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+                                            {{ role.droits|length }} permission(s)
+                                        </summary>
+                                        <ul style="margin-top: var(--spacing-sm); padding-left: var(--spacing-lg); font-size: var(--font-size-sm);">
+                                            {% for droit in role.droits %}
+                                                <li class="text-muted">{{ droit.libelle }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </details>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="form-actions">
+                    <a href="{{ path('admin_user_edit', {id: user.id}) }}" class="btn btn--secondary">Retour à l'édition</a>
+                    <button type="submit" class="btn btn--primary">Enregistrer les rôles</button>
+                </div>
+            </form>
+        </div>
+        
+        {# Aide sur les rôles #}
+        <div class="tabs" style="margin-top: var(--spacing-xl);">
+            <div class="tabs__content">
+                <h4 style="color: var(--color-primary); margin-bottom: var(--spacing-md);">ℹ️ À propos des rôles</h4>
+                <div style="font-size: var(--font-size-sm);">
+                    <p style="margin-bottom: var(--spacing-sm);">
+                        <span class="badge badge--danger">ROLE_ADMIN</span>
+                        Accès complet à l'administration du CFA, gestion des utilisateurs, formations et configurations.
+                    </p>
+                    <p style="margin-bottom: var(--spacing-sm);">
+                        <span class="badge badge--info">ROLE_FORMATEUR</span>
+                        Gestion des absences, évaluations et suivi des apprentis pour les modules attribués.
+                    </p>
+                    <p style="margin-bottom: 0;">
+                        <span class="badge badge--success">ROLE_APPRENTI</span>
+                        Consultation du planning, des notes et des absences personnelles.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

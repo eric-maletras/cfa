@@ -1,0 +1,161 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container container--narrow">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_user_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la liste
+                </a>
+            </div>
+            <h1 class="dashboard__title">{{ user.id ? '✏️' : '➕' }} {{ title }}</h1>
+            {% if not user.id %}
+                <p class="dashboard__subtitle">Un mot de passe temporaire sera généré automatiquement</p>
+            {% endif %}
+        </header>
+
+        <div class="form-container">
+            {{ form_start(form, {'attr': {'class': 'admin-form', 'novalidate': 'novalidate'}}) }}
+            
+            {# Section Identité #}
+            <div class="form-section">
+                <h3 class="form-section__title">Identité</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form_label(form.prenom) }}
+                        {{ form_widget(form.prenom, {'attr': {'class': 'form-control', 'placeholder': 'Prénom'}}) }}
+                        {{ form_errors(form.prenom) }}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form_label(form.nom) }}
+                        {{ form_widget(form.nom, {'attr': {'class': 'form-control', 'placeholder': 'Nom de famille'}}) }}
+                        {{ form_errors(form.nom) }}
+                    </div>
+                    
+                    <div class="form-group form-group--full">
+                        {{ form_label(form.email) }}
+                        {{ form_widget(form.email, {'attr': {'class': 'form-control', 'placeholder': 'exemple@domaine.fr'}}) }}
+                        {{ form_errors(form.email) }}
+                        <span class="form-help">L'adresse email sert d'identifiant de connexion.</span>
+                    </div>
+                </div>
+            </div>
+            
+            {# Section Mot de passe (uniquement en modification) #}
+            {% if user.id and form.plainPassword is defined %}
+                <div class="form-section">
+                    <h3 class="form-section__title">Mot de passe</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            {{ form_label(form.plainPassword.first) }}
+                            {{ form_widget(form.plainPassword.first, {'attr': {'class': 'form-control', 'placeholder': 'Laisser vide pour conserver l\'actuel'}}) }}
+                            {{ form_errors(form.plainPassword.first) }}
+                        </div>
+                        
+                        <div class="form-group">
+                            {{ form_label(form.plainPassword.second) }}
+                            {{ form_widget(form.plainPassword.second, {'attr': {'class': 'form-control', 'placeholder': 'Confirmation'}}) }}
+                            {{ form_errors(form.plainPassword.second) }}
+                        </div>
+                    </div>
+                    {{ form_errors(form.plainPassword) }}
+                    
+                    {% if user.mustChangePassword is defined and user.mustChangePassword %}
+                        <div class="alert alert--warning" style="margin-top: var(--spacing-md);">
+                            ⚠️ L'utilisateur doit changer son mot de passe à la prochaine connexion.
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+            
+            {# Section Rôles #}
+            <div class="form-section">
+                <h3 class="form-section__title">Rôles et permissions</h3>
+                <div class="form-group">
+                    <div class="form-grid form-grid--3">
+                        {% for child in form.rolesEntities %}
+                            <div class="form-check-wrapper">
+                                {{ form_widget(child, {'attr': {'class': 'form-check-input'}}) }}
+                                {{ form_label(child, null, {'label_attr': {'class': 'form-check-label'}}) }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    {{ form_errors(form.rolesEntities) }}
+                    <span class="form-help">Les rôles déterminent les accès et permissions de l'utilisateur.</span>
+                </div>
+            </div>
+            
+            {# Section Statut #}
+            <div class="form-section">
+                <h3 class="form-section__title">Statut du compte</h3>
+                <div class="form-group">
+                    <div class="form-check-wrapper">
+                        {{ form_widget(form.actif, {'attr': {'class': 'form-check-input'}}) }}
+                        {{ form_label(form.actif, 'Compte actif', {'label_attr': {'class': 'form-check-label'}}) }}
+                    </div>
+                    <span class="form-help">Un compte inactif ne peut pas se connecter à l'application.</span>
+                </div>
+            </div>
+            
+            {# Boutons #}
+            <div class="form-actions">
+                <a href="{{ path('admin_user_index') }}" class="btn btn--secondary">Annuler</a>
+                <button type="submit" class="btn btn--primary">
+                    {{ user.id ? 'Enregistrer les modifications' : 'Créer l\'utilisateur' }}
+                </button>
+            </div>
+            
+            {{ form_end(form) }}
+        </div>
+        
+        {# Informations supplémentaires si modification #}
+        {% if user.id %}
+            <div class="tabs" style="margin-top: var(--spacing-xl);">
+                <div class="tabs__content">
+                    <h4 style="color: var(--color-primary); margin-bottom: var(--spacing-md);">📊 Informations système</h4>
+                    <div class="form-grid">
+                        <div>
+                            <strong>Date de création :</strong><br>
+                            <span class="text-muted">{{ user.dateCreation|date('d/m/Y à H:i') }}</span>
+                        </div>
+                        <div>
+                            <strong>Dernière connexion :</strong><br>
+                            <span class="text-muted">
+                                {% if user.derniereConnexion %}
+                                    {{ user.derniereConnexion|date('d/m/Y à H:i') }}
+                                {% else %}
+                                    Jamais connecté
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions" style="margin-top: var(--spacing-lg); justify-content: flex-start;">
+                        <form method="post" 
+                              action="{{ path('admin_user_reset_password', {id: user.id}) }}"
+                              onsubmit="return confirm('Générer un nouveau mot de passe temporaire ?');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('reset' ~ user.id) }}">
+                            <button type="submit" class="btn btn--secondary btn--sm">
+                                🔑 Réinitialiser le mot de passe
+                            </button>
+                        </form>
+                        
+                        <a href="{{ path('admin_user_roles', {id: user.id}) }}" class="btn btn--secondary btn--sm">
+                            🔐 Gestion avancée des rôles
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,166 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ user.nomComplet }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container container--narrow">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_user_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la liste
+                </a>
+            </div>
+            <h1 class="dashboard__title">👤 {{ user.nomComplet }}</h1>
+            <p class="dashboard__subtitle">{{ user.email }}</p>
+        </header>
+
+        {# Informations principales #}
+        <div class="tabs" style="margin-bottom: var(--spacing-xl);">
+            <div class="tabs__content">
+                <div class="tab-pane__header">
+                    <h2>Informations personnelles</h2>
+                    <a href="{{ path('admin_user_edit', {id: user.id}) }}" class="btn btn--primary btn--sm">✏️ Modifier</a>
+                </div>
+                
+                <div class="form-grid" style="margin-top: var(--spacing-lg);">
+                    <div>
+                        <strong>Nom complet</strong><br>
+                        <span>{{ user.nomComplet }}</span>
+                    </div>
+                    <div>
+                        <strong>Adresse email</strong><br>
+                        <a href="mailto:{{ user.email }}">{{ user.email }}</a>
+                    </div>
+                    <div>
+                        <strong>Statut du compte</strong><br>
+                        {% if user.actif %}
+                            <span class="status status--success">Actif</span>
+                        {% else %}
+                            <span class="status status--danger">Inactif</span>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <strong>Date de création</strong><br>
+                        <span>{{ user.dateCreation|date('d/m/Y à H:i') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Rôles et permissions #}
+        <div class="tabs" style="margin-bottom: var(--spacing-xl);">
+            <div class="tabs__content">
+                <div class="tab-pane__header">
+                    <h2>Rôles et permissions</h2>
+                    <a href="{{ path('admin_user_roles', {id: user.id}) }}" class="btn btn--secondary btn--sm">🔐 Gérer</a>
+                </div>
+                
+                {% if user.rolesEntities is empty %}
+                    <div class="empty-state">
+                        <p>⚠️ Aucun rôle attribué - L'utilisateur n'aura accès à aucune fonctionnalité.</p>
+                        <a href="{{ path('admin_user_roles', {id: user.id}) }}" class="btn btn--primary btn--sm">Attribuer des rôles</a>
+                    </div>
+                {% else %}
+                    <div class="form-grid" style="margin-top: var(--spacing-lg);">
+                        {% for role in user.rolesEntities %}
+                            <div class="tabs" style="border-left: 4px solid {{ role.code == 'ROLE_ADMIN' ? 'var(--color-danger)' : (role.code == 'ROLE_FORMATEUR' ? 'var(--color-info)' : 'var(--color-success)') }};">
+                                <div class="tabs__content">
+                                    <h4 style="margin-bottom: var(--spacing-sm);">
+                                        <span class="badge badge--{{ role.code == 'ROLE_ADMIN' ? 'danger' : (role.code == 'ROLE_FORMATEUR' ? 'info' : 'success') }}">
+                                            {{ role.libelle }}
+                                        </span>
+                                    </h4>
+                                    {% if role.description %}
+                                        <p class="text-muted" style="font-size: var(--font-size-sm); margin-bottom: var(--spacing-sm);">
+                                            {{ role.description }}
+                                        </p>
+                                    {% endif %}
+                                    
+                                    {% if role.droits is not empty %}
+                                        <details>
+                                            <summary style="cursor: pointer; color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+                                                {{ role.droits|length }} permission(s)
+                                            </summary>
+                                            <ul style="margin-top: var(--spacing-sm); padding-left: var(--spacing-lg); font-size: var(--font-size-sm);">
+                                                {% for droit in role.droits %}
+                                                    <li class="text-muted">{{ droit.libelle }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </details>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Activité et actions #}
+        <div class="tabs">
+            <div class="tabs__content">
+                <div class="tab-pane__header">
+                    <h2>Activité et actions</h2>
+                </div>
+                
+                <div class="form-grid" style="margin-top: var(--spacing-lg);">
+                    <div>
+                        <strong>Dernière connexion</strong><br>
+                        {% if user.derniereConnexion %}
+                            <span>{{ user.derniereConnexion|date('d/m/Y à H:i') }}</span>
+                        {% else %}
+                            <span class="text-muted">Jamais connecté</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="form-actions" style="margin-top: var(--spacing-xl); flex-wrap: wrap;">
+                    {# Modifier #}
+                    <a href="{{ path('admin_user_edit', {id: user.id}) }}" class="btn btn--primary">
+                        ✏️ Modifier les informations
+                    </a>
+                    
+                    {# Réinitialiser le mot de passe #}
+                    <form method="post" 
+                          action="{{ path('admin_user_reset_password', {id: user.id}) }}"
+                          onsubmit="return confirm('Générer un nouveau mot de passe temporaire ?');"
+                          style="display: inline;">
+                        <input type="hidden" name="_token" value="{{ csrf_token('reset' ~ user.id) }}">
+                        <button type="submit" class="btn btn--secondary">
+                            🔑 Réinitialiser le mot de passe
+                        </button>
+                    </form>
+                    
+                    {# Toggle actif #}
+                    <form method="post" 
+                          action="{{ path('admin_user_toggle', {id: user.id}) }}"
+                          onsubmit="return confirm('{{ user.actif ? 'Désactiver' : 'Activer' }} ce compte ?');"
+                          style="display: inline;">
+                        <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ user.id) }}">
+                        <button type="submit" class="btn btn--secondary">
+                            {{ user.actif ? '⏸️ Désactiver' : '▶️ Activer' }} le compte
+                        </button>
+                    </form>
+                    
+                    {# Supprimer #}
+                    <form method="post" 
+                          action="{{ path('admin_user_delete', {id: user.id}) }}"
+                          onsubmit="return confirm('Supprimer définitivement cet utilisateur ?');"
+                          style="display: inline;">
+                        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ user.id) }}">
+                        <button type="submit" class="btn btn--danger">
+                            🗑️ Supprimer
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

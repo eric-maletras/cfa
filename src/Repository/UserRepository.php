@@ -34,33 +34,121 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
     }
 
     /**
-     * Trouve un utilisateur par son email
+     * Recherche les utilisateurs avec filtres optionnels
+     * 
+     * @param int|null $roleId     Filtrer par rôle (ID)
+     * @param bool|null $actif     Filtrer par statut actif/inactif (null = tous)
+     * @param string|null $recherche Recherche textuelle (nom, prénom, email)
+     * @return User[]
      */
-    public function findByEmail(string $email): ?User
+    public function findWithFilters(?int $roleId = null, ?bool $actif = null, ?string $recherche = null): array
     {
-        return $this->findOneBy(['email' => $email]);
+        $qb = $this->createQueryBuilder('u')
+            ->orderBy('u.nom', 'ASC')
+            ->addOrderBy('u.prenom', 'ASC');
+        
+        // Filtre par rôle
+        if ($roleId !== null) {
+            $qb->innerJoin('u.rolesEntities', 'r')
+               ->andWhere('r.id = :roleId')
+               ->setParameter('roleId', $roleId);
+        }
+        
+        // Filtre par statut
+        if ($actif !== null) {
+            $qb->andWhere('u.actif = :actif')
+               ->setParameter('actif', $actif);
+        }
+        
+        // Recherche textuelle
+        if ($recherche !== null && trim($recherche) !== '') {
+            $recherche = trim($recherche);
+            $qb->andWhere(
+                $qb->expr()->orX(
+                    $qb->expr()->like('LOWER(u.nom)', ':recherche'),
+                    $qb->expr()->like('LOWER(u.prenom)', ':recherche'),
+                    $qb->expr()->like('LOWER(u.email)', ':recherche'),
+                    // Recherche nom + prénom combinés
+                    $qb->expr()->like('LOWER(CONCAT(u.prenom, \' \', u.nom))', ':recherche'),
+                    $qb->expr()->like('LOWER(CONCAT(u.nom, \' \', u.prenom))', ':recherche')
+                )
+            )->setParameter('recherche', '%' . strtolower($recherche) . '%');
+        }
+        
+        return $qb->getQuery()->getResult();
     }
 
     /**
-     * Trouve tous les utilisateurs actifs
+     * Compte le nombre d'utilisateurs par rôle
+     * 
+     * @return array<string, int> [code_role => nombre]
      */
-    public function findAllActifs(): array
+    public function countByRole(): array
     {
-        return $this->findBy(['actif' => true], ['nom' => 'ASC', 'prenom' => 'ASC']);
+        $result = $this->createQueryBuilder('u')
+            ->select('r.code, r.libelle, COUNT(u.id) as total')
+            ->innerJoin('u.rolesEntities', 'r')
+            ->groupBy('r.id')
+            ->orderBy('r.libelle', 'ASC')
+            ->getQuery()
+            ->getResult();
+        
+        $counts = [];
+        foreach ($result as $row) {
+            $counts[$row['code']] = [
+                'libelle' => $row['libelle'],
+                'total' => (int) $row['total'],
+            ];
+        }
+        
+        return $counts;
     }
 
     /**
-     * Trouve les utilisateurs ayant un rôle spécifique
+     * Récupère les utilisateurs ayant un rôle spécifique
+     * 
+     * @return User[]
      */
-    public function findByRole(string $roleCode): array
+    public function findByRoleCode(string $roleCode): array
     {
         return $this->createQueryBuilder('u')
             ->innerJoin('u.rolesEntities', 'r')
-            ->where('r.code = :code')
+            ->andWhere('r.code = :code')
+            ->andWhere('u.actif = true')
             ->setParameter('code', $roleCode)
             ->orderBy('u.nom', 'ASC')
             ->addOrderBy('u.prenom', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Recherche pour autocomplétion (retourne nom complet + email)
+     * 
+     * @return array<array{id: int, text: string, email: string}>
+     */
+    public function searchForAutocomplete(string $term, int $limit = 10): array
+    {
+        $users = $this->createQueryBuilder('u')
+            ->andWhere('u.actif = true')
+            ->andWhere(
+                'LOWER(u.nom) LIKE :term OR LOWER(u.prenom) LIKE :term OR LOWER(u.email) LIKE :term'
+            )
+            ->setParameter('term', '%' . strtolower($term) . '%')
+            ->setMaxResults($limit)
+            ->orderBy('u.nom', 'ASC')
+            ->getQuery()
+            ->getResult();
+        
+        $results = [];
+        foreach ($users as $user) {
+            $results[] = [
+                'id' => $user->getId(),
+                'text' => $user->getNomComplet(),
+                'email' => $user->getEmail(),
+            ];
+        }
+        
+        return $results;
     }
 }

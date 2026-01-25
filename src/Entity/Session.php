@@ -198,6 +198,14 @@ class Session
     private Collection $formateurs;
 
     /**
+     * Inscriptions à cette session
+     * @var Collection<int, Inscription>
+    */
+    #[ORM\OneToMany(targetEntity: Inscription::class, mappedBy: 'session', orphanRemoval: true)]
+    #[ORM\OrderBy(['dateInscription' => 'ASC'])]
+    private Collection $inscriptions;
+
+    /**
      * Commentaire interne (notes administratives)
      */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -239,6 +247,7 @@ class Session
     public function __construct()
     {
         $this->formateurs = new ArrayCollection();
+        $this->inscriptions = new ArrayCollection();
         $this->createdAt = new \DateTime();
     }
 
@@ -451,6 +460,73 @@ class Session
         $this->couleur = $couleur;
         return $this;
     }
+
+    /**
+ * @return Collection<int, Inscription>
+ */
+public function getInscriptions(): Collection
+{
+    return $this->inscriptions;
+}
+
+public function addInscription(Inscription $inscription): static
+{
+    if (!$this->inscriptions->contains($inscription)) {
+        $this->inscriptions->add($inscription);
+        $inscription->setSession($this);
+    }
+    return $this;
+}
+
+public function removeInscription(Inscription $inscription): static
+{
+    if ($this->inscriptions->removeElement($inscription)) {
+        if ($inscription->getSession() === $this) {
+            $inscription->setSession(null);
+        }
+    }
+    return $this;
+}
+
+/**
+ * Retourne les inscriptions validées
+ */
+public function getInscriptionsValidees(): Collection
+{
+    return $this->inscriptions->filter(
+        fn(Inscription $i) => $i->getStatut() === Inscription::STATUT_VALIDEE
+    );
+}
+
+/**
+ * Compte le nombre d'inscrits validés
+ */
+public function getNombreInscrits(): int
+{
+    return $this->getInscriptionsValidees()->count();
+}
+
+/**
+ * Vérifie si la session est complète (effectif max atteint)
+ */
+public function isComplete(): bool
+{
+    if ($this->effectifMax === null) {
+        return false;
+    }
+    return $this->getNombreInscrits() >= $this->effectifMax;
+}
+
+/**
+ * Retourne le nombre de places restantes
+ */
+public function getPlacesRestantes(): ?int
+{
+    if ($this->effectifMax === null) {
+        return null;
+    }
+    return max(0, $this->effectifMax - $this->getNombreInscrits());
+}
 
     /**
      * Retourne la couleur avec le #
