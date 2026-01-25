@@ -1,0 +1,11 @@
+twig:
+    file_name_pattern: '*.twig'
+    globals:
+        cfa_name: '%cfa.name%'
+        cfa_logo: '%cfa.logo%'
+        cfa_logo_large: '%cfa.logo_large%'
+        cfa_tagline: '%cfa.tagline%'
+
+when@test:
+    twig:
+        strict_variables: true

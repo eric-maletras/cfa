@@ -1,0 +1,85 @@
+# config/cfa.yaml
+# Configuration personnalisable pour le CFA
+# Ce fichier permet de configurer l'apparence et les informations du CFA
+# sans modifier le code source.
+
+parameters:
+    # ========================================
+    # INFORMATIONS GÉNÉRALES DU CFA
+    # ========================================
+    
+    # Nom du CFA affiché sur le site
+    cfa.name: 'CFA MonCentre'
+    
+    # Nom court pour le header
+    cfa.short_name: 'CFA'
+    
+    # Slogan / accroche
+    cfa.tagline: 'Accédez à votre espace personnel pour gérer vos absences, consulter vos évaluations et suivre votre parcours de formation.'
+    
+    # ========================================
+    # LOGOS ET IMAGES
+    # ========================================
+    
+    # Logo principal (header et footer) - chemin relatif depuis public/images/
+    cfa.logo: 'logo-cfa.png'
+    
+    # Logo grande taille (page d'accueil) - optionnel, utilise logo principal si vide
+    cfa.logo_large: 'logo-cfa-large.png'
+    
+    # Favicon
+    cfa.favicon: 'favicon.svg'
+    
+    # ========================================
+    # THÈME ET COULEURS
+    # ========================================
+    
+    # Thème par défaut : 'default', 'academic', 'nature', 'dynamic', 'modern', 'dark'
+    cfa.theme: 'default'
+    
+    # Couleurs personnalisées (écrase les valeurs du thème)
+    # Laisser vide pour utiliser les couleurs du thème
+    cfa.colors:
+        primary: ''        # Ex: '#1a5f7a'
+        secondary: ''      # Ex: '#e07b39'
+        tertiary: ''       # Ex: '#57a773'
+    
+    # ========================================
+    # COORDONNÉES
+    # ========================================
+    
+    cfa.contact:
+        address: '123 rue de la Formation, 78000 Versailles'
+        phone: '01 23 45 67 89'
+        email: 'contact@cfa-moncentre.fr'
+        website: 'https://www.cfa-moncentre.fr'
+    
+    # Réseaux sociaux (laisser vide si non utilisé)
+    cfa.social:
+        facebook: ''
+        twitter: ''
+        linkedin: ''
+        instagram: ''
+        youtube: ''
+    
+    # ========================================
+    # FONCTIONNALITÉS
+    # ========================================
+    
+    # Afficher les statistiques sur la page d'accueil
+    cfa.show_stats: true
+    
+    # Afficher la section "Nos formations" 
+    cfa.show_formations: true
+    
+    # Afficher le formulaire de contact public
+    cfa.show_contact_form: true
+    
+    # ========================================
+    # MENTIONS LÉGALES
+    # ========================================
+    
+    cfa.legal:
+        siret: '123 456 789 00012'
+        nda: '11 78 12345 78'  # Numéro de Déclaration d'Activité
+        certification: 'Qualiopi'

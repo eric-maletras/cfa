@@ -1,0 +1,214 @@
+/**
+ * CFA - Fichier de thème personnalisable
+ * ======================================
+ * Ce fichier contient toutes les variables CSS permettant de personnaliser
+ * l'apparence du site pour différents CFA.
+ * 
+ * Pour adapter le thème à un autre CFA :
+ * 1. Modifier les couleurs dans la section "Couleurs principales"
+ * 2. Changer la police dans "Typographie"
+ * 3. Ajuster les autres variables selon les besoins
+ */
+
+:root {
+    /* ========================================
+       COULEURS PRINCIPALES
+       ======================================== */
+    
+    /* Couleur primaire - Utilisée pour les éléments principaux (boutons, liens, accents) */
+    --color-primary: #1a5f7a;           /* Bleu profond - sérieux, professionnel */
+    --color-primary-dark: #134759;       /* Version sombre pour hover */
+    --color-primary-light: #2a7f9a;      /* Version claire */
+    --color-primary-rgb: 26, 95, 122;    /* Version RGB pour les transparences */
+    
+    /* Couleur secondaire - Pour les accents et éléments complémentaires */
+    --color-secondary: #e07b39;          /* Orange chaud - dynamisme, apprentissage */
+    --color-secondary-dark: #c66a2d;
+    --color-secondary-light: #f08a4a;
+    --color-secondary-rgb: 224, 123, 57;
+    
+    /* Couleur tertiaire (optionnelle) */
+    --color-tertiary: #57a773;           /* Vert - croissance, réussite */
+    --color-tertiary-dark: #459161;
+    --color-tertiary-light: #6ab784;
+    
+    /* Couleurs neutres */
+    --color-white: #ffffff;
+    --color-off-white: #f8f9fa;
+    --color-light-gray: #e9ecef;
+    --color-gray: #6c757d;
+    --color-dark-gray: #495057;
+    --color-dark: #212529;
+    --color-black: #000000;
+    
+    /* Couleurs de fond */
+    --color-bg-body: #f5f7fa;
+    --color-bg-header: var(--color-white);
+    --color-bg-card: var(--color-white);
+    --color-bg-footer: var(--color-dark);
+    
+    /* Couleurs de texte */
+    --color-text-primary: var(--color-dark);
+    --color-text-secondary: var(--color-gray);
+    --color-text-light: var(--color-white);
+    --color-text-muted: #adb5bd;
+    
+    /* Couleurs de statut */
+    --color-success: #28a745;
+    --color-warning: #ffc107;
+    --color-danger: #dc3545;
+    --color-info: #17a2b8;
+    
+    /* ========================================
+       TYPOGRAPHIE
+       ======================================== */
+    
+    /* Police principale - Pour les titres */
+    --font-primary: 'Montserrat', 'Segoe UI', sans-serif;
+    
+    /* Police secondaire - Pour le corps de texte */
+    --font-secondary: 'Open Sans', 'Helvetica Neue', Arial, sans-serif;
+    
+    /* Police monospace - Pour le code */
+    --font-mono: 'Fira Code', 'Consolas', monospace;
+    
+    /* Tailles de police */
+    --font-size-xs: 0.75rem;      /* 12px */
+    --font-size-sm: 0.875rem;     /* 14px */
+    --font-size-base: 1rem;       /* 16px */
+    --font-size-md: 1.125rem;     /* 18px */
+    --font-size-lg: 1.25rem;      /* 20px */
+    --font-size-xl: 1.5rem;       /* 24px */
+    --font-size-2xl: 2rem;        /* 32px */
+    --font-size-3xl: 2.5rem;      /* 40px */
+    --font-size-4xl: 3rem;        /* 48px */
+    
+    /* Épaisseurs de police */
+    --font-weight-light: 300;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    
+    /* Hauteur de ligne */
+    --line-height-tight: 1.25;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.75;
+    
+    /* ========================================
+       ESPACEMENTS
+       ======================================== */
+    
+    --spacing-xs: 0.25rem;        /* 4px */
+    --spacing-sm: 0.5rem;         /* 8px */
+    --spacing-md: 1rem;           /* 16px */
+    --spacing-lg: 1.5rem;         /* 24px */
+    --spacing-xl: 2rem;           /* 32px */
+    --spacing-2xl: 3rem;          /* 48px */
+    --spacing-3xl: 4rem;          /* 64px */
+    
+    /* ========================================
+       BORDURES ET ARRONDIS
+       ======================================== */
+    
+    --border-width: 1px;
+    --border-color: var(--color-light-gray);
+    --border-color-dark: var(--color-gray);
+    
+    --border-radius-sm: 0.25rem;  /* 4px */
+    --border-radius: 0.5rem;      /* 8px */
+    --border-radius-lg: 0.75rem;  /* 12px */
+    --border-radius-xl: 1rem;     /* 16px */
+    --border-radius-full: 9999px;
+    
+    /* ========================================
+       OMBRES
+       ======================================== */
+    
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    --shadow-md: 0 6px 12px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.12);
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.15);
+    
+    /* ========================================
+       TRANSITIONS
+       ======================================== */
+    
+    --transition-fast: 150ms ease;
+    --transition-base: 250ms ease;
+    --transition-slow: 350ms ease;
+    
+    /* ========================================
+       DIMENSIONS
+       ======================================== */
+    
+    --header-height: 80px;
+    --container-max-width: 1200px;
+    --sidebar-width: 280px;
+    
+    /* ========================================
+       Z-INDEX
+       ======================================== */
+    
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-fixed: 300;
+    --z-modal-backdrop: 400;
+    --z-modal: 500;
+    --z-tooltip: 600;
+}
+
+/* ========================================
+   THÈMES ALTERNATIFS (exemples)
+   ======================================== */
+
+/* Thème Bleu Académique */
+[data-theme="academic"] {
+    --color-primary: #003366;
+    --color-primary-dark: #002244;
+    --color-primary-light: #004488;
+    --color-secondary: #cc9900;
+    --color-secondary-dark: #aa7700;
+    --color-secondary-light: #ddaa00;
+}
+
+/* Thème Vert Nature */
+[data-theme="nature"] {
+    --color-primary: #2d5016;
+    --color-primary-dark: #1e3810;
+    --color-primary-light: #3d6a1c;
+    --color-secondary: #8b4513;
+    --color-secondary-dark: #6b350f;
+    --color-secondary-light: #ab5523;
+}
+
+/* Thème Rouge Dynamique */
+[data-theme="dynamic"] {
+    --color-primary: #8b0000;
+    --color-primary-dark: #6b0000;
+    --color-primary-light: #ab1010;
+    --color-secondary: #ffa500;
+    --color-secondary-dark: #dd8800;
+    --color-secondary-light: #ffb520;
+}
+
+/* Thème Violet Moderne */
+[data-theme="modern"] {
+    --color-primary: #5c4b8a;
+    --color-primary-dark: #4a3c6e;
+    --color-primary-light: #7060a0;
+    --color-secondary: #00b4d8;
+    --color-secondary-dark: #0090b0;
+    --color-secondary-light: #20c4e8;
+}
+
+/* Mode sombre (optionnel) */
+[data-theme="dark"] {
+    --color-bg-body: #1a1a2e;
+    --color-bg-header: #16213e;
+    --color-bg-card: #1f2b48;
+    --color-text-primary: #eaeaea;
+    --color-text-secondary: #b0b0b0;
+    --color-border: #2a3a5a;
+}

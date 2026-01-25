@@ -1,0 +1,221 @@
+{# templates/base.html.twig #}
+{# Template de base pour le site CFA #}
+<!DOCTYPE html>
+<html lang="fr" {% if app.request.cookies.get('cfa_theme') %}data-theme="{{ app.request.cookies.get('cfa_theme') }}"{% endif %}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{% block meta_description %}CFA - Centre de Formation des Apprentis. Gestion des absences et évaluations.{% endblock %}">
+    
+    <title>{% block title %}CFA{% endblock %} - Centre de Formation des Apprentis</title>
+    
+    {# Fonts Google #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    {# Styles #}
+    <link rel="stylesheet" href="{{ asset('css/theme.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/style.css') }}">
+    {% block stylesheets %}{% endblock %}
+    
+    {# Favicon #}
+    <link rel="icon" type="image/svg+xml" href="{{ asset('images/favicon.svg') }}">
+</head>
+<body>
+    {# ========================================
+       HEADER
+       ======================================== #}
+    <header class="header">
+        <div class="header__inner">
+            {# Logo et nom du CFA #}
+            <a href="{{ path('app_home') }}" class="header__brand">
+                {% if cfa_logo is defined and cfa_logo %}
+                    <img src="{{ asset('images/' ~ cfa_logo) }}" alt="Logo {{ cfa_name|default('CFA') }}" class="header__logo">
+                {% else %}
+                    <div class="header__logo-placeholder">CFA</div>
+                {% endif %}
+                <div>
+                    <div class="header__title">{{ cfa_name|default('CFA MonCentre') }}</div>
+                    <div class="header__subtitle">Centre de Formation des Apprentis</div>
+                </div>
+            </a>
+            
+            {# Formulaire de connexion ou menu utilisateur #}
+            {% if app.user %}
+                {# Utilisateur connecté - Afficher menu utilisateur #}
+                <div class="user-menu">
+                    <span class="user-menu__name">{{ app.user.prenom }} {{ app.user.nom }}</span>
+                    <a href="{{ path('app_dashboard') }}" class="btn btn--primary btn--sm">Mon espace</a>
+                    <a href="{{ path('app_logout') }}" class="btn btn--secondary btn--sm">Déconnexion</a>
+                </div>
+            {% else %}
+                {# Formulaire de connexion (desktop) #}
+                <form class="login-form" action="{{ path('app_login') }}" method="POST">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+                    <div class="login-form__group">
+                        <label class="login-form__label" for="login-email">Identifiant</label>
+                        <input 
+                            type="text" 
+                            id="login-email" 
+                            name="email" 
+                            class="login-form__input" 
+                            placeholder="Email ou identifiant"
+                            autocomplete="username"
+                            required
+                        >
+                    </div>
+                    <div class="login-form__group">
+                        <label class="login-form__label" for="login-password">Mot de passe</label>
+                        <input 
+                            type="password" 
+                            id="login-password" 
+                            name="password" 
+                            class="login-form__input" 
+                            placeholder="••••••••"
+                            autocomplete="current-password"
+                            required
+                        >
+                    </div>
+                    <div class="login-form__actions">
+                        <button type="submit" class="login-form__submit">Connexion</button>
+                        <a href="{{ path('app_forgot_password') }}" class="login-form__forgot">Mot de passe oublié ?</a>
+                    </div>
+                </form>
+            {% endif %}
+            
+            {# Bouton menu mobile #}
+            <button class="header__menu-toggle" aria-label="Menu" onclick="openLoginModal()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </header>
+
+    {# ========================================
+       MAIN - Contenu principal
+       ======================================== #}
+    <main>
+        {# Messages flash #}
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="alert alert--{{ label }}">
+                    {{ message }}
+                    <button class="alert__close" onclick="this.parentElement.remove()">&times;</button>
+                </div>
+            {% endfor %}
+        {% endfor %}
+        
+        {% block body %}{% endblock %}
+    </main>
+
+    {# ========================================
+       FOOTER
+       ======================================== #}
+    <footer class="footer">
+        <div class="container">
+            <div class="footer__content">
+                <div class="footer__brand">
+                    <div class="footer__logo-placeholder">CFA</div>
+                    <span class="footer__name">{{ cfa_name|default('CFA MonCentre') }}</span>
+                </div>
+                
+                <nav class="footer__links">
+                    <a href="{{ path('app_mentions_legales') }}" class="footer__link">Mentions légales</a>
+                    <a href="{{ path('app_confidentialite') }}" class="footer__link">Confidentialité</a>
+                    <a href="{{ path('app_accessibilite') }}" class="footer__link">Accessibilité</a>
+                    <a href="{{ path('app_contact') }}" class="footer__link">Contact</a>
+                </nav>
+            </div>
+            
+            <div class="footer__bottom">
+                <p>&copy; {{ "now"|date("Y") }} {{ cfa_name|default('CFA MonCentre') }} - Tous droits réservés</p>
+            </div>
+        </div>
+    </footer>
+
+    {# ========================================
+       MODAL de connexion (mobile)
+       ======================================== #}
+    {% if not app.user %}
+    <div class="login-modal" id="loginModal">
+        <div class="login-modal__content">
+            <div class="login-modal__header">
+                <h2 class="login-modal__title">Connexion</h2>
+                <button class="login-modal__close" onclick="closeLoginModal()">&times;</button>
+            </div>
+            <form class="login-modal__form" action="{{ path('app_login') }}" method="POST">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+                <div class="login-form__group">
+                    <label class="login-form__label" for="modal-email">Identifiant</label>
+                    <input 
+                        type="text" 
+                        id="modal-email" 
+                        name="email" 
+                        class="login-form__input" 
+                        placeholder="Email ou identifiant"
+                        autocomplete="username"
+                        required
+                    >
+                </div>
+                <div class="login-form__group">
+                    <label class="login-form__label" for="modal-password">Mot de passe</label>
+                    <input 
+                        type="password" 
+                        id="modal-password" 
+                        name="password" 
+                        class="login-form__input" 
+                        placeholder="••••••••"
+                        autocomplete="current-password"
+                        required
+                    >
+                </div>
+                <button type="submit" class="login-form__submit">Se connecter</button>
+                <a href="{{ path('app_forgot_password') }}" class="login-form__forgot">Mot de passe oublié ?</a>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ========================================
+       SCRIPTS
+       ======================================== #}
+    <script>
+        // Gestion de la modal de connexion (mobile)
+        function openLoginModal() {
+            const modal = document.getElementById('loginModal');
+            if (modal) {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        
+        function closeLoginModal() {
+            const modal = document.getElementById('loginModal');
+            if (modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }
+        
+        // Fermer la modal en cliquant à l'extérieur
+        const loginModal = document.getElementById('loginModal');
+        if (loginModal) {
+            loginModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeLoginModal();
+                }
+            });
+        }
+        
+        // Fermer la modal avec Echap
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeLoginModal();
+            }
+        });
+    </script>
+    {% block javascripts %}{% endblock %}
+</body>
+</html>
