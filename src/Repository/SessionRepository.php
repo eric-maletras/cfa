@@ -409,4 +409,5 @@ class SessionRepository extends ServiceEntityRepository
         
         return $choices;
     }
+
 }

@@ -151,4 +151,26 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         
         return $results;
     }
+
+    /**
+ * Recherche des formateurs par terme de recherche
+ * @return User[]
+ */
+public function searchFormateurs(string $term, int $limit = 20): array
+{
+    return $this->createQueryBuilder('u')
+        ->innerJoin('u.rolesEntities', 'r')
+        ->andWhere('r.code = :roleCode')
+        ->andWhere('u.actif = true')
+        ->andWhere(
+            'LOWER(u.nom) LIKE :term OR LOWER(u.prenom) LIKE :term OR LOWER(u.email) LIKE :term'
+        )
+        ->setParameter('roleCode', 'ROLE_FORMATEUR')
+        ->setParameter('term', '%' . strtolower($term) . '%')
+        ->setMaxResults($limit)
+        ->orderBy('u.nom', 'ASC')
+        ->addOrderBy('u.prenom', 'ASC')
+        ->getQuery()
+        ->getResult();
+}
 }

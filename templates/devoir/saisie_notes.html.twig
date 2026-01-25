@@ -1,0 +1,311 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Saisie des notes - {{ devoir.titre }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.notes-grid {
+    width: 100%;
+    border-collapse: collapse;
+}
+.notes-grid th,
+.notes-grid td {
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+.notes-grid th {
+    background: var(--color-background);
+    font-weight: var(--font-weight-semibold);
+}
+.notes-grid .cell-apprenant {
+    min-width: 200px;
+}
+.notes-grid .cell-note {
+    width: 100px;
+}
+.notes-grid .cell-statut {
+    width: 130px;
+}
+.notes-grid .cell-commentaire {
+    min-width: 200px;
+}
+
+.note-input {
+    width: 80px !important;
+    text-align: center;
+}
+.note-statut {
+    width: 120px !important;
+}
+
+.note-row--absent {
+    background: #fff5f5;
+}
+.note-row--dispense {
+    background: #f8f9fa;
+}
+
+.quick-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    flex-wrap: wrap;
+}
+.quick-actions .btn {
+    font-size: var(--font-size-sm);
+}
+
+.info-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md);
+    background: var(--color-info-light, #e3f2fd);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-lg);
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_formateur_notes_show', {id: devoir.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour au devoir
+                </a>
+            </div>
+            <h1 class="dashboard__title">✏️ Saisie des notes</h1>
+            <p class="dashboard__subtitle">{{ devoir.titre }} - {{ devoir.session.code }}</p>
+        </header>
+
+        {# Informations du devoir #}
+        <div class="info-bar">
+            <div>
+                <strong>{{ devoir.typeLibelle }}</strong> • 
+                {{ devoir.dateDevoir|date('d/m/Y') }} • 
+                Coefficient {{ devoir.coefficient }} • 
+                Barème /{{ devoir.bareme }}
+            </div>
+            <div>
+                {{ notes|length }} apprenant(s)
+            </div>
+        </div>
+
+        {# Formulaire de saisie #}
+        {{ form_start(form, {'attr': {'class': 'form', 'id': 'notes-form'}}) }}
+        
+        {# Actions rapides #}
+        <div class="quick-actions">
+            <button type="button" class="btn btn--sm btn--secondary" onclick="setAllAbsent()">
+                Tout marquer absent
+            </button>
+            <button type="button" class="btn btn--sm btn--secondary" onclick="clearAll()">
+                Effacer tout
+            </button>
+            <button type="button" class="btn btn--sm btn--secondary" onclick="copyDown()">
+                Copier vers le bas
+            </button>
+        </div>
+
+        {# Grille de saisie #}
+        <div class="section-card">
+            <table class="notes-grid">
+                <thead>
+                    <tr>
+                        <th class="cell-apprenant">Apprenant</th>
+                        <th class="cell-note">Note /{{ devoir.bareme }}</th>
+                        <th class="cell-statut">Statut</th>
+                        <th class="cell-commentaire">Commentaire</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for index, note in notes %}
+                        {% set rowClass = '' %}
+                        {% if note.statut == 'absent' %}
+                            {% set rowClass = 'note-row--absent' %}
+                        {% elseif note.statut == 'dispense' %}
+                            {% set rowClass = 'note-row--dispense' %}
+                        {% endif %}
+                        
+                        <tr class="{{ rowClass }}" data-index="{{ index }}">
+                            <td class="cell-apprenant">
+                                <strong>{{ note.apprenant.nom }}</strong> {{ note.apprenant.prenom }}
+                                <br><small class="text-muted">{{ note.apprenant.email }}</small>
+                            </td>
+                            <td class="cell-note">
+                                {{ form_widget(form.notes[index].valeur, {
+                                    'attr': {
+                                        'class': 'form-control form-control-sm note-input',
+                                        'max': devoir.bareme,
+                                        'data-index': index
+                                    }
+                                }) }}
+                            </td>
+                            <td class="cell-statut">
+                                {{ form_widget(form.notes[index].statut, {
+                                    'attr': {
+                                        'class': 'form-control form-control-sm note-statut',
+                                        'data-index': index,
+                                        'onchange': 'updateRowStyle(' ~ index ~ ')'
+                                    }
+                                }) }}
+                            </td>
+                            <td class="cell-commentaire">
+                                {% if form.notes[index].commentaire is defined %}
+                                    {{ form_widget(form.notes[index].commentaire, {
+                                        'attr': {
+                                            'class': 'form-control form-control-sm',
+                                            'placeholder': 'Commentaire optionnel...'
+                                        }
+                                    }) }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# Options de publication #}
+        <div class="tabs" style="margin-top: var(--spacing-xl);">
+            <div class="tabs__content">
+                <div class="form-group form-check">
+                    {{ form_widget(form.publier) }}
+                    {{ form_label(form.publier) }}
+                    <small class="form-hint d-block">
+                        Les apprenants pourront voir leurs notes si vous cochez cette option
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        {# Actions #}
+        <div class="form-actions" style="margin-top: var(--spacing-xl);">
+            <button type="submit" class="btn btn--primary btn--lg">
+                💾 Enregistrer les notes
+            </button>
+            <a href="{{ path('app_formateur_notes_show', {id: devoir.id}) }}" class="btn btn--secondary">
+                Annuler
+            </a>
+        </div>
+        
+        {{ form_end(form) }}
+    </div>
+</section>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+// Mettre à jour le style de ligne selon le statut
+function updateRowStyle(index) {
+    const row = document.querySelector(`tr[data-index="${index}"]`);
+    const select = row.querySelector('.note-statut');
+    const input = row.querySelector('.note-input');
+    
+    row.classList.remove('note-row--absent', 'note-row--dispense');
+    
+    if (select.value === 'absent') {
+        row.classList.add('note-row--absent');
+        input.value = '';
+        input.disabled = true;
+    } else if (select.value === 'dispense') {
+        row.classList.add('note-row--dispense');
+        input.value = '';
+        input.disabled = true;
+    } else {
+        input.disabled = false;
+    }
+}
+
+// Marquer tous les apprenants comme absents
+function setAllAbsent() {
+    if (!confirm('Marquer tous les apprenants comme absents ?')) return;
+    
+    document.querySelectorAll('.note-statut').forEach((select, index) => {
+        select.value = 'absent';
+        updateRowStyle(index);
+    });
+}
+
+// Effacer toutes les notes
+function clearAll() {
+    if (!confirm('Effacer toutes les notes et statuts ?')) return;
+    
+    document.querySelectorAll('.note-input').forEach(input => {
+        input.value = '';
+        input.disabled = false;
+    });
+    
+    document.querySelectorAll('.note-statut').forEach((select, index) => {
+        select.value = 'normal';
+        updateRowStyle(index);
+    });
+}
+
+// Copier la première note vers toutes les lignes
+function copyDown() {
+    const firstInput = document.querySelector('.note-input');
+    const value = firstInput.value;
+    
+    if (!value) {
+        alert('Saisissez d\'abord une note dans la première ligne.');
+        return;
+    }
+    
+    if (!confirm(`Copier la note ${value} vers toutes les lignes ?`)) return;
+    
+    document.querySelectorAll('.note-input').forEach(input => {
+        if (!input.disabled) {
+            input.value = value;
+        }
+    });
+}
+
+// Navigation au clavier (Enter et Tab passent à la note suivante)
+document.querySelectorAll('.note-input').forEach((input, index, inputs) => {
+    input.addEventListener('keydown', (e) => {
+        // Enter ou Tab : passer à la note suivante
+        if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
+            e.preventDefault();
+            const nextInput = inputs[index + 1];
+            if (nextInput && !nextInput.disabled) {
+                nextInput.focus();
+                nextInput.select();
+            } else if (nextInput) {
+                // Chercher le prochain input non désactivé
+                for (let i = index + 1; i < inputs.length; i++) {
+                    if (!inputs[i].disabled) {
+                        inputs[i].focus();
+                        inputs[i].select();
+                        break;
+                    }
+                }
+            }
+        }
+        // Shift+Tab : revenir à la note précédente
+        if (e.key === 'Tab' && e.shiftKey) {
+            e.preventDefault();
+            for (let i = index - 1; i >= 0; i--) {
+                if (!inputs[i].disabled) {
+                    inputs[i].focus();
+                    inputs[i].select();
+                    break;
+                }
+            }
+        }
+    });
+});
+
+// Initialiser les styles des lignes
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.note-statut').forEach((select, index) => {
+        updateRowStyle(index);
+    });
+});
+</script>
+{% endblock %}

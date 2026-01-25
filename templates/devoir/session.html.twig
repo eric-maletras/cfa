@@ -1,0 +1,157 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Devoirs - {{ session.code }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_formateur_notes_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour
+                </a>
+            </div>
+            <h1 class="dashboard__title">📝 Devoirs - {{ session.code }}</h1>
+            <p class="dashboard__subtitle">{{ session.libelle }}</p>
+        </header>
+
+        {# Statistiques #}
+        <div class="stats-grid" style="margin-bottom: var(--spacing-xl);">
+            <div class="stat-card">
+                <div class="stat-card__value">{{ stats.total }}</div>
+                <div class="stat-card__label">Devoirs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card__value">{{ stats.avec_notes }}</div>
+                <div class="stat-card__label">Avec notes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card__value">{{ stats.complets }}</div>
+                <div class="stat-card__label">Complets</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card__value">{{ session.nombreInscrits }}</div>
+                <div class="stat-card__label">Apprenants</div>
+            </div>
+        </div>
+
+        {# Actions #}
+        <div class="form-actions" style="margin-bottom: var(--spacing-xl);">
+            <a href="{{ path('app_formateur_notes_new_session', {sessionId: session.id}) }}" class="btn btn--primary">
+                ➕ Nouveau devoir
+            </a>
+            <a href="{{ path('app_formateur_notes_moyennes', {id: session.id}) }}" class="btn btn--secondary">
+                📊 Tableau des moyennes
+            </a>
+        </div>
+
+        {% if devoirs is empty %}
+            <div class="empty-state">
+                <div class="empty-state__icon">📋</div>
+                <h3>Aucun devoir</h3>
+                <p>Aucun devoir n'a été créé pour cette session.</p>
+                <a href="{{ path('app_formateur_notes_new_session', {sessionId: session.id}) }}" class="btn btn--primary">
+                    Créer un devoir
+                </a>
+            </div>
+        {% else %}
+            {# Liste des devoirs #}
+            <div class="section-card">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Titre</th>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Coef</th>
+                            <th>Barème</th>
+                            <th>Notes saisies</th>
+                            <th>Moyenne</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for devoir in devoirs %}
+                            <tr class="{{ devoir.passe ? '' : 'table-row--highlight' }}">
+                                <td>
+                                    <a href="{{ path('app_formateur_notes_show', {id: devoir.id}) }}">
+                                        <strong>{{ devoir.titre }}</strong>
+                                    </a>
+                                    {% if devoir.description %}
+                                        <br><small class="text-muted">{{ devoir.description|u.truncate(50) }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge badge--{{ devoir.typeColor }}">
+                                        {{ devoir.typeLibelle }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {{ devoir.dateDevoir|date('d/m/Y') }}
+                                    {% if not devoir.passe %}
+                                        <br><small class="text-muted">À venir</small>
+                                    {% endif %}
+                                </td>
+                                <td>{{ devoir.coefficient }}</td>
+                                <td>/{{ devoir.bareme }}</td>
+                                <td>
+                                    <div class="progress-mini">
+                                        {% set pourcent = devoir.nombreApprenants > 0 ? (devoir.nombreNotesSaisies / devoir.nombreApprenants * 100)|round : 0 %}
+                                        <div class="progress-mini__bar" style="width: {{ pourcent }}%"></div>
+                                    </div>
+                                    <small>{{ devoir.nombreNotesSaisies }} / {{ devoir.nombreApprenants }}</small>
+                                </td>
+                                <td>
+                                    {% if devoir.moyenne is not null %}
+                                        <strong>{{ devoir.moyenneSur20|number_format(2, ',', ' ') }}/20</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            Min: {{ devoir.noteMin|number_format(2, ',', ' ') }} - 
+                                            Max: {{ devoir.noteMax|number_format(2, ',', ' ') }}
+                                        </small>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if not devoir.visible %}
+                                        <span class="status status--secondary" title="Non visible par les apprenants">
+                                            Masqué
+                                        </span>
+                                    {% elseif devoir.notesPubliees %}
+                                        <span class="status status--success" title="Notes publiées">
+                                            Publié
+                                        </span>
+                                    {% else %}
+                                        <span class="status status--warning" title="Notes non publiées">
+                                            Brouillon
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group--vertical">
+                                        <a href="{{ path('app_formateur_notes_notes', {id: devoir.id}) }}" 
+                                           class="btn btn--sm btn--primary" title="Saisir les notes">
+                                            ✏️ Notes
+                                        </a>
+                                        <a href="{{ path('app_formateur_notes_edit', {id: devoir.id}) }}" 
+                                           class="btn btn--sm btn--secondary" title="Modifier">
+                                            ⚙️
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

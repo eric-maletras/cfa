@@ -129,6 +129,10 @@
         color: var(--color-primary);
     }
     
+    .section-title .btn {
+        margin-left: auto;
+    }
+    
     .info-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -166,6 +170,16 @@
         padding: 0.5rem;
         background: var(--color-background);
         border-radius: var(--radius-md);
+        transition: all 0.2s ease;
+    }
+    
+    .formateur-item:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    
+    .formateur-item--responsable {
+        border-left: 3px solid var(--color-primary);
+        background: #e3f2fd;
     }
     
     .formateur-avatar {
@@ -389,6 +403,17 @@
     .progress-bar-fill--success {
         background: #4caf50;
     }
+    
+    /* Styles pour les formateurs vides */
+    .formateurs-empty {
+        text-align: center;
+        padding: var(--spacing-lg, 1.5rem);
+        color: var(--color-text-muted);
+    }
+    
+    .formateurs-empty p {
+        margin-bottom: 0.75rem;
+    }
 </style>
 {% endblock %}
 
@@ -480,6 +505,17 @@
                     <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                 </svg>
                 Gérer les inscriptions
+            </a>
+            
+            {# === BOUTON ÉQUIPE PÉDAGOGIQUE === #}
+            <a href="{{ path('admin_session_formateurs', {id: session.id}) }}" class="btn btn--secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                Équipe pédagogique
             </a>
             
             <a href="{{ path('admin_session_edit', {id: session.id}) }}" class="btn btn--secondary">
@@ -581,7 +617,7 @@
                 </div>
             </div>
             
-            {# Équipe pédagogique #}
+            {# Équipe pédagogique - Version améliorée #}
             <div class="section-card">
                 <h2 class="section-title">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -591,18 +627,26 @@
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
                     Équipe pédagogique
+                    <a href="{{ path('admin_session_formateurs', {id: session.id}) }}" 
+                       class="btn btn--ghost btn--sm" 
+                       style="font-size: 0.75rem;">
+                        ✏️ Gérer
+                    </a>
                 </h2>
                 
                 <div class="formateurs-list">
                     {% if session.responsable %}
-                        <div class="formateur-item">
+                        <div class="formateur-item formateur-item--responsable">
                             <div class="formateur-avatar">
                                 {{ session.responsable.prenom|slice(0, 1)|upper }}{{ session.responsable.nom|slice(0, 1)|upper }}
                             </div>
                             <div class="formateur-info">
                                 <div class="formateur-name">{{ session.responsable.prenom }} {{ session.responsable.nom }}</div>
-                                <div class="formateur-role">Responsable pédagogique</div>
+                                <div class="formateur-role">⭐ Responsable pédagogique</div>
                             </div>
+                            <a href="{{ path('admin_user_show', {id: session.responsable.id}) }}" class="btn btn--ghost btn--sm">
+                                Voir
+                            </a>
                         </div>
                     {% endif %}
                     
@@ -616,14 +660,22 @@
                                 <div class="formateur-name">{{ formateur.prenom }} {{ formateur.nom }}</div>
                                 <div class="formateur-role">Formateur intervenant</div>
                             </div>
+                            <a href="{{ path('admin_user_show', {id: formateur.id}) }}" class="btn btn--ghost btn--sm">
+                                Voir
+                            </a>
                         </div>
                         {% endif %}
                     {% endfor %}
                     
                     {% if not session.responsable and session.formateurs|length == 0 %}
-                        <p style="color: var(--color-text-muted); font-style: italic;">
-                            Aucun formateur assigné à cette promotion.
-                        </p>
+                        <div class="formateurs-empty">
+                            <p style="color: var(--color-text-muted); font-style: italic; margin-bottom: 0.75rem;">
+                                Aucun formateur assigné à cette promotion.
+                            </p>
+                            <a href="{{ path('admin_session_formateurs', {id: session.id}) }}" class="btn btn--primary btn--sm">
+                                + Ajouter des formateurs
+                            </a>
+                        </div>
                     {% endif %}
                 </div>
             </div>

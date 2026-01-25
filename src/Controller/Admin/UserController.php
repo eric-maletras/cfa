@@ -4,9 +4,14 @@ namespace App\Controller\Admin;
 
 use App\Entity\User;
 use App\Entity\Role;
+use App\Entity\Session;
 use App\Form\UserType;
 use App\Repository\UserRepository;
 use App\Repository\RoleRepository;
+use App\Repository\SessionRepository;
+use App\Repository\DevoirRepository;
+use App\Repository\NoteRepository;
+use App\Repository\InscriptionRepository;
 use App\Service\PasswordGeneratorService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -28,6 +33,10 @@ class UserController extends AbstractController
         private EntityManagerInterface $em,
         private UserRepository $userRepo,
         private RoleRepository $roleRepo,
+        private SessionRepository $sessionRepo,
+        private DevoirRepository $devoirRepo,
+        private NoteRepository $noteRepo,
+        private InscriptionRepository $inscriptionRepo,
         private UserPasswordHasherInterface $passwordHasher,
         private PasswordGeneratorService $passwordGenerator
     ) {}
@@ -105,13 +114,113 @@ class UserController extends AbstractController
 
     /**
      * Affichage détaillé d'un utilisateur
+     * Redirige vers la vue formateur enrichie si l'utilisateur est formateur
      */
     #[Route('/{id}', name: 'admin_user_show', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function show(User $user): Response
     {
+        // Vérifie si l'utilisateur est un formateur
+        $isFormateur = false;
+        foreach ($user->getRolesEntities() as $role) {
+            if ($role->getCode() === 'ROLE_FORMATEUR') {
+                $isFormateur = true;
+                break;
+            }
+        }
+        
+        // Si formateur, utilise la vue enrichie
+        if ($isFormateur) {
+            return $this->showFormateur($user);
+        }
+        
+        // Vue standard pour les autres utilisateurs
         return $this->render('admin/users/show.html.twig', [
             'user' => $user,
         ]);
+    }
+
+    /**
+     * Affichage enrichi d'un formateur avec ses sessions, devoirs et apprenants
+     */
+    private function showFormateur(User $user): Response
+    {
+        // Récupère les sessions où le formateur intervient ou est responsable
+        $sessionsResponsable = $this->sessionRepo->findByResponsable($user);
+        $sessionsFormateur = $this->sessionRepo->findByFormateur($user);
+        
+        // Fusionner et dédoublonner les sessions
+        $sessionsMap = [];
+        foreach ($sessionsResponsable as $session) {
+            $sessionsMap[$session->getId()] = $session;
+        }
+        foreach ($sessionsFormateur as $session) {
+            $sessionsMap[$session->getId()] = $session;
+        }
+        $sessions = array_values($sessionsMap);
+        
+        // Trie par date de début décroissante
+        usort($sessions, fn($a, $b) => $b->getDateDebut() <=> $a->getDateDebut());
+        
+        // Récupère les devoirs récents du formateur
+        $devoirs = $this->devoirRepo->findRecentByFormateur($user, 10);
+        
+        // Récupère la liste des apprenants via les inscriptions aux sessions
+        $apprenants = $this->getApprenantsWithMoyennes($sessions);
+        
+        return $this->render('admin/users/show_formateur.html.twig', [
+            'user' => $user,
+            'sessions' => $sessions,
+            'devoirs' => $devoirs,
+            'apprenants' => $apprenants,
+        ]);
+    }
+
+    /**
+     * Récupère les apprenants de toutes les sessions avec leurs moyennes
+     * 
+     * @param Session[] $sessions
+     * @return array<int, array{user: User, session: Session, moyenne: float|null}>
+     */
+    private function getApprenantsWithMoyennes(array $sessions): array
+    {
+        $apprenants = [];
+        $seen = []; // Pour éviter les doublons
+        
+        foreach ($sessions as $session) {
+            // Récupère les inscriptions validées de cette session
+            $inscriptions = $this->inscriptionRepo->findBySessionWithFilters($session, 'validee');
+            
+            foreach ($inscriptions as $inscription) {
+                $apprenant = $inscription->getUser();
+                
+                // Évite les doublons (même apprenant dans plusieurs sessions)
+                $key = $apprenant->getId() . '_' . $session->getId();
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                
+                // Calcule la moyenne de l'apprenant pour cette session
+                $moyenne = $this->noteRepo->calculateMoyenneApprenant($apprenant, $session);
+                
+                $apprenants[] = [
+                    'user' => $apprenant,
+                    'session' => $session,
+                    'moyenne' => $moyenne,
+                ];
+            }
+        }
+        
+        // Trie par nom/prénom
+        usort($apprenants, function($a, $b) {
+            $cmp = $a['user']->getNom() <=> $b['user']->getNom();
+            if ($cmp === 0) {
+                return $a['user']->getPrenom() <=> $b['user']->getPrenom();
+            }
+            return $cmp;
+        });
+        
+        return $apprenants;
     }
 
     /**

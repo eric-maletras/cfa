@@ -1,0 +1,295 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ devoir.titre }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.note-cell {
+    text-align: center;
+    font-weight: var(--font-weight-semibold);
+    min-width: 80px;
+}
+.note--excellent { color: var(--color-success); }
+.note--bien { color: #27ae60; }
+.note--assez-bien { color: #2ecc71; }
+.note--passable { color: var(--color-warning); }
+.note--insuffisant { color: #e67e22; }
+.note--faible { color: var(--color-danger); }
+.note--absent { color: var(--color-danger); font-style: italic; }
+.note--dispense { color: var(--color-text-secondary); font-style: italic; }
+.note--vide { color: var(--color-text-secondary); }
+
+.stats-bar {
+    display: flex;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background: var(--color-background);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-lg);
+}
+.stats-bar__item {
+    text-align: center;
+}
+.stats-bar__value {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+}
+.stats-bar__label {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_formateur_notes_session', {id: devoir.session.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la session
+                </a>
+            </div>
+            <h1 class="dashboard__title">📝 {{ devoir.titre }}</h1>
+            <p class="dashboard__subtitle">
+                {{ devoir.session.code }} - {{ devoir.session.libelle }}
+            </p>
+        </header>
+
+        {# Informations du devoir #}
+        <div class="tabs" style="margin-bottom: var(--spacing-xl);">
+            <div class="tabs__content">
+                <div class="tab-pane__header">
+                    <h2>Informations</h2>
+                    <a href="{{ path('app_formateur_notes_edit', {id: devoir.id}) }}" class="btn btn--secondary btn--sm">
+                        ✏️ Modifier
+                    </a>
+                </div>
+                
+                <div class="form-grid" style="margin-top: var(--spacing-lg);">
+                    <div>
+                        <strong>Type</strong><br>
+                        <span class="badge badge--{{ devoir.typeColor }}">{{ devoir.typeLibelle }}</span>
+                    </div>
+                    <div>
+                        <strong>Date</strong><br>
+                        {{ devoir.dateDevoir|date('d/m/Y') }}
+                        {% if devoir.dateLimite %}
+                            <br><small class="text-muted">Limite: {{ devoir.dateLimite|date('d/m/Y') }}</small>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <strong>Coefficient</strong><br>
+                        {{ devoir.coefficient }}
+                    </div>
+                    <div>
+                        <strong>Barème</strong><br>
+                        /{{ devoir.bareme }}
+                    </div>
+                    <div>
+                        <strong>Visibilité</strong><br>
+                        {% if not devoir.visible %}
+                            <span class="status status--secondary">Masqué</span>
+                        {% elseif devoir.notesPubliees %}
+                            <span class="status status--success">Notes publiées</span>
+                        {% else %}
+                            <span class="status status--warning">Brouillon</span>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <strong>Formateur</strong><br>
+                        {{ devoir.formateur.nomComplet }}
+                    </div>
+                </div>
+                
+                {% if devoir.description %}
+                    <div style="margin-top: var(--spacing-lg); padding-top: var(--spacing-lg); border-top: 1px solid var(--border-color);">
+                        <strong>Description / Consignes</strong>
+                        <p style="margin-top: var(--spacing-sm);">{{ devoir.description|nl2br }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Statistiques des notes #}
+        {% if stats.count > 0 %}
+            <div class="stats-bar">
+                <div class="stats-bar__item">
+                    <div class="stats-bar__value">{{ stats.moyenne|number_format(2, ',', ' ') }}</div>
+                    <div class="stats-bar__label">Moyenne /{{ devoir.bareme }}</div>
+                </div>
+                <div class="stats-bar__item">
+                    <div class="stats-bar__value">{{ stats.min|number_format(2, ',', ' ') }}</div>
+                    <div class="stats-bar__label">Note min</div>
+                </div>
+                <div class="stats-bar__item">
+                    <div class="stats-bar__value">{{ stats.max|number_format(2, ',', ' ') }}</div>
+                    <div class="stats-bar__label">Note max</div>
+                </div>
+                <div class="stats-bar__item">
+                    <div class="stats-bar__value">{{ stats.count }} / {{ stats.total }}</div>
+                    <div class="stats-bar__label">Notes saisies</div>
+                </div>
+            </div>
+        {% endif %}
+
+        {# Actions #}
+        <div class="form-actions" style="margin-bottom: var(--spacing-xl); flex-wrap: wrap; gap: var(--spacing-sm);">
+            <a href="{{ path('app_formateur_notes_notes', {id: devoir.id}) }}" class="btn btn--primary">
+                ✏️ Saisir les notes
+            </a>
+            
+            {# Import/Export CSV #}
+            <a href="{{ path('app_formateur_notes_export_template', {id: devoir.id}) }}" class="btn btn--secondary">
+                📥 Télécharger template CSV
+            </a>
+            
+            <button type="button" class="btn btn--secondary" onclick="document.getElementById('import-modal').showModal()">
+                📤 Importer CSV
+            </button>
+            
+            <form method="post" action="{{ path('app_formateur_notes_toggle_publication', {id: devoir.id}) }}" style="display: inline;">
+                <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ devoir.id) }}">
+                <button type="submit" class="btn btn--secondary">
+                    {% if devoir.notesPubliees %}
+                        🔒 Masquer les notes
+                    {% else %}
+                        📢 Publier les notes
+                    {% endif %}
+                </button>
+            </form>
+            
+            <form method="post" action="{{ path('app_formateur_notes_duplicate', {id: devoir.id}) }}" style="display: inline;">
+                <input type="hidden" name="_token" value="{{ csrf_token('duplicate' ~ devoir.id) }}">
+                <button type="submit" class="btn btn--secondary">
+                    📋 Dupliquer
+                </button>
+            </form>
+            
+            <form method="post" 
+                  action="{{ path('app_formateur_notes_delete', {id: devoir.id}) }}"
+                  onsubmit="return confirm('Supprimer ce devoir et toutes ses notes ?');"
+                  style="display: inline;">
+                <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ devoir.id) }}">
+                <button type="submit" class="btn btn--danger">
+                    🗑️ Supprimer
+                </button>
+            </form>
+        </div>
+
+        {# Modal d'import CSV #}
+        <dialog id="import-modal" style="border: none; border-radius: var(--border-radius); padding: 0; max-width: 500px; width: 90%;">
+            <div class="section-card" style="margin: 0;">
+                <div class="section-card__header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0;">📤 Importer les notes depuis un CSV</h3>
+                    <button type="button" onclick="document.getElementById('import-modal').close()" 
+                            style="background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0;">&times;</button>
+                </div>
+                
+                <form method="post" 
+                      action="{{ path('app_formateur_notes_import', {id: devoir.id}) }}" 
+                      enctype="multipart/form-data"
+                      style="padding: var(--spacing-lg);">
+                    <input type="hidden" name="_token" value="{{ csrf_token('import' ~ devoir.id) }}">
+                    
+                    <div class="form-group">
+                        <label for="csv_file" class="form-label">Fichier CSV</label>
+                        <input type="file" 
+                               name="csv_file" 
+                               id="csv_file" 
+                               accept=".csv,.txt"
+                               class="form-control"
+                               required>
+                        <small class="form-hint">
+                            Format attendu : email;nom;prenom;note;statut;commentaire<br>
+                            Séparateur : point-virgule (;) ou virgule (,)<br>
+                            Statuts valides : normal, absent, dispense, rattrapage
+                        </small>
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: var(--spacing-md);">
+                        <a href="{{ path('app_formateur_notes_export_template', {id: devoir.id}) }}" class="text-muted">
+                            💡 Télécharger le template CSV pré-rempli
+                        </a>
+                    </div>
+                    
+                    <div class="form-actions" style="margin-top: var(--spacing-lg);">
+                        <button type="submit" class="btn btn--primary">
+                            📤 Importer
+                        </button>
+                        <button type="button" class="btn btn--secondary" onclick="document.getElementById('import-modal').close()">
+                            Annuler
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </dialog>
+
+        {# Liste des notes #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>📊 Notes des apprenants</h2>
+            </div>
+            
+            {% if notes is empty %}
+                <div class="empty-state">
+                    <p>Aucun apprenant inscrit à cette session.</p>
+                </div>
+            {% else %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Apprenant</th>
+                            <th class="note-cell">Note</th>
+                            <th class="note-cell">/20</th>
+                            <th>Statut</th>
+                            <th>Commentaire</th>
+                            <th>Date saisie</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for note in notes %}
+                            <tr>
+                                <td>
+                                    <strong>{{ note.apprenant.nom }}</strong> {{ note.apprenant.prenom }}
+                                    <br><small class="text-muted">{{ note.apprenant.email }}</small>
+                                </td>
+                                <td class="note-cell {{ note.noteClass }}">
+                                    {{ note.valeurFormatee }}
+                                </td>
+                                <td class="note-cell {{ note.noteClass }}">
+                                    {% if note.valeurSur20 is not null %}
+                                        {{ note.valeurSur20|number_format(2, ',', ' ') }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if note.statut != 'normal' %}
+                                        <span class="badge badge--{{ note.statut == 'absent' ? 'danger' : (note.statut == 'dispense' ? 'secondary' : 'info') }}">
+                                            {{ note.statutLibelle }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if note.commentaire %}
+                                        <small>{{ note.commentaire|u.truncate(50) }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if note.dateSaisie %}
+                                        <small class="text-muted">{{ note.dateSaisie|date('d/m/Y H:i') }}</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

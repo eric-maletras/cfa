@@ -22,7 +22,7 @@ class ModuleController extends AbstractController
         'admin_users' => 'admin_user_index',
         'admin_absences' => 'admin_absence_index',
         'admin_evaluations' => 'admin_evaluation_index',
-        'admin_users' => 'admin_user_index',
+        'formateur_notes' => 'app_formateur_notes_index',
         // Ajouter d'autres mappings au fur et à mesure du développement
     ];
 

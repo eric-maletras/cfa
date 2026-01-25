@@ -1,0 +1,127 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mes devoirs{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <h1 class="dashboard__title">📝 Mes devoirs et évaluations</h1>
+            <p class="dashboard__subtitle">{{ totalDevoirs }} devoir(s) au total</p>
+        </header>
+
+        {# Actions #}
+        <div class="form-actions" style="margin-bottom: var(--spacing-xl);">
+            <a href="{{ path('app_formateur_notes_new') }}" class="btn btn--primary">
+                ➕ Nouveau devoir
+            </a>
+        </div>
+
+        {% if sessionsDevoirs is empty %}
+            <div class="empty-state">
+                <div class="empty-state__icon">📋</div>
+                <h3>Aucun devoir</h3>
+                <p>Vous n'avez pas encore créé de devoir.</p>
+                <a href="{{ path('app_formateur_notes_new') }}" class="btn btn--primary">
+                    Créer un devoir
+                </a>
+            </div>
+        {% else %}
+            {# Devoirs par session #}
+            {% for sessionId, data in sessionsDevoirs %}
+                {% set session = data.session %}
+                {% set devoirs = data.devoirs %}
+                
+                <div class="section-card" style="margin-bottom: var(--spacing-xl);">
+                    <div class="section-card__header">
+                        <h2>
+                            <a href="{{ path('app_formateur_notes_session', {id: session.id}) }}">
+                                {{ session.code }} - {{ session.libelle }}
+                            </a>
+                        </h2>
+                        <span class="badge">{{ devoirs|length }} devoir(s)</span>
+                    </div>
+                    
+                    <div class="section-card__content">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Titre</th>
+                                    <th>Type</th>
+                                    <th>Date</th>
+                                    <th>Coef</th>
+                                    <th>Notes</th>
+                                    <th>Moyenne</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for devoir in devoirs %}
+                                    <tr>
+                                        <td>
+                                            <a href="{{ path('app_formateur_notes_show', {id: devoir.id}) }}">
+                                                {{ devoir.titre }}
+                                            </a>
+                                            {% if not devoir.visible %}
+                                                <span class="badge badge--secondary" title="Non visible">👁️‍🗨️</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge badge--{{ devoir.typeColor }}">
+                                                {{ devoir.typeLibelle }}
+                                            </span>
+                                        </td>
+                                        <td>{{ devoir.dateDevoir|date('d/m/Y') }}</td>
+                                        <td>{{ devoir.coefficient }}</td>
+                                        <td>
+                                            {{ devoir.nombreNotesSaisies }} / {{ devoir.nombreApprenants }}
+                                            {% if devoir.complet %}
+                                                <span class="status status--success">✓</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if devoir.moyenne is not null %}
+                                                {{ devoir.moyenneSur20|number_format(2, ',', ' ') }}/20
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <a href="{{ path('app_formateur_notes_notes', {id: devoir.id}) }}" 
+                                                   class="btn btn--sm btn--primary" title="Saisir les notes">
+                                                    ✏️
+                                                </a>
+                                                <a href="{{ path('app_formateur_notes_edit', {id: devoir.id}) }}" 
+                                                   class="btn btn--sm btn--secondary" title="Modifier">
+                                                    ⚙️
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        
+                        <div class="form-actions" style="margin-top: var(--spacing-md);">
+                            <a href="{{ path('app_formateur_notes_new_session', {sessionId: session.id}) }}" 
+                               class="btn btn--sm btn--secondary">
+                                ➕ Nouveau devoir pour cette session
+                            </a>
+                            <a href="{{ path('app_formateur_notes_moyennes', {id: session.id}) }}" 
+                               class="btn btn--sm btn--outline">
+                                📊 Voir les moyennes
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

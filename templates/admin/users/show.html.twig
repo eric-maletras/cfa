@@ -5,39 +5,121 @@
 {% block stylesheets %}
 <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
 <style>
-.inscription-card {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    padding: var(--spacing-md);
-    background: var(--color-background);
-    border-radius: var(--border-radius);
-    border-left: 4px solid var(--color-primary);
-    margin-bottom: var(--spacing-sm);
-}
-.inscription-card--terminee {
-    border-left-color: var(--color-info);
-    opacity: 0.8;
-}
-.inscription-card--annulee,
-.inscription-card--abandonnee {
-    border-left-color: var(--color-danger);
-    opacity: 0.6;
-}
-.inscription-card--en_attente {
-    border-left-color: var(--color-warning);
-}
-.inscription-card__info {
-    flex: 1;
-}
-.inscription-card__title {
-    font-weight: var(--font-weight-semibold);
-    margin-bottom: 0.25rem;
-}
-.inscription-card__meta {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-secondary);
-}
+    .session-card {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+        padding: var(--spacing-md);
+        background: var(--color-background);
+        border-radius: var(--radius-md);
+        margin-bottom: var(--spacing-sm);
+        border-left: 4px solid var(--color-border);
+        transition: all 0.2s ease;
+    }
+    
+    .session-card:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    
+    .session-card--responsable {
+        border-left-color: var(--color-primary);
+        background: #e3f2fd;
+    }
+    
+    .session-card--en_cours {
+        border-left-color: var(--color-success);
+    }
+    
+    .session-card--terminee {
+        border-left-color: var(--color-secondary);
+        opacity: 0.8;
+    }
+    
+    .session-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    
+    .session-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .session-name {
+        font-weight: 600;
+        margin-bottom: 2px;
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+    }
+    
+    .session-meta {
+        font-size: 0.875rem;
+        color: var(--color-text-secondary);
+    }
+    
+    .session-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: var(--radius-full);
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .session-badge--responsable {
+        background: var(--color-primary);
+        color: white;
+    }
+    
+    .session-badge--en_cours {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+    
+    .session-badge--terminee {
+        background: #f5f5f5;
+        color: #757575;
+    }
+    
+    .session-badge--planifiee {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+    
+    .sessions-summary {
+        display: flex;
+        gap: var(--spacing-lg);
+        padding: var(--spacing-md);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: var(--radius-md);
+        color: white;
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    .summary-item {
+        text-align: center;
+        flex: 1;
+    }
+    
+    .summary-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+    
+    .summary-label {
+        font-size: 0.75rem;
+        opacity: 0.9;
+    }
+    
+    .empty-sessions {
+        text-align: center;
+        padding: var(--spacing-xl);
+        color: var(--color-text-secondary);
+    }
 </style>
 {% endblock %}
 
@@ -54,6 +136,15 @@
             <h1 class="dashboard__title">👤 {{ user.nomComplet }}</h1>
             <p class="dashboard__subtitle">{{ user.email }}</p>
         </header>
+
+        {# Messages flash #}
+        {% for type, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="alert alert--{{ type }}" style="margin-bottom: var(--spacing-md);">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endfor %}
 
         {# Informations principales #}
         <div class="tabs" style="margin-bottom: var(--spacing-xl);">
@@ -117,7 +208,7 @@
                                         </p>
                                     {% endif %}
                                     
-                                    {% if role.droits is defined and role.droits is not empty %}
+                                    {% if role.droits is not empty %}
                                         <details>
                                             <summary style="cursor: pointer; color: var(--color-text-secondary); font-size: var(--font-size-sm);">
                                                 {{ role.droits|length }} permission(s)
@@ -137,84 +228,115 @@
             </div>
         </div>
 
-        {# Section Inscriptions aux formations (si apprenant) #}
-        {% set isApprenant = false %}
-        {% for role in user.rolesEntities %}
-            {% if role.code == 'ROLE_APPRENANT' %}
-                {% set isApprenant = true %}
-            {% endif %}
-        {% endfor %}
-        
-        {% if isApprenant or (user.inscriptions is defined and user.inscriptions|length > 0) %}
+        {# ================================================================ #}
+        {# SECTION SESSIONS - Affichée uniquement si l'utilisateur est formateur #}
+        {# ================================================================ #}
+        {% if 'ROLE_FORMATEUR' in user.roles %}
         <div class="tabs" style="margin-bottom: var(--spacing-xl);">
             <div class="tabs__content">
                 <div class="tab-pane__header">
-                    <h2>📚 Inscriptions aux formations</h2>
+                    <h2>📚 Promotions assignées</h2>
                 </div>
                 
-                {% if user.inscriptions is not defined or user.inscriptions|length == 0 %}
-                    <div class="empty-state" style="margin-top: var(--spacing-lg);">
-                        <p>Cet apprenant n'est inscrit à aucune formation.</p>
+                {# Résumé des sessions #}
+                {% set sessionsFormateur = sessions_formateur|default([]) %}
+                {% set sessionsResponsable = sessions_responsable|default([]) %}
+                {% set sessionsEnCours = sessionsFormateur|filter(s => s.statut == 'en_cours') %}
+                
+                {% if sessionsFormateur is not empty %}
+                    <div class="sessions-summary">
+                        <div class="summary-item">
+                            <div class="summary-value">{{ sessionsFormateur|length }}</div>
+                            <div class="summary-label">Promotion(s) totale(s)</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-value">{{ sessionsEnCours|length }}</div>
+                            <div class="summary-label">En cours</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-value">{{ sessionsResponsable|length }}</div>
+                            <div class="summary-label">En tant que responsable</div>
+                        </div>
                     </div>
-                {% else %}
-                    <div style="margin-top: var(--spacing-lg);">
-                        {% for inscription in user.inscriptions %}
-                            <div class="inscription-card inscription-card--{{ inscription.statut }}">
-                                <div class="inscription-card__info">
-                                    <div class="inscription-card__title">
-                                        {{ inscription.session.libelle }}
-                                        {% if inscription.option %}
-                                            <span class="badge">{{ inscription.option }}</span>
-                                        {% endif %}
-                                    </div>
-                                    <div class="inscription-card__meta">
-                                        {{ inscription.session.formation.intituleCourt ?? inscription.session.formation.intitule }}
-                                        • {{ inscription.session.periodeFormatee }}
-                                    </div>
-                                    {% if inscription.numeroContrat %}
-                                        <div class="inscription-card__meta">
-                                            Contrat : {{ inscription.numeroContrat }}
-                                        </div>
+                    
+                    {# Liste des sessions #}
+                    {% for session in sessionsFormateur %}
+                        {% set isResponsable = session.responsable and session.responsable.id == user.id %}
+                        <div class="session-card session-card--{{ session.statut }}{% if isResponsable %} session-card--responsable{% endif %}">
+                            {% if session.couleur %}
+                                <span class="session-color" style="background-color: #{{ session.couleur }};"></span>
+                            {% endif %}
+                            <div class="session-info">
+                                <div class="session-name">
+                                    {{ session.libelle }}
+                                    {% if isResponsable %}
+                                        <span class="session-badge session-badge--responsable">⭐ Responsable</span>
                                     {% endif %}
                                 </div>
-                                <div>
-                                    <span class="status status--{{ inscription.statutColor }}">
+                                <div class="session-meta">
+                                    {{ session.formation.intitule }} • {{ session.periodeFormatee }}
+                                    <span class="session-badge session-badge--{{ session.statut }}">
+                                        {{ session.statutLibelle }}
+                                    </span>
+                                </div>
+                            </div>
+                            <a href="{{ path('admin_session_show', {id: session.id}) }}" class="btn btn--secondary btn--sm">
+                                Voir
+                            </a>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-sessions">
+                        <p>🎓 Ce formateur n'est assigné à aucune promotion pour le moment.</p>
+                        <a href="{{ path('admin_session_index') }}" class="btn btn--primary btn--sm" style="margin-top: var(--spacing-sm);">
+                            Voir les promotions
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {# ================================================================ #}
+        {# SECTION INSCRIPTIONS - Affichée uniquement si l'utilisateur est apprenti #}
+        {# ================================================================ #}
+        {% if 'ROLE_APPRENTI' in user.roles %}
+        <div class="tabs" style="margin-bottom: var(--spacing-xl);">
+            <div class="tabs__content">
+                <div class="tab-pane__header">
+                    <h2>📋 Inscriptions</h2>
+                </div>
+                
+                {% if user.inscriptions is empty %}
+                    <div class="empty-sessions">
+                        <p>📝 Cet apprenti n'est inscrit à aucune formation pour le moment.</p>
+                        <a href="{{ path('admin_inscription_index') }}" class="btn btn--primary btn--sm" style="margin-top: var(--spacing-sm);">
+                            Gérer les inscriptions
+                        </a>
+                    </div>
+                {% else %}
+                    {% for inscription in user.inscriptions %}
+                        <div class="session-card session-card--{{ inscription.session.statut }}">
+                            {% if inscription.session.couleur %}
+                                <span class="session-color" style="background-color: #{{ inscription.session.couleur }};"></span>
+                            {% endif %}
+                            <div class="session-info">
+                                <div class="session-name">
+                                    {{ inscription.session.libelle }}
+                                </div>
+                                <div class="session-meta">
+                                    {{ inscription.session.formation.intitule }} • 
+                                    Inscrit le {{ inscription.dateInscription|date('d/m/Y') }}
+                                    <span class="session-badge session-badge--{{ inscription.statut }}">
                                         {{ inscription.statutLibelle }}
                                     </span>
                                 </div>
-                                <div>
-                                    <a href="{{ path('admin_inscription_index', {sessionId: inscription.session.id}) }}" 
-                                       class="btn btn--outline btn--sm" title="Voir la session">
-                                        →
-                                    </a>
-                                </div>
                             </div>
-                        {% endfor %}
-                    </div>
-                    
-                    {# Résumé #}
-                    <div style="margin-top: var(--spacing-lg); padding-top: var(--spacing-md); border-top: 1px solid var(--border-color);">
-                        <div class="form-grid">
-                            {% set inscriptionsActives = 0 %}
-                            {% set inscriptionsTerminees = 0 %}
-                            {% for inscription in user.inscriptions %}
-                                {% if inscription.statut == 'validee' %}
-                                    {% set inscriptionsActives = inscriptionsActives + 1 %}
-                                {% elseif inscription.statut == 'terminee' %}
-                                    {% set inscriptionsTerminees = inscriptionsTerminees + 1 %}
-                                {% endif %}
-                            {% endfor %}
-                            <div>
-                                <strong>Total inscriptions :</strong> {{ user.inscriptions|length }}
-                            </div>
-                            <div>
-                                <strong>En cours :</strong> {{ inscriptionsActives }}
-                            </div>
-                            <div>
-                                <strong>Terminées :</strong> {{ inscriptionsTerminees }}
-                            </div>
+                            <a href="{{ path('admin_session_show', {id: inscription.session.id}) }}" class="btn btn--secondary btn--sm">
+                                Voir
+                            </a>
                         </div>
-                    </div>
+                    {% endfor %}
                 {% endif %}
             </div>
         </div>

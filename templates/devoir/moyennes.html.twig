@@ -1,0 +1,233 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Moyennes - {{ session.code }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.moyenne-cell {
+    text-align: center;
+    font-weight: var(--font-weight-semibold);
+}
+.moyenne--excellent { color: var(--color-success); background: #d4edda; }
+.moyenne--bien { color: #27ae60; background: #e8f5e9; }
+.moyenne--assez-bien { color: #2ecc71; background: #f1f8e9; }
+.moyenne--passable { color: var(--color-warning); background: #fff3cd; }
+.moyenne--insuffisant { color: #e67e22; background: #fff8e1; }
+.moyenne--faible { color: var(--color-danger); background: #f8d7da; }
+
+.export-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.legende {
+    display: flex;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background: var(--color-background);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-lg);
+    flex-wrap: wrap;
+}
+.legende__item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+}
+.legende__color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_formateur_notes_session', {id: session.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour aux devoirs
+                </a>
+            </div>
+            <h1 class="dashboard__title">📊 Tableau des moyennes</h1>
+            <p class="dashboard__subtitle">{{ session.code }} - {{ session.libelle }}</p>
+        </header>
+
+        {# Statistiques générales #}
+        <div class="stats-grid" style="margin-bottom: var(--spacing-xl);">
+            <div class="stat-card">
+                <div class="stat-card__value">{{ moyennes|length }}</div>
+                <div class="stat-card__label">Apprenants</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card__value">{{ devoirs|length }}</div>
+                <div class="stat-card__label">Devoirs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card__value">
+                    {% if moyenneGenerale is not null %}
+                        {{ moyenneGenerale|number_format(2, ',', ' ') }}/20
+                    {% else %}
+                        -
+                    {% endif %}
+                </div>
+                <div class="stat-card__label">Moyenne générale</div>
+            </div>
+        </div>
+
+        {# Légende #}
+        <div class="legende">
+            <div class="legende__item">
+                <div class="legende__color moyenne--excellent"></div>
+                <span>≥16 Excellent</span>
+            </div>
+            <div class="legende__item">
+                <div class="legende__color moyenne--bien"></div>
+                <span>14-16 Bien</span>
+            </div>
+            <div class="legende__item">
+                <div class="legende__color moyenne--assez-bien"></div>
+                <span>12-14 Assez bien</span>
+            </div>
+            <div class="legende__item">
+                <div class="legende__color moyenne--passable"></div>
+                <span>10-12 Passable</span>
+            </div>
+            <div class="legende__item">
+                <div class="legende__color moyenne--insuffisant"></div>
+                <span>8-10 Insuffisant</span>
+            </div>
+            <div class="legende__item">
+                <div class="legende__color moyenne--faible"></div>
+                <span>&lt;8 Faible</span>
+            </div>
+        </div>
+
+        {# Tableau des moyennes #}
+        <div class="section-card">
+            {% if moyennes is empty %}
+                <div class="empty-state">
+                    <p>Aucun apprenant inscrit à cette session.</p>
+                </div>
+            {% else %}
+                <div style="overflow-x: auto;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th style="min-width: 200px;">Apprenant</th>
+                                {% for devoir in devoirs %}
+                                    <th class="moyenne-cell" style="min-width: 80px;" title="{{ devoir.titre }}">
+                                        {{ devoir.titre|u.truncate(15) }}
+                                        <br>
+                                        <small class="text-muted">
+                                            ({{ devoir.coefficient }})
+                                        </small>
+                                    </th>
+                                {% endfor %}
+                                <th class="moyenne-cell" style="min-width: 100px; background: var(--color-background);">
+                                    <strong>MOYENNE</strong>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for data in moyennes %}
+                                {% set user = data.user %}
+                                {% set moyenne = data.moyenne %}
+                                
+                                {# Déterminer la classe de la moyenne #}
+                                {% set moyenneClass = '' %}
+                                {% if moyenne is not null %}
+                                    {% if moyenne >= 16 %}
+                                        {% set moyenneClass = 'moyenne--excellent' %}
+                                    {% elseif moyenne >= 14 %}
+                                        {% set moyenneClass = 'moyenne--bien' %}
+                                    {% elseif moyenne >= 12 %}
+                                        {% set moyenneClass = 'moyenne--assez-bien' %}
+                                    {% elseif moyenne >= 10 %}
+                                        {% set moyenneClass = 'moyenne--passable' %}
+                                    {% elseif moyenne >= 8 %}
+                                        {% set moyenneClass = 'moyenne--insuffisant' %}
+                                    {% else %}
+                                        {% set moyenneClass = 'moyenne--faible' %}
+                                    {% endif %}
+                                {% endif %}
+                                
+                                <tr>
+                                    <td>
+                                        <strong>{{ user.nom }}</strong> {{ user.prenom }}
+                                    </td>
+                                    
+                                    {# Notes par devoir #}
+                                    {% for devoir in devoirs %}
+                                        {% set note = devoir.getNoteForApprenant(user) %}
+                                        <td class="moyenne-cell">
+                                            {% if note %}
+                                                {% if note.statut == 'absent' %}
+                                                    <span class="text-danger">ABS</span>
+                                                {% elseif note.statut == 'dispense' %}
+                                                    <span class="text-muted">DISP</span>
+                                                {% elseif note.valeur is not null %}
+                                                    {{ note.valeur|number_format(2, ',', ' ') }}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                    {% endfor %}
+                                    
+                                    {# Moyenne #}
+                                    <td class="moyenne-cell {{ moyenneClass }}">
+                                        {% if moyenne is not null %}
+                                            <strong>{{ moyenne|number_format(2, ',', ' ') }}/20</strong>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: var(--color-background);">
+                                <th>Moyennes par devoir</th>
+                                {% for devoir in devoirs %}
+                                    <td class="moyenne-cell">
+                                        {% if devoir.moyenneSur20 is not null %}
+                                            <strong>{{ devoir.moyenneSur20|number_format(2, ',', ' ') }}</strong>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                                <td class="moyenne-cell {{ moyenneGenerale is not null ? (moyenneGenerale >= 10 ? 'moyenne--passable' : 'moyenne--faible') : '' }}">
+                                    {% if moyenneGenerale is not null %}
+                                        <strong>{{ moyenneGenerale|number_format(2, ',', ' ') }}/20</strong>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+
+        {# Actions #}
+        <div class="form-actions" style="margin-top: var(--spacing-xl);">
+            <a href="{{ path('app_formateur_notes_new_session', {sessionId: session.id}) }}" class="btn btn--primary">
+                ➕ Nouveau devoir
+            </a>
+            <button type="button" class="btn btn--secondary" onclick="window.print()">
+                🖨️ Imprimer
+            </button>
+        </div>
+    </div>
+</section>
+{% endblock %}

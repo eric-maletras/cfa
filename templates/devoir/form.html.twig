@@ -1,0 +1,150 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container container--narrow">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                {% if devoir.id %}
+                    <a href="{{ path('app_formateur_notes_show', {id: devoir.id}) }}" class="btn btn--secondary btn--sm">
+                        ← Retour au devoir
+                    </a>
+                {% elseif session %}
+                    <a href="{{ path('app_formateur_notes_session', {id: session.id}) }}" class="btn btn--secondary btn--sm">
+                        ← Retour à la session
+                    </a>
+                {% else %}
+                    <a href="{{ path('app_formateur_notes_index') }}" class="btn btn--secondary btn--sm">
+                        ← Retour
+                    </a>
+                {% endif %}
+            </div>
+            <h1 class="dashboard__title">{{ title }}</h1>
+            {% if session %}
+                <p class="dashboard__subtitle">Session : {{ session.code }} - {{ session.libelle }}</p>
+            {% endif %}
+        </header>
+
+        {# Formulaire #}
+        <div class="tabs">
+            <div class="tabs__content">
+                {{ form_start(form, {'attr': {'class': 'form'}}) }}
+                
+                {# Informations principales #}
+                <fieldset class="form-fieldset">
+                    <legend>📋 Informations générales</legend>
+                    
+                    {% if form.session is defined %}
+                        <div class="form-group">
+                            {{ form_label(form.session) }}
+                            {{ form_widget(form.session) }}
+                            {{ form_errors(form.session) }}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="form-group">
+                        {{ form_label(form.titre) }}
+                        {{ form_widget(form.titre) }}
+                        {{ form_errors(form.titre) }}
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            {{ form_label(form.type) }}
+                            {{ form_widget(form.type) }}
+                            {{ form_errors(form.type) }}
+                        </div>
+                        
+                        <div class="form-group">
+                            {{ form_label(form.dateDevoir) }}
+                            {{ form_widget(form.dateDevoir) }}
+                            {{ form_errors(form.dateDevoir) }}
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form_label(form.dateLimite) }}
+                        {{ form_widget(form.dateLimite) }}
+                        {{ form_errors(form.dateLimite) }}
+                        <small class="form-hint">Optionnel - Date limite de rendu pour les devoirs maison</small>
+                    </div>
+                </fieldset>
+                
+                {# Notation #}
+                <fieldset class="form-fieldset">
+                    <legend>📊 Notation</legend>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            {{ form_label(form.coefficient) }}
+                            {{ form_widget(form.coefficient) }}
+                            {{ form_errors(form.coefficient) }}
+                            <small class="form-hint">Poids dans la moyenne (ex: 1, 2, 0.5)</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            {{ form_label(form.bareme) }}
+                            {{ form_widget(form.bareme) }}
+                            {{ form_errors(form.bareme) }}
+                            <small class="form-hint">Note maximale (ex: 20, 10, 100)</small>
+                        </div>
+                    </div>
+                </fieldset>
+                
+                {# Description #}
+                <fieldset class="form-fieldset">
+                    <legend>📝 Description</legend>
+                    
+                    <div class="form-group">
+                        {{ form_label(form.description) }}
+                        {{ form_widget(form.description) }}
+                        {{ form_errors(form.description) }}
+                        <small class="form-hint">Consignes, compétences évaluées, remarques...</small>
+                    </div>
+                </fieldset>
+                
+                {# Options #}
+                <fieldset class="form-fieldset">
+                    <legend>⚙️ Options</legend>
+                    
+                    <div class="form-group form-check">
+                        {{ form_widget(form.visible) }}
+                        {{ form_label(form.visible) }}
+                        {{ form_errors(form.visible) }}
+                        <small class="form-hint d-block">Si décoché, le devoir n'apparaîtra pas aux apprenants</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form_label(form.commentaireInterne) }}
+                        {{ form_widget(form.commentaireInterne) }}
+                        {{ form_errors(form.commentaireInterne) }}
+                        <small class="form-hint">Notes personnelles (non visibles par les apprenants)</small>
+                    </div>
+                </fieldset>
+                
+                {# Actions #}
+                <div class="form-actions">
+                    <button type="submit" class="btn btn--primary">
+                        💾 {{ devoir.id ? 'Enregistrer les modifications' : 'Créer le devoir' }}
+                    </button>
+                    
+                    {% if devoir.id %}
+                        <a href="{{ path('app_formateur_notes_show', {id: devoir.id}) }}" class="btn btn--secondary">
+                            Annuler
+                        </a>
+                    {% endif %}
+                </div>
+                
+                {{ form_end(form) }}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
