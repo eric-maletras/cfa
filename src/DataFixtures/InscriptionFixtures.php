@@ -3,6 +3,8 @@
 namespace App\DataFixtures;
 
 use App\Entity\Inscription;
+use App\Entity\Session;
+use App\Entity\User;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
@@ -31,7 +33,7 @@ class InscriptionFixtures extends Fixture implements DependentFixtureInterface, 
     public function load(ObjectManager $manager): void
     {
         $btsKeys = ['SIO-SISR', 'SIO-SLAM', 'CIEL-IR', 'SAM'];
-        $admin = $this->getReference(UserFixtures::ADMIN_REF);
+        $admin = $this->getReference(UserFixtures::ADMIN_REF, User::class);
 
         foreach ($btsKeys as $btsKey) {
             $option = self::BTS_OPTIONS[$btsKey];
@@ -39,10 +41,10 @@ class InscriptionFixtures extends Fixture implements DependentFixtureInterface, 
             // ============================================
             // Inscriptions session active (2024-2026)
             // ============================================
-            $sessionActive = $this->getReference(SessionFixtures::SESSION_PREFIX . $btsKey . '-active');
+            $sessionActive = $this->getReference(SessionFixtures::SESSION_PREFIX . $btsKey . '-active', Session::class);
             
             for ($i = 0; $i < 15; $i++) {
-                $apprenti = $this->getReference(UserFixtures::APPRENTI_PREFIX . $btsKey . '-active-' . $i);
+                $apprenti = $this->getReference(UserFixtures::APPRENTI_PREFIX . $btsKey . '-active-' . $i, User::class);
                 
                 $inscription = new Inscription();
                 $inscription->setUser($apprenti);
@@ -61,10 +63,10 @@ class InscriptionFixtures extends Fixture implements DependentFixtureInterface, 
             // ============================================
             // Inscriptions session inactive (2023-2025)
             // ============================================
-            $sessionInactive = $this->getReference(SessionFixtures::SESSION_PREFIX . $btsKey . '-inactive');
+            $sessionInactive = $this->getReference(SessionFixtures::SESSION_PREFIX . $btsKey . '-inactive', Session::class);
             
             for ($i = 0; $i < 15; $i++) {
-                $apprenti = $this->getReference(UserFixtures::APPRENTI_PREFIX . $btsKey . '-inactive-' . $i);
+                $apprenti = $this->getReference(UserFixtures::APPRENTI_PREFIX . $btsKey . '-inactive-' . $i, User::class);
                 
                 $inscription = new Inscription();
                 $inscription->setUser($apprenti);
@@ -80,10 +82,6 @@ class InscriptionFixtures extends Fixture implements DependentFixtureInterface, 
                 $this->addReference(self::INSCRIPTION_PREFIX . $btsKey . '-inactive-' . $i, $inscription);
             }
         }
-
-        // Note : Les 5 apprentis "non inscrits" par BTS (APPRENTI_NON_INSCRIT_PREFIX)
-        // restent volontairement sans inscription pour tester les cas d'apprentis
-        // pas encore affectés à une session.
 
         $manager->flush();
     }

@@ -3,6 +3,8 @@
 namespace App\DataFixtures;
 
 use App\Entity\Formation;
+use App\Entity\NiveauQualification;
+use App\Entity\TypeCertification;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
@@ -27,8 +29,9 @@ class FormationFixtures extends Fixture implements DependentFixtureInterface, Fi
 
     public function load(ObjectManager $manager): void
     {
-        $niveau5 = $this->getReference(ReferenceFixtures::NIVEAU_5_REF);
-        $typeBts = $this->getReference(ReferenceFixtures::TYPE_BTS_REF);
+        // Récupérer les références avec le 2ème argument (classe)
+        $niveau5 = $this->getReference('niveau-5', NiveauQualification::class);
+        $typeBts = $this->getReference('type-cert-BTS', TypeCertification::class);
 
         $formations = [
             [
@@ -131,7 +134,8 @@ class FormationFixtures extends Fixture implements DependentFixtureInterface, Fi
     public function getDependencies(): array
     {
         return [
-            ReferenceFixtures::class,
+            NiveauQualificationFixtures::class,
+            TypeCertificationFixtures::class,
         ];
     }
 

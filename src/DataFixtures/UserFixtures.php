@@ -2,6 +2,7 @@
 
 namespace App\DataFixtures;
 
+use App\Entity\Role;
 use App\Entity\User;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
@@ -33,7 +34,7 @@ class UserFixtures extends Fixture implements DependentFixtureInterface, Fixture
     private const FORMATEURS_DATA = [
         // Formateurs partagés (enseignent dans 2+ BTS)
         ['nom' => 'Martin', 'prenom' => 'Sophie', 'specialite' => 'Culture générale et expression', 'bts' => ['SIO-SISR', 'SIO-SLAM', 'CIEL-IR', 'SAM']],
-        ['nom' => 'Bernard', 'prenom' => 'Philippe', 'specialite' => 'Anglais', 'bts' => ['SIO-SISR', 'SIO-SLAM', 'CIEL-IR', 'SAM']],
+        ['nom' => 'Durail', 'prenom' => 'Pierre', 'specialite' => 'Anglais', 'bts' => ['SIO-SISR', 'SIO-SLAM', 'CIEL-IR', 'SAM']],
         ['nom' => 'Dubois', 'prenom' => 'Marie', 'specialite' => 'Mathématiques', 'bts' => ['SIO-SISR', 'SIO-SLAM', 'CIEL-IR']],
         ['nom' => 'Laurent', 'prenom' => 'Jean', 'specialite' => 'Économie-Droit', 'bts' => ['SIO-SISR', 'SIO-SLAM', 'SAM']],
         ['nom' => 'Moreau', 'prenom' => 'Isabelle', 'specialite' => 'Culture économique, juridique et managériale', 'bts' => ['CIEL-IR', 'SAM']],
@@ -80,15 +81,16 @@ class UserFixtures extends Fixture implements DependentFixtureInterface, Fixture
 
     public function load(ObjectManager $manager): void
     {
-        $roleAdmin = $this->getReference(RoleFixtures::ROLE_ADMIN_REF);
-        $roleFormateur = $this->getReference(RoleFixtures::ROLE_FORMATEUR_REF);
-        $roleApprenti = $this->getReference(RoleFixtures::ROLE_APPRENTI_REF);
+        // Récupérer les références avec le 2ème argument (classe)
+        $roleAdmin = $this->getReference(RoleFixtures::ROLE_ADMIN_REF, Role::class);
+        $roleFormateur = $this->getReference(RoleFixtures::ROLE_FORMATEUR_REF, Role::class);
+        $roleApprenti = $this->getReference(RoleFixtures::ROLE_APPRENTI_REF, Role::class);
 
         // ============================================
         // 1. Créer l'administrateur
         // ============================================
         $admin = new User();
-        $admin->setEmail('admin@cfa-demo.fr');
+        $admin->setEmail('admin@cfa.ericm.fr');
         $admin->setNom('Duval');
         $admin->setPrenom('Administrateur');
         $admin->setActif(true);
@@ -114,13 +116,9 @@ class UserFixtures extends Fixture implements DependentFixtureInterface, Fixture
             
             $manager->persist($formateur);
             
-            // Référence avec index et liste des BTS
+            // Référence avec index
             $refKey = self::FORMATEUR_PREFIX . $index;
             $this->addReference($refKey, $formateur);
-            
-            // Stocker les BTS associés pour utilisation ultérieure
-            // On utilise une référence supplémentaire pour les métadonnées
-            $this->addReference($refKey . '-bts', (object)['bts' => $data['bts'], 'specialite' => $data['specialite']]);
         }
 
         // ============================================
@@ -129,9 +127,6 @@ class UserFixtures extends Fixture implements DependentFixtureInterface, Fixture
         $apprentiIndex = 0;
         $usedEmails = [];
         
-        // Mapping BTS -> nombre d'apprentis par session
-        // 4 BTS × 2 sessions × 15 apprentis = 120 apprentis inscrits
-        // + 5 non inscrits par BTS = 20 apprentis non inscrits
         $btsKeys = ['SIO-SISR', 'SIO-SLAM', 'CIEL-IR', 'SAM'];
         
         foreach ($btsKeys as $btsIndex => $btsKey) {
@@ -166,7 +161,7 @@ class UserFixtures extends Fixture implements DependentFixtureInterface, Fixture
     /**
      * Crée un apprenti avec des données aléatoires
      */
-    private function createApprenti(array &$usedEmails, $roleApprenti): User
+    private function createApprenti(array &$usedEmails, Role $roleApprenti): User
     {
         $isFemale = random_int(0, 1) === 1;
         $prenoms = $isFemale ? self::PRENOMS_FEMMES : self::PRENOMS_HOMMES;

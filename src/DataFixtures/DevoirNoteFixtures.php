@@ -4,6 +4,8 @@ namespace App\DataFixtures;
 
 use App\Entity\Devoir;
 use App\Entity\Note;
+use App\Entity\Session;
+use App\Entity\User;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
@@ -98,13 +100,13 @@ class DevoirNoteFixtures extends Fixture implements DependentFixtureInterface, F
         ];
 
         foreach ($btsKeys as $btsKey) {
-            // Récupérer la session active
-            $session = $this->getReference(SessionFixtures::SESSION_PREFIX . $btsKey . '-active');
+            // Récupérer la session active avec le 2ème argument (classe)
+            $session = $this->getReference(SessionFixtures::SESSION_PREFIX . $btsKey . '-active', Session::class);
             
             // Récupérer les apprentis de cette session
             $apprentis = [];
             for ($i = 0; $i < 15; $i++) {
-                $apprentis[] = $this->getReference(UserFixtures::APPRENTI_PREFIX . $btsKey . '-active-' . $i);
+                $apprentis[] = $this->getReference(UserFixtures::APPRENTI_PREFIX . $btsKey . '-active-' . $i, User::class);
             }
 
             // Pour chaque formateur qui enseigne dans ce BTS
@@ -115,7 +117,7 @@ class DevoirNoteFixtures extends Fixture implements DependentFixtureInterface, F
                     continue;
                 }
 
-                $formateur = $this->getReference(UserFixtures::FORMATEUR_PREFIX . $formateurIndex);
+                $formateur = $this->getReference(UserFixtures::FORMATEUR_PREFIX . $formateurIndex, User::class);
                 $specialite = $formateurData['specialite'];
                 
                 // Récupérer les données du devoir pour cette spécialité
@@ -157,11 +159,8 @@ class DevoirNoteFixtures extends Fixture implements DependentFixtureInterface, F
         ObjectManager $manager,
         Devoir $devoir,
         array $apprentis,
-        $formateur
+        User $formateur
     ): void {
-        // Générer une distribution de notes réaliste
-        // Moyenne visée : environ 12/20 avec écart-type ~3
-        
         foreach ($apprentis as $apprenti) {
             $note = new Note();
             $note->setDevoir($devoir);

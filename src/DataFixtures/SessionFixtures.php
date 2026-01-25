@@ -2,7 +2,9 @@
 
 namespace App\DataFixtures;
 
+use App\Entity\Formation;
 use App\Entity\Session;
+use App\Entity\User;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Bundle\FixturesBundle\FixtureGroupInterface;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
@@ -42,7 +44,8 @@ class SessionFixtures extends Fixture implements DependentFixtureInterface, Fixt
         $formateurs = $this->getFormateursParBts();
 
         foreach ($btsKeys as $btsKey) {
-            $formation = $this->getReference(self::BTS_FORMATION_MAP[$btsKey]);
+            // Récupérer la formation avec le 2ème argument (classe)
+            $formation = $this->getReference(self::BTS_FORMATION_MAP[$btsKey], Formation::class);
             $formateursSession = $formateurs[$btsKey] ?? [];
             
             // ============================================
@@ -66,13 +69,13 @@ class SessionFixtures extends Fixture implements DependentFixtureInterface, Fixt
             
             // Ajouter les formateurs à la session
             foreach ($formateursSession as $formateurRef) {
-                $formateur = $this->getReference($formateurRef);
+                $formateur = $this->getReference($formateurRef, User::class);
                 $sessionActive->addFormateur($formateur);
             }
             
             // Définir le premier formateur technique comme responsable
             if (!empty($formateursSession)) {
-                $sessionActive->setResponsable($this->getReference($formateursSession[0]));
+                $sessionActive->setResponsable($this->getReference($formateursSession[0], User::class));
             }
             
             $manager->persist($sessionActive);
@@ -93,19 +96,18 @@ class SessionFixtures extends Fixture implements DependentFixtureInterface, Fixt
             $sessionInactive->setEffectifMax(24);
             $sessionInactive->setModalite(Session::MODALITE_PRESENTIEL);
             $sessionInactive->setLieu('CFA Demo - Site principal');
-            // Cette session est en année 2, donc toujours en cours mais on la marque inactive pour le test
             $sessionInactive->setStatut(Session::STATUT_EN_COURS);
             $sessionInactive->setCouleur(self::BTS_COLORS[$btsKey]);
             $sessionInactive->setActif(false); // Inactive pour les tests
             
             // Mêmes formateurs
             foreach ($formateursSession as $formateurRef) {
-                $formateur = $this->getReference($formateurRef);
+                $formateur = $this->getReference($formateurRef, User::class);
                 $sessionInactive->addFormateur($formateur);
             }
             
             if (!empty($formateursSession)) {
-                $sessionInactive->setResponsable($this->getReference($formateursSession[0]));
+                $sessionInactive->setResponsable($this->getReference($formateursSession[0], User::class));
             }
             
             $manager->persist($sessionInactive);
