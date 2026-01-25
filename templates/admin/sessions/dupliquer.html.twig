@@ -1,0 +1,83 @@
+{# templates/admin/sessions/dupliquer.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Dupliquer {{ sessionSource.code }}{% endblock %}
+
+{% block body %}
+<div class="container">
+    {# Fil d'Ariane #}
+    <nav class="breadcrumb" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; font-size: 0.875rem; color: var(--color-text-muted);">
+        <a href="{{ path('app_dashboard') }}" style="color: var(--color-text-muted); text-decoration: none;">Tableau de bord</a>
+        <span style="color: var(--color-border);">›</span>
+        <a href="{{ path('admin_session_index') }}" style="color: var(--color-text-muted); text-decoration: none;">Promotions</a>
+        <span style="color: var(--color-border);">›</span>
+        <a href="{{ path('admin_session_show', {id: sessionSource.id}) }}" style="color: var(--color-text-muted); text-decoration: none;">{{ sessionSource.code }}</a>
+        <span style="color: var(--color-border);">›</span>
+        <span>Dupliquer</span>
+    </nav>
+    
+    {# Messages flash #}
+    {% for type, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert--{{ type }}" style="margin-bottom: 1rem;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+    
+    {# En-tête #}
+    <div style="margin-bottom: 2rem;">
+        <h1 style="font-size: 1.5rem; font-weight: 600; margin: 0 0 0.5rem 0; display: flex; align-items: center; gap: 0.5rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-primary);">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Dupliquer une promotion
+        </h1>
+        <p style="color: var(--color-text-muted); margin: 0;">
+            Création d'une nouvelle promotion basée sur <strong>{{ sessionSource.code }}</strong>
+        </p>
+    </div>
+    
+    {# Encadré d'information #}
+    <div style="
+        background: #e3f2fd;
+        border: 1px solid #90caf9;
+        border-radius: var(--radius-lg);
+        padding: 1rem 1.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+    ">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1565c0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 0.125rem;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        <div>
+            <strong style="color: #1565c0;">Promotion source</strong>
+            <p style="margin: 0.5rem 0 0 0; color: #1565c0;">
+                Les informations suivantes ont été copiées depuis la promotion 
+                <strong>{{ sessionSource.libelle }}</strong> ({{ sessionSource.periodeFormatee }}) :
+            </p>
+            <ul style="margin: 0.5rem 0 0 0; padding-left: 1.25rem; color: #1565c0;">
+                <li>Formation associée</li>
+                <li>Modalité pédagogique et lieu</li>
+                <li>Effectifs min/max</li>
+                <li>Responsable et formateurs</li>
+                <li>Couleur d'affichage</li>
+            </ul>
+            <p style="margin: 0.75rem 0 0 0; color: #1565c0;">
+                <strong>Les dates ont été décalées d'un an.</strong> Vérifiez et ajustez les informations avant d'enregistrer.
+            </p>
+        </div>
+    </div>
+    
+    {# Formulaire #}
+    {% include 'admin/sessions/_form.html.twig' with {
+        'form': form,
+        'button_label': 'Créer la promotion dupliquée'
+    } %}
+</div>
+{% endblock %}

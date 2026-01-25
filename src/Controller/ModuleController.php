@@ -18,6 +18,7 @@ class ModuleController extends AbstractController
      */
     private const ROUTE_MAPPINGS = [
         'admin_formations' => 'admin_formation_index',
+        'admin_promotions' => 'admin_session_index',
         'admin_users' => 'admin_user_index',
         'admin_absences' => 'admin_absence_index',
         'admin_evaluations' => 'admin_evaluation_index',

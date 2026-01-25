@@ -73,6 +73,13 @@ class Formation
     private Collection $codesRome;
 
     /**
+     * Sessions de cette formation
+     */
+    #[ORM\OneToMany(targetEntity: Session::class, mappedBy: 'formation')]
+    #[ORM\OrderBy(['dateDebut' => 'DESC'])]
+    private Collection $sessions;
+
+    /**
      * Durée totale en heures
      */
     #[ORM\Column(type: Types::SMALLINT, nullable: true)]
@@ -160,6 +167,7 @@ class Formation
     {
         $this->codesNsf = new ArrayCollection();
         $this->codesRome = new ArrayCollection();
+        $this->sessions = new ArrayCollection();
         $this->createdAt = new \DateTime();
     }
 
@@ -265,6 +273,63 @@ class Formation
     {
         $this->codesRome->removeElement($codeRome);
         return $this;
+    }
+
+    /**
+     * @return Collection<int, Session>
+     */
+    public function getSessions(): Collection
+    {
+        return $this->sessions;
+    }
+
+    public function addSession(Session $session): static
+    {
+        if (!$this->sessions->contains($session)) {
+            $this->sessions->add($session);
+            $session->setFormation($this);
+        }
+        return $this;
+    }
+
+    public function removeSession(Session $session): static
+    {
+        if ($this->sessions->removeElement($session)) {
+            if ($session->getFormation() === $this) {
+                $session->setFormation(null);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * Retourne les sessions actives de cette formation
+     * 
+     * @return Collection<int, Session>
+     */
+    public function getSessionsActives(): Collection
+    {
+        return $this->sessions->filter(fn(Session $s) => $s->isActif());
+    }
+
+    /**
+     * Retourne les sessions en cours de cette formation
+     * 
+     * @return Collection<int, Session>
+     */
+    public function getSessionsEnCours(): Collection
+    {
+        return $this->sessions->filter(fn(Session $s) => $s->isEnCours());
+    }
+
+    /**
+     * Vérifie si la formation a des sessions planifiées
+     */
+    public function hasSessionsPlanifiees(): bool
+    {
+        return $this->sessions->exists(
+            fn($key, Session $s) => $s->getStatut() === Session::STATUT_PLANIFIEE && $s->isActif()
+        );
     }
 
     public function getDureeHeures(): ?int

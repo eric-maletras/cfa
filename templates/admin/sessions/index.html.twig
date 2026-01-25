@@ -1,0 +1,395 @@
+{# templates/admin/sessions/index.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Gestion des promotions{% endblock %}
+
+{% block stylesheets %}
+<style>
+    .session-filters {
+        background: var(--color-surface);
+        padding: 1.5rem;
+        border-radius: var(--radius-md);
+        margin-bottom: 2rem;
+        border: 1px solid var(--color-border);
+    }
+    
+    .filter-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .filter-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius-full);
+        font-size: 0.875rem;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        border: 1px solid var(--color-border);
+        background: var(--color-background);
+        color: var(--color-text);
+    }
+    
+    .filter-badge:hover {
+        background: var(--color-primary);
+        color: white;
+        border-color: var(--color-primary);
+    }
+    
+    .filter-badge.active {
+        background: var(--color-primary);
+        color: white;
+        border-color: var(--color-primary);
+    }
+    
+    .filter-badge .count {
+        background: rgba(255,255,255,0.2);
+        padding: 0.125rem 0.5rem;
+        border-radius: var(--radius-full);
+        font-size: 0.75rem;
+    }
+    
+    .filter-badge.active .count {
+        background: rgba(255,255,255,0.3);
+    }
+    
+    .sessions-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .sessions-table th,
+    .sessions-table td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--color-border);
+    }
+    
+    .sessions-table th {
+        background: var(--color-surface);
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-text-muted);
+    }
+    
+    .sessions-table tbody tr:hover {
+        background: var(--color-surface);
+    }
+    
+    .session-code {
+        font-family: var(--font-mono);
+        font-size: 0.875rem;
+        color: var(--color-primary);
+    }
+    
+    .session-formation {
+        font-size: 0.875rem;
+        color: var(--color-text-muted);
+    }
+    
+    .session-dates {
+        font-size: 0.875rem;
+        white-space: nowrap;
+    }
+    
+    .statut-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: var(--radius-full);
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+    
+    .statut-planifiee {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+    
+    .statut-inscriptions_ouvertes {
+        background: #fff3e0;
+        color: #e65100;
+    }
+    
+    .statut-en_cours {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+    
+    .statut-terminee {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+    
+    .statut-annulee {
+        background: #ffebee;
+        color: #c62828;
+    }
+    
+    .session-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 0.5rem;
+        vertical-align: middle;
+    }
+    
+    .actions-cell {
+        white-space: nowrap;
+    }
+    
+    .btn-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-sm);
+        color: var(--color-text-muted);
+        transition: all 0.2s ease;
+    }
+    
+    .btn-icon:hover {
+        background: var(--color-surface);
+        color: var(--color-primary);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--color-text-muted);
+    }
+    
+    .empty-state svg {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    .search-form {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .search-form input {
+        flex: 1;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        font-size: 0.875rem;
+    }
+    
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    
+    .page-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container">
+    {# En-tête de page #}
+    <div class="page-header">
+        <h1 class="page-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 0.5rem;">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Gestion des promotions
+        </h1>
+        
+        <a href="{{ path('admin_session_new') }}" class="btn btn--primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Nouvelle promotion
+        </a>
+    </div>
+    
+    {# Messages flash #}
+    {% for type, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert--{{ type }}" style="margin-bottom: 1rem;">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+    
+    {# Filtres #}
+    <div class="session-filters">
+        <div class="filter-badges">
+            <a href="{{ path('admin_session_index') }}" 
+               class="filter-badge {% if current_statut is null and current_annee is null and search_term is null %}active{% endif %}">
+                Toutes
+                <span class="count">{{ sessions|length }}</span>
+            </a>
+            
+            {% for code, libelle in statuts %}
+                <a href="{{ path('admin_session_index', {statut: code}) }}" 
+                   class="filter-badge {% if current_statut == code %}active{% endif %}">
+                    {{ libelle }}
+                    <span class="count">{{ stats[code]|default(0) }}</span>
+                </a>
+            {% endfor %}
+        </div>
+        
+        {# Filtre par année #}
+        {% if annees|length > 0 %}
+        <div class="filter-badges">
+            <span style="color: var(--color-text-muted); font-size: 0.875rem; padding: 0.5rem 0;">Par année :</span>
+            {% for annee in annees %}
+                <a href="{{ path('admin_session_index', {annee: annee}) }}" 
+                   class="filter-badge {% if current_annee == annee %}active{% endif %}">
+                    {{ annee }}
+                </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        {# Recherche #}
+        <form action="{{ path('admin_session_index') }}" method="get" class="search-form">
+            <input type="text" name="q" placeholder="Rechercher une promotion..." 
+                   value="{{ search_term }}" autocomplete="off">
+            <button type="submit" class="btn btn--secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                Rechercher
+            </button>
+            {% if search_term %}
+                <a href="{{ path('admin_session_index') }}" class="btn btn--ghost">Effacer</a>
+            {% endif %}
+        </form>
+    </div>
+    
+    {# Tableau des sessions #}
+    {% if sessions|length > 0 %}
+        <div class="card">
+            <table class="sessions-table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Promotion</th>
+                        <th>Formation</th>
+                        <th>Période</th>
+                        <th>Effectif</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in sessions %}
+                    <tr>
+                        <td>
+                            {% if session.couleur %}
+                                <span class="session-color" style="background-color: #{{ session.couleur }};"></span>
+                            {% endif %}
+                            <span class="session-code">{{ session.code }}</span>
+                        </td>
+                        <td>
+                            <a href="{{ path('admin_session_show', {id: session.id}) }}" style="font-weight: 500;">
+                                {{ session.libelle }}
+                            </a>
+                        </td>
+                        <td class="session-formation">
+                            {% if session.formation %}
+                                {{ session.formation.intituleCourt ?? session.formation.intitule }}
+                            {% else %}
+                                <em>Non définie</em>
+                            {% endif %}
+                        </td>
+                        <td class="session-dates">
+                            {{ session.dateDebut|date('d/m/Y') }} → {{ session.dateFin|date('d/m/Y') }}
+                            <br>
+                            <small style="color: var(--color-text-muted);">
+                                {{ session.dureeMois }} mois
+                            </small>
+                        </td>
+                        <td>
+                            {% if session.effectifMax %}
+                                {{ session.effectifMin ?? '-' }} / {{ session.effectifMax }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="statut-badge statut-{{ session.statut }}">
+                                {{ session.statutLibelle }}
+                            </span>
+                        </td>
+                        <td class="actions-cell">
+                            <a href="{{ path('admin_session_show', {id: session.id}) }}" 
+                               class="btn-icon" title="Voir">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </a>
+                            <a href="{{ path('admin_session_edit', {id: session.id}) }}" 
+                               class="btn-icon" title="Modifier">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                            </a>
+                            <a href="{{ path('admin_session_dupliquer', {id: session.id}) }}" 
+                               class="btn-icon" title="Dupliquer">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <h3>Aucune promotion trouvée</h3>
+            <p>
+                {% if search_term %}
+                    Aucune promotion ne correspond à votre recherche "{{ search_term }}".
+                {% elseif current_statut %}
+                    Aucune promotion avec le statut "{{ statuts[current_statut] }}".
+                {% else %}
+                    Commencez par créer votre première promotion.
+                {% endif %}
+            </p>
+            <a href="{{ path('admin_session_new') }}" class="btn btn--primary" style="margin-top: 1rem;">
+                Créer une promotion
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
