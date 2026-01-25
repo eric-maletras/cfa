@@ -89,8 +89,8 @@ class FormationType extends AbstractType
                 'expanded' => false,
                 'required' => false,
                 'attr' => [
-                    'class' => 'form-control select2',
-                    'data-placeholder' => 'Sélectionner les codes NSF...',
+                    'class' => 'form-control',
+                    'size' => 6,
                 ],
                 'query_builder' => function ($repo) {
                     return $repo->createQueryBuilder('n')
@@ -109,8 +109,8 @@ class FormationType extends AbstractType
                 'expanded' => false,
                 'required' => false,
                 'attr' => [
-                    'class' => 'form-control select2',
-                    'data-placeholder' => 'Sélectionner les codes ROME...',
+                    'class' => 'form-control',
+                    'size' => 6,
                 ],
                 'query_builder' => function ($repo) {
                     return $repo->createQueryBuilder('r')
@@ -139,15 +139,24 @@ class FormationType extends AbstractType
                     'max' => 60,
                 ],
             ])
+            ->add('ects', IntegerType::class, [
+                'label' => 'Crédits ECTS',
+                'required' => false,
+                'attr' => [
+                    'placeholder' => 'Ex: 120',
+                    'class' => 'form-control',
+                    'min' => 0,
+                ],
+            ])
             
-            // Dates RNCP
-            ->add('dateEnregistrement', DateType::class, [
+            // Dates RNCP (noms corrigés !)
+            ->add('dateEnregistrementRncp', DateType::class, [
                 'label' => 'Date d\'enregistrement RNCP',
                 'required' => false,
                 'widget' => 'single_text',
                 'attr' => ['class' => 'form-control'],
             ])
-            ->add('dateEcheance', DateType::class, [
+            ->add('dateEcheanceRncp', DateType::class, [
                 'label' => 'Date d\'échéance RNCP',
                 'required' => false,
                 'widget' => 'single_text',
@@ -174,6 +183,22 @@ class FormationType extends AbstractType
             ])
             ->add('prerequis', TextareaType::class, [
                 'label' => 'Prérequis',
+                'required' => false,
+                'attr' => [
+                    'rows' => 3,
+                    'class' => 'form-control',
+                ],
+            ])
+            ->add('debouches', TextareaType::class, [
+                'label' => 'Débouchés métiers',
+                'required' => false,
+                'attr' => [
+                    'rows' => 3,
+                    'class' => 'form-control',
+                ],
+            ])
+            ->add('poursuiteEtudes', TextareaType::class, [
+                'label' => 'Poursuites d\'études',
                 'required' => false,
                 'attr' => [
                     'rows' => 3,

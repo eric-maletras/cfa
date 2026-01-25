@@ -16,6 +16,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'formation')]
 #[ORM\Index(columns: ['code_rncp'], name: 'idx_formation_rncp')]
 #[ORM\Index(columns: ['actif'], name: 'idx_formation_actif')]
+#[ORM\HasLifecycleCallbacks]
 class Formation
 {
     #[ORM\Id]

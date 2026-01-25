@@ -67,6 +67,9 @@
                     <div class="form-group">
                         {{ form_row(form.dureeHeures) }}
                     </div>
+                    <div class="form-group">
+                        {{ form_row(form.ects) }}
+                    </div>
                 </div>
             </div>
             
@@ -74,16 +77,16 @@
                 <h3 class="form-section__title">Enregistrement RNCP</h3>
                 <div class="form-grid">
                     <div class="form-group">
-                        {{ form_row(form.dateEnregistrement) }}
+                        {{ form_row(form.dateEnregistrementRncp) }}
                     </div>
                     <div class="form-group">
-                        {{ form_row(form.dateEcheance) }}
+                        {{ form_row(form.dateEcheanceRncp) }}
                     </div>
                 </div>
             </div>
             
             <div class="form-section">
-                <h3 class="form-section__title">Description</h3>
+                <h3 class="form-section__title">Description et objectifs</h3>
                 <div class="form-group">
                     {{ form_row(form.description) }}
                 </div>
@@ -92,6 +95,16 @@
                 </div>
                 <div class="form-group">
                     {{ form_row(form.prerequis) }}
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3 class="form-section__title">Débouchés</h3>
+                <div class="form-group">
+                    {{ form_row(form.debouches) }}
+                </div>
+                <div class="form-group">
+                    {{ form_row(form.poursuiteEtudes) }}
                 </div>
             </div>
             
