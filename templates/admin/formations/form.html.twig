@@ -1,0 +1,118 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_formation_index', {tab: 'formations'}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la liste
+                </a>
+            </div>
+            <h1 class="dashboard__title">{{ title }}</h1>
+        </header>
+        
+        <div class="form-container">
+            {{ form_start(form, {'attr': {'class': 'admin-form'}}) }}
+            
+            <div class="form-section">
+                <h3 class="form-section__title">Informations générales</h3>
+                <div class="form-grid">
+                    <div class="form-group form-group--full">
+                        {{ form_row(form.intitule) }}
+                    </div>
+                    <div class="form-group">
+                        {{ form_row(form.intituleCourt) }}
+                    </div>
+                    <div class="form-group">
+                        {{ form_row(form.codeRncp) }}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3 class="form-section__title">Classification</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form_row(form.typeCertification) }}
+                    </div>
+                    <div class="form-group">
+                        {{ form_row(form.niveauQualification) }}
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form_row(form.codesNsf) }}
+                        <small class="form-help">Maintenez Ctrl/Cmd pour sélectionner plusieurs codes</small>
+                    </div>
+                    <div class="form-group">
+                        {{ form_row(form.codesRome) }}
+                        <small class="form-help">Métiers visés par cette formation</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3 class="form-section__title">Durée de la formation</h3>
+                <div class="form-grid form-grid--3">
+                    <div class="form-group">
+                        {{ form_row(form.dureeMois) }}
+                    </div>
+                    <div class="form-group">
+                        {{ form_row(form.dureeHeures) }}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3 class="form-section__title">Enregistrement RNCP</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form_row(form.dateEnregistrement) }}
+                    </div>
+                    <div class="form-group">
+                        {{ form_row(form.dateEcheance) }}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3 class="form-section__title">Description</h3>
+                <div class="form-group">
+                    {{ form_row(form.description) }}
+                </div>
+                <div class="form-group">
+                    {{ form_row(form.objectifs) }}
+                </div>
+                <div class="form-group">
+                    {{ form_row(form.prerequis) }}
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3 class="form-section__title">Statut</h3>
+                <div class="form-check-wrapper">
+                    {{ form_row(form.actif) }}
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <a href="{{ path('admin_formation_index', {tab: 'formations'}) }}" class="btn btn--secondary">
+                    Annuler
+                </a>
+                <button type="submit" class="btn btn--primary">
+                    💾 Enregistrer
+                </button>
+            </div>
+            
+            {{ form_end(form) }}
+        </div>
+    </div>
+</section>
+{% endblock %}
