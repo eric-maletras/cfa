@@ -80,6 +80,14 @@ class Formation
     private Collection $sessions;
 
     /**
+     * Matières du référentiel de cette formation (via FormationMatiere)
+     * @var Collection<int, FormationMatiere>
+     */
+    #[ORM\OneToMany(targetEntity: FormationMatiere::class, mappedBy: 'formation', orphanRemoval: true, cascade: ['persist', 'remove'])]
+    #[ORM\OrderBy(['ordre' => 'ASC'])]
+    private Collection $formationMatieres;
+
+    /**
      * Durée totale en heures
      */
     #[ORM\Column(type: Types::SMALLINT, nullable: true)]
@@ -168,6 +176,7 @@ class Formation
         $this->codesNsf = new ArrayCollection();
         $this->codesRome = new ArrayCollection();
         $this->sessions = new ArrayCollection();
+        $this->formationMatieres = new ArrayCollection();
         $this->createdAt = new \DateTime();
     }
 
@@ -300,6 +309,57 @@ class Formation
             }
         }
         return $this;
+    }
+
+    /**
+     * @return Collection<int, FormationMatiere>
+     */
+    public function getFormationMatieres(): Collection
+    {
+        return $this->formationMatieres;
+    }
+
+    public function addFormationMatiere(FormationMatiere $formationMatiere): static
+    {
+        if (!$this->formationMatieres->contains($formationMatiere)) {
+            $this->formationMatieres->add($formationMatiere);
+            $formationMatiere->setFormation($this);
+        }
+        return $this;
+    }
+
+    public function removeFormationMatiere(FormationMatiere $formationMatiere): static
+    {
+        if ($this->formationMatieres->removeElement($formationMatiere)) {
+            if ($formationMatiere->getFormation() === $this) {
+                $formationMatiere->setFormation(null);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * Retourne les matières de cette formation
+     * 
+     * @return Collection<int, Matiere>
+     */
+    public function getMatieres(): Collection
+    {
+        return $this->formationMatieres->map(
+            fn(FormationMatiere $fm) => $fm->getMatiere()
+        );
+    }
+
+    /**
+     * Calcule le volume horaire total des matières du référentiel
+     */
+    public function getVolumeHeuresMatieresTotal(): int
+    {
+        $total = 0;
+        foreach ($this->formationMatieres as $fm) {
+            $total += $fm->getVolumeHeuresReferentiel() ?? 0;
+        }
+        return $total;
     }
 
     /**

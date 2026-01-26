@@ -1,0 +1,304 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Matières - {{ session.libelle }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_session_show', {id: session.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la session
+                </a>
+            </div>
+            <h1 class="dashboard__title">📖 Matières de la session</h1>
+            <p class="dashboard__subtitle">{{ session.libelle }}</p>
+        </header>
+
+        {# Statistiques #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Récapitulatif</h2>
+                <div class="btn-group">
+                    {% if sessionMatieres is empty %}
+                        <form action="{{ path('admin_session_matiere_init', {sessionId: session.id}) }}" method="post" style="display:inline;">
+                            <input type="hidden" name="_token" value="{{ csrf_token('init' ~ session.id) }}">
+                            <button type="submit" class="btn btn--primary">
+                                🔄 Initialiser depuis le référentiel
+                            </button>
+                        </form>
+                    {% else %}
+                        <form action="{{ path('admin_session_matiere_init', {sessionId: session.id}) }}" method="post" style="display:inline;">
+                            <input type="hidden" name="_token" value="{{ csrf_token('init' ~ session.id) }}">
+                            <button type="submit" class="btn btn--secondary btn--sm" title="Ajouter les matières manquantes">
+                                🔄 Sync référentiel
+                            </button>
+                        </form>
+                    {% endif %}
+                    <a href="{{ path('admin_session_matiere_add', {sessionId: session.id}) }}" class="btn btn--outline">
+                        + Ajouter matière
+                    </a>
+                </div>
+            </div>
+            
+            <div class="stats-row">
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ stats.nbMatieres }}</span>
+                    <span class="stat-item__label">matière{{ stats.nbMatieres > 1 ? 's' : '' }} ({{ stats.nbActives }} active{{ stats.nbActives > 1 ? 's' : '' }})</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ stats.totalHeuresRef }}h</span>
+                    <span class="stat-item__label">référentiel</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ stats.totalHeuresPlan ?? stats.totalHeuresRef }}h</span>
+                    <span class="stat-item__label">planifié</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ stats.totalHeuresReal ?? 0 }}h</span>
+                    <span class="stat-item__label">réalisé</span>
+                </div>
+                {% if stats.totalHeuresPlan or stats.totalHeuresRef %}
+                    {% set pctRealise = stats.totalHeuresReal ? ((stats.totalHeuresReal / (stats.totalHeuresPlan ?? stats.totalHeuresRef)) * 100)|round(1) : 0 %}
+                    <div class="stat-item">
+                        <span class="stat-item__value {{ pctRealise >= 100 ? 'text-success' : (pctRealise >= 50 ? 'text-warning' : 'text-danger') }}">
+                            {{ pctRealise }}%
+                        </span>
+                        <span class="stat-item__label">réalisation</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Liste des matières #}
+        <div class="section-card">
+            {% if sessionMatieres is empty %}
+                <div class="empty-state">
+                    <p>Aucune matière n'a été définie pour cette session.</p>
+                    <p>Cliquez sur "Initialiser depuis le référentiel" pour copier les matières de la formation.</p>
+                </div>
+            {% else %}
+                {# Formulaire de mise à jour en masse #}
+                <form action="{{ path('admin_session_matiere_update_volumes', {sessionId: session.id}) }}" method="post">
+                    <input type="hidden" name="_token" value="{{ csrf_token('update_volumes' ~ session.id) }}">
+                    
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;">Ordre</th>
+                                    <th>Code</th>
+                                    <th>Libellé</th>
+                                    <th>Heures réf.</th>
+                                    <th>Heures plan.</th>
+                                    <th>Heures réal.</th>
+                                    <th>% réal.</th>
+                                    <th>Coef.</th>
+                                    <th>Statut</th>
+                                    <th class="actions-col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sm in sessionMatieres %}
+                                <tr class="{{ not sm.actif ? 'row--inactive' : '' }}">
+                                    <td>
+                                        <span class="badge badge--secondary">{{ sm.ordre }}</span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ sm.matiere.code }}</strong>
+                                        {% if not sm.matiere.actif %}
+                                            <span class="status status--warning" title="Matière inactive dans le référentiel">⚠️</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ sm.matiere.libelle }}</td>
+                                    <td><strong>{{ sm.volumeHeuresReferentiel }}h</strong></td>
+                                    <td>
+                                        <input type="number" 
+                                               name="volumes[{{ sm.id }}][planifie]" 
+                                               value="{{ sm.volumeHeuresPlanifie }}"
+                                               class="input-inline" 
+                                               min="0" 
+                                               max="9999"
+                                               placeholder="{{ sm.volumeHeuresReferentiel }}"
+                                               style="width: 70px;">
+                                    </td>
+                                    <td>
+                                        <input type="number" 
+                                               name="volumes[{{ sm.id }}][realise]" 
+                                               value="{{ sm.volumeHeuresRealise }}"
+                                               class="input-inline" 
+                                               min="0" 
+                                               max="9999"
+                                               placeholder="0"
+                                               style="width: 70px;">
+                                    </td>
+                                    <td>
+                                        {% set pct = sm.pourcentageRealisation %}
+                                        {% if pct is not null %}
+                                            <span class="badge {{ pct >= 100 ? 'badge--success' : (pct >= 50 ? 'badge--warning' : 'badge--danger') }}">
+                                                {{ pct }}%
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ sm.coefficient ?? '—' }}</td>
+                                    <td>
+                                        {% if sm.actif %}
+                                            <span class="status status--success">Actif</span>
+                                        {% else %}
+                                            <span class="status status--danger">Inactif</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="actions-col">
+                                        <div class="btn-group">
+                                            <a href="{{ path('admin_session_matiere_edit', {sessionId: session.id, id: sm.id}) }}" 
+                                               class="btn btn--sm btn--secondary" title="Modifier">
+                                                ✏️
+                                            </a>
+                                            <form action="{{ path('admin_session_matiere_toggle', {sessionId: session.id, id: sm.id}) }}" 
+                                                  method="post" style="display:inline;">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ sm.id) }}">
+                                                <button type="submit" class="btn btn--sm btn--outline" 
+                                                        title="{{ sm.actif ? 'Désactiver' : 'Activer' }}">
+                                                    {{ sm.actif ? '🔒' : '🔓' }}
+                                                </button>
+                                            </form>
+                                            <form action="{{ path('admin_session_matiere_delete', {sessionId: session.id, id: sm.id}) }}" 
+                                                  method="post" style="display:inline;"
+                                                  onsubmit="return confirm('Retirer la matière {{ sm.matiere.code }} ?');">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ sm.id) }}">
+                                                <button type="submit" class="btn btn--sm btn--danger" title="Supprimer">
+                                                    🗑️
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="total-row">
+                                    <td colspan="3"><strong>Total</strong></td>
+                                    <td><strong>{{ stats.totalHeuresRef }}h</strong></td>
+                                    <td><strong>{{ stats.totalHeuresPlan ?? stats.totalHeuresRef }}h</strong></td>
+                                    <td><strong>{{ stats.totalHeuresReal ?? 0 }}h</strong></td>
+                                    <td colspan="4"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    
+                    <div class="form-actions" style="margin-top: 1rem;">
+                        <button type="submit" class="btn btn--primary">
+                            💾 Enregistrer les volumes
+                        </button>
+                    </div>
+                </form>
+
+                {# Barre de progression visuelle #}
+                {% if stats.totalHeuresReal is not null and stats.totalHeuresReal > 0 %}
+                <div class="progress-section">
+                    <h3>Progression globale</h3>
+                    {% set planifie = stats.totalHeuresPlan ?? stats.totalHeuresRef %}
+                    {% set realise = stats.totalHeuresReal %}
+                    {% set pct = planifie > 0 ? ((realise / planifie) * 100)|round(1) : 0 %}
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" style="width: {{ pct > 100 ? 100 : pct }}%; background: {{ pct >= 100 ? '#27ae60' : (pct >= 50 ? '#f39c12' : '#e74c3c') }};">
+                            <span>{{ realise }}h / {{ planifie }}h ({{ pct }}%)</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        {# Informations de la session #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Informations de la session</h2>
+            </div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-item__label">Formation</span>
+                    <span class="info-item__value">{{ session.formation }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Période</span>
+                    <span class="info-item__value">{{ session.periodeFormatee }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Statut</span>
+                    <span class="info-item__value">
+                        <span class="status status--{{ session.statut == 'en_cours' ? 'success' : (session.statut == 'terminee' ? 'info' : 'warning') }}">
+                            {{ session.statutLibelle }}
+                        </span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block stylesheets_inline %}
+<style>
+.input-inline {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    text-align: right;
+}
+
+.input-inline:focus {
+    outline: none;
+    border-color: var(--primary-color, #3498db);
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.total-row {
+    background: var(--bg-light, #f5f5f5);
+    font-weight: 600;
+}
+
+.progress-section {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-color, #ddd);
+}
+
+.progress-bar-container {
+    background: var(--bg-light, #e9ecef);
+    border-radius: 8px;
+    height: 30px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.progress-bar {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: width 0.3s ease;
+    min-width: 100px;
+}
+
+.text-success { color: #27ae60; }
+.text-warning { color: #f39c12; }
+.text-danger { color: #e74c3c; }
+
+.badge--success { background: #27ae60; color: white; }
+.badge--warning { background: #f39c12; color: white; }
+.badge--danger { background: #e74c3c; color: white; }
+</style>
+{% endblock %}

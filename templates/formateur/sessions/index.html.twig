@@ -1,0 +1,196 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mes sessions{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <h1 class="dashboard__title">📚 Mes sessions de formation</h1>
+            <p class="dashboard__subtitle">
+                Sessions sur lesquelles vous intervenez en tant que formateur
+            </p>
+        </header>
+
+        {# Statistiques #}
+        <div class="stats-grid" style="margin-bottom: var(--spacing-xl);">
+            <div class="stat-card">
+                <div class="stat-card__value">{{ stats.total }}</div>
+                <div class="stat-card__label">Sessions total</div>
+            </div>
+            <div class="stat-card stat-card--success">
+                <div class="stat-card__value">{{ stats.en_cours }}</div>
+                <div class="stat-card__label">En cours</div>
+            </div>
+            <div class="stat-card stat-card--info">
+                <div class="stat-card__value">{{ stats.planifiees }}</div>
+                <div class="stat-card__label">Planifiées</div>
+            </div>
+            <div class="stat-card stat-card--secondary">
+                <div class="stat-card__value">{{ stats.terminees }}</div>
+                <div class="stat-card__label">Terminées</div>
+            </div>
+        </div>
+
+        {% if sessionsActives is empty and sessionsTerminees is empty %}
+            <div class="empty-state">
+                <div class="empty-state__icon">📋</div>
+                <h3>Aucune session</h3>
+                <p>Vous n'êtes affecté à aucune session de formation pour le moment.</p>
+            </div>
+        {% else %}
+            {# Sessions actives #}
+            {% if sessionsActives is not empty %}
+                <div class="section-card" style="margin-bottom: var(--spacing-xl);">
+                    <div class="section-card__header">
+                        <h2>🎯 Sessions actives</h2>
+                        <span class="badge badge--primary">{{ sessionsActives|length }}</span>
+                    </div>
+                    
+                    <div class="section-card__content">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Session</th>
+                                    <th>Formation</th>
+                                    <th>Période</th>
+                                    <th>Statut</th>
+                                    <th>Apprentis</th>
+                                    <th>Rôle</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in sessionsActives %}
+                                    <tr>
+                                        <td>
+                                            <a href="{{ path('app_formateur_sessions_show', {id: session.id}) }}">
+                                                <strong>{{ session.code }}</strong>
+                                            </a>
+                                            <br>
+                                            <small class="text-muted">{{ session.libelle|u.truncate(40) }}</small>
+                                        </td>
+                                        <td>
+                                            {% if session.formation %}
+                                                {{ session.formation.intituleCourt ?? session.formation.intitule|u.truncate(30) }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ session.dateDebut|date('d/m/Y') }}
+                                            <br>
+                                            <small class="text-muted">→ {{ session.dateFin|date('d/m/Y') }}</small>
+                                        </td>
+                                        <td>
+                                            {% set statutClass = {
+                                                'planifiee': 'secondary',
+                                                'inscriptions_ouvertes': 'info',
+                                                'en_cours': 'success',
+                                                'terminee': 'dark',
+                                                'annulee': 'danger'
+                                            } %}
+                                            <span class="status status--{{ statutClass[session.statut] ?? 'secondary' }}">
+                                                {{ session.statutLibelle }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <strong>{{ session.nombreInscrits }}</strong>
+                                            {% if session.effectifMax %}
+                                                / {{ session.effectifMax }}
+                                            {% endif %}
+                                            apprenti(s)
+                                        </td>
+                                        <td>
+                                            {% if session.responsable == app.user %}
+                                                <span class="badge badge--warning" title="Responsable pédagogique">
+                                                    👑 Responsable
+                                                </span>
+                                            {% else %}
+                                                <span class="badge badge--secondary">
+                                                    Formateur
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <a href="{{ path('app_formateur_notes_session', {id: session.id}) }}" 
+                                                   class="btn btn--sm btn--primary" title="Voir les notes">
+                                                    📝 Notes
+                                                </a>
+                                                <a href="{{ path('app_formateur_sessions_show', {id: session.id}) }}" 
+                                                   class="btn btn--sm btn--secondary" title="Détails">
+                                                    👁️
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endif %}
+
+            {# Sessions terminées (repliable) #}
+            {% if sessionsTerminees is not empty %}
+                <details class="section-card">
+                    <summary class="section-card__header" style="cursor: pointer;">
+                        <h2>📦 Sessions terminées</h2>
+                        <span class="badge badge--secondary">{{ sessionsTerminees|length }}</span>
+                    </summary>
+                    
+                    <div class="section-card__content">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Session</th>
+                                    <th>Formation</th>
+                                    <th>Période</th>
+                                    <th>Apprentis</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in sessionsTerminees %}
+                                    <tr class="table-row--muted">
+                                        <td>
+                                            <strong>{{ session.code }}</strong>
+                                            <br>
+                                            <small class="text-muted">{{ session.libelle|u.truncate(40) }}</small>
+                                        </td>
+                                        <td>
+                                            {% if session.formation %}
+                                                {{ session.formation.intituleCourt ?? session.formation.intitule|u.truncate(30) }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ session.dateDebut|date('d/m/Y') }} → {{ session.dateFin|date('d/m/Y') }}
+                                        </td>
+                                        <td>
+                                            {{ session.nombreInscrits }} apprenti(s)
+                                        </td>
+                                        <td>
+                                            <a href="{{ path('app_formateur_notes_session', {id: session.id}) }}" 
+                                               class="btn btn--sm btn--secondary" title="Consulter les notes">
+                                                📝 Notes
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+            {% endif %}
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

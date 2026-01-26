@@ -1,0 +1,212 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }} - {{ session.libelle }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_session_matiere_index', {sessionId: session.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour aux matières
+                </a>
+            </div>
+            <h1 class="dashboard__title">📖 {{ title }}</h1>
+            <p class="dashboard__subtitle">Session : {{ session.libelle }}</p>
+        </header>
+
+        {# Alerte si aucune matière disponible #}
+        {% if matieresDisponibles is defined and matieresDisponibles is empty and not sessionMatiere.id %}
+        <div class="alert alert--warning">
+            <strong>Attention :</strong> Toutes les matières actives sont déjà associées à cette session.
+            <a href="{{ path('admin_matiere_new') }}">Créer une nouvelle matière</a>
+        </div>
+        {% endif %}
+
+        {# Formulaire #}
+        <div class="section-card">
+            {{ form_start(form, {'attr': {'class': 'form-standard', 'novalidate': 'novalidate'}}) }}
+            
+            {% if form.matiere is defined %}
+            <div class="form-group">
+                {{ form_label(form.matiere) }}
+                {{ form_widget(form.matiere) }}
+                {{ form_errors(form.matiere) }}
+                {{ form_help(form.matiere) }}
+            </div>
+            {% else %}
+            {# Mode édition : afficher la matière en lecture seule #}
+            <div class="form-group">
+                <label>Matière</label>
+                <div class="form-static">
+                    <strong>{{ sessionMatiere.matiere.code }}</strong> — {{ sessionMatiere.matiere.libelle }}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="form-grid">
+                <div class="form-group form-group--third">
+                    {{ form_label(form.volumeHeuresReferentiel) }}
+                    <div class="input-group">
+                        {{ form_widget(form.volumeHeuresReferentiel) }}
+                        <span class="input-group__suffix">h</span>
+                    </div>
+                    {{ form_errors(form.volumeHeuresReferentiel) }}
+                    {{ form_help(form.volumeHeuresReferentiel) }}
+                </div>
+                
+                <div class="form-group form-group--third">
+                    {{ form_label(form.volumeHeuresPlanifie) }}
+                    <div class="input-group">
+                        {{ form_widget(form.volumeHeuresPlanifie) }}
+                        <span class="input-group__suffix">h</span>
+                    </div>
+                    {{ form_errors(form.volumeHeuresPlanifie) }}
+                    {{ form_help(form.volumeHeuresPlanifie) }}
+                </div>
+
+                <div class="form-group form-group--third">
+                    {{ form_label(form.volumeHeuresRealise) }}
+                    <div class="input-group">
+                        {{ form_widget(form.volumeHeuresRealise) }}
+                        <span class="input-group__suffix">h</span>
+                    </div>
+                    {{ form_errors(form.volumeHeuresRealise) }}
+                    {{ form_help(form.volumeHeuresRealise) }}
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group form-group--half">
+                    {{ form_label(form.coefficient) }}
+                    {{ form_widget(form.coefficient) }}
+                    {{ form_errors(form.coefficient) }}
+                    {{ form_help(form.coefficient) }}
+                </div>
+
+                <div class="form-group form-group--half">
+                    {{ form_label(form.ordre) }}
+                    {{ form_widget(form.ordre) }}
+                    {{ form_errors(form.ordre) }}
+                    {{ form_help(form.ordre) }}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="form-check">
+                    {{ form_widget(form.actif) }}
+                    {{ form_label(form.actif) }}
+                </div>
+                {{ form_help(form.actif) }}
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ path('admin_session_matiere_index', {sessionId: session.id}) }}" class="btn btn--secondary">
+                    Annuler
+                </a>
+                <button type="submit" class="btn btn--primary" {% if matieresDisponibles is defined and matieresDisponibles is empty and not sessionMatiere.id %}disabled{% endif %}>
+                    {{ sessionMatiere.id ? 'Enregistrer les modifications' : 'Ajouter la matière' }}
+                </button>
+            </div>
+            
+            {{ form_end(form) }}
+        </div>
+
+        {# Aide contextuelle #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>💡 Aide</h2>
+            </div>
+            <div class="help-content">
+                <dl>
+                    <dt>Volume horaire référentiel</dt>
+                    <dd>Nombre d'heures prévu au référentiel de la formation. Cette valeur est copiée depuis le référentiel et ne devrait pas être modifiée.</dd>
+                    
+                    <dt>Volume horaire planifié</dt>
+                    <dd>Nombre d'heures prévu pour cette session spécifique. Peut différer du référentiel selon le calendrier. Laissez vide pour utiliser la valeur du référentiel.</dd>
+                    
+                    <dt>Volume horaire réalisé</dt>
+                    <dd>Nombre d'heures effectivement dispensées. Mis à jour au fil de la formation.</dd>
+                    
+                    <dt>Statut actif</dt>
+                    <dd>Une matière désactivée est exclue des calculs de totaux mais reste visible dans l'historique.</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block stylesheets_inline %}
+<style>
+.form-static {
+    padding: 0.75rem 1rem;
+    background: var(--bg-light, #f5f5f5);
+    border-radius: 4px;
+    border: 1px solid var(--border-color, #ddd);
+}
+
+.input-group {
+    display: flex;
+    align-items: stretch;
+}
+
+.input-group input {
+    flex: 1;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.input-group__suffix {
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    background: var(--bg-light, #f5f5f5);
+    border: 1px solid var(--border-color, #ddd);
+    border-left: 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.875rem;
+    color: var(--text-muted, #666);
+}
+
+.help-content dl {
+    margin: 0;
+}
+
+.help-content dt {
+    font-weight: 600;
+    margin-top: 1rem;
+}
+
+.help-content dt:first-child {
+    margin-top: 0;
+}
+
+.help-content dd {
+    margin: 0.25rem 0 0 0;
+    color: var(--text-muted, #666);
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+}
+
+.alert--warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+
+.alert a {
+    color: inherit;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,139 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Matière {{ matiere.code }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_matiere_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la liste
+                </a>
+            </div>
+            <h1 class="dashboard__title">📖 {{ matiere.code }}</h1>
+            <p class="dashboard__subtitle">{{ matiere.libelle }}</p>
+        </header>
+
+        {# Informations générales #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Informations</h2>
+                <a href="{{ path('admin_matiere_edit', {id: matiere.id}) }}" class="btn btn--secondary btn--sm">
+                    ✏️ Modifier
+                </a>
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-item__label">Code</span>
+                    <span class="info-item__value"><strong>{{ matiere.code }}</strong></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Libellé</span>
+                    <span class="info-item__value">{{ matiere.libelle }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Statut</span>
+                    <span class="info-item__value">
+                        {% if matiere.actif %}
+                            <span class="status status--success">Actif</span>
+                        {% else %}
+                            <span class="status status--danger">Inactif</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Date de création</span>
+                    <span class="info-item__value">{{ matiere.createdAt|date('d/m/Y à H:i') }}</span>
+                </div>
+                {% if matiere.updatedAt %}
+                <div class="info-item">
+                    <span class="info-item__label">Dernière modification</span>
+                    <span class="info-item__value">{{ matiere.updatedAt|date('d/m/Y à H:i') }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if matiere.description %}
+            <div class="info-section">
+                <h3>Description</h3>
+                <p>{{ matiere.description|nl2br }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        {# Formations utilisant cette matière #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Formations associées</h2>
+                <span class="badge badge--info">{{ matiere.nombreFormations }} formation{{ matiere.nombreFormations > 1 ? 's' : '' }}</span>
+            </div>
+            
+            {% if matiere.nombreFormations == 0 %}
+                <div class="empty-state">
+                    <p>Aucune formation n'utilise encore cette matière.</p>
+                </div>
+            {% else %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Formation</th>
+                                <th>Code RNCP</th>
+                                <th>Volume horaire</th>
+                                <th>Coefficient</th>
+                                <th>Ordre</th>
+                                <th class="actions-col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fm in matiere.formationMatieres %}
+                            <tr>
+                                <td>
+                                    <strong>{{ fm.formation.intituleCourt ?? fm.formation.intitule }}</strong>
+                                    {% if fm.formation.intituleCourt %}
+                                        <br><small class="text-muted">{{ fm.formation.intitule }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>{{ fm.formation.codeRncp ?? '—' }}</td>
+                                <td><strong>{{ fm.volumeHeuresReferentiel }}h</strong></td>
+                                <td>{{ fm.coefficient ?? '—' }}</td>
+                                <td>{{ fm.ordre }}</td>
+                                <td class="actions-col">
+                                    <a href="{{ path('admin_formation_matiere_index', {formationId: fm.formation.id}) }}" 
+                                       class="btn btn--sm btn--secondary" title="Voir les matières de cette formation">
+                                        👁️
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {# Statistiques #}
+                {% set totalHeures = 0 %}
+                {% for fm in matiere.formationMatieres %}
+                    {% set totalHeures = totalHeures + fm.volumeHeuresReferentiel %}
+                {% endfor %}
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <span class="stat-item__value">{{ (totalHeures / matiere.nombreFormations)|round(0) }}h</span>
+                        <span class="stat-item__label">moyenne par formation</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-item__value">{{ totalHeures }}h</span>
+                        <span class="stat-item__label">total cumulé</span>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

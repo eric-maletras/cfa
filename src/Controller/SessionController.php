@@ -66,6 +66,7 @@ class SessionController extends AbstractController
 
     /**
      * Création d'une nouvelle session
+     * Initialise automatiquement les matières depuis le référentiel de la formation
      */
     #[Route('/new', name: 'app_session_new', methods: ['GET', 'POST'])]
     #[IsGranted('ROLE_ADMIN')]
@@ -99,12 +100,18 @@ class SessionController extends AbstractController
             }
             
             $em->persist($session);
+            
+            // *** NOUVEAU : Initialiser les matières depuis le référentiel ***
+            $nbMatieres = $session->initMatieresFromFormation();
+            
             $em->flush();
             
-            $this->addFlash('success', sprintf(
-                'La session "%s" a été créée avec succès.',
-                $session->getLibelle()
-            ));
+            // Message de succès avec info sur les matières
+            $message = sprintf('La session "%s" a été créée avec succès.', $session->getLibelle());
+            if ($nbMatieres > 0) {
+                $message .= sprintf(' %d matière(s) initialisée(s) depuis le référentiel.', $nbMatieres);
+            }
+            $this->addFlash('success', $message);
             
             return $this->redirectToRoute('app_session_show', ['id' => $session->getId()]);
         }
@@ -297,6 +304,7 @@ class SessionController extends AbstractController
 
     /**
      * Duplique une session existante pour l'année suivante
+     * Initialise automatiquement les matières depuis le référentiel
      */
     #[Route('/{id}/dupliquer', name: 'app_session_dupliquer', methods: ['GET', 'POST'], requirements: ['id' => '\d+'])]
     #[IsGranted('ROLE_ADMIN')]
@@ -353,12 +361,17 @@ class SessionController extends AbstractController
             }
             
             $em->persist($session);
+            
+            // *** NOUVEAU : Initialiser les matières depuis le référentiel ***
+            $nbMatieres = $session->initMatieresFromFormation();
+            
             $em->flush();
             
-            $this->addFlash('success', sprintf(
-                'La session "%s" a été créée par duplication.',
-                $session->getLibelle()
-            ));
+            $message = sprintf('La session "%s" a été créée par duplication.', $session->getLibelle());
+            if ($nbMatieres > 0) {
+                $message .= sprintf(' %d matière(s) initialisée(s) depuis le référentiel.', $nbMatieres);
+            }
+            $this->addFlash('success', $message);
             
             return $this->redirectToRoute('app_session_show', ['id' => $session->getId()]);
         }

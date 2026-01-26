@@ -206,6 +206,14 @@ class Session
     private Collection $inscriptions;
 
     /**
+     * Matières de cette session (copiées depuis FormationMatiere)
+     * @var Collection<int, SessionMatiere>
+     */
+    #[ORM\OneToMany(targetEntity: SessionMatiere::class, mappedBy: 'session', orphanRemoval: true, cascade: ['persist', 'remove'])]
+    #[ORM\OrderBy(['ordre' => 'ASC'])]
+    private Collection $sessionMatieres;
+
+    /**
      * Commentaire interne (notes administratives)
      */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -248,6 +256,7 @@ class Session
     {
         $this->formateurs = new ArrayCollection();
         $this->inscriptions = new ArrayCollection();
+        $this->sessionMatieres = new ArrayCollection();
         $this->createdAt = new \DateTime();
     }
 
@@ -462,71 +471,209 @@ class Session
     }
 
     /**
- * @return Collection<int, Inscription>
- */
-public function getInscriptions(): Collection
-{
-    return $this->inscriptions;
-}
-
-public function addInscription(Inscription $inscription): static
-{
-    if (!$this->inscriptions->contains($inscription)) {
-        $this->inscriptions->add($inscription);
-        $inscription->setSession($this);
+     * @return Collection<int, Inscription>
+     */
+    public function getInscriptions(): Collection
+    {
+        return $this->inscriptions;
     }
-    return $this;
-}
 
-public function removeInscription(Inscription $inscription): static
-{
-    if ($this->inscriptions->removeElement($inscription)) {
-        if ($inscription->getSession() === $this) {
-            $inscription->setSession(null);
+    public function addInscription(Inscription $inscription): static
+    {
+        if (!$this->inscriptions->contains($inscription)) {
+            $this->inscriptions->add($inscription);
+            $inscription->setSession($this);
         }
+        return $this;
     }
-    return $this;
-}
 
-/**
- * Retourne les inscriptions validées
- */
-public function getInscriptionsValidees(): Collection
-{
-    return $this->inscriptions->filter(
-        fn(Inscription $i) => $i->getStatut() === Inscription::STATUT_VALIDEE
-    );
-}
-
-/**
- * Compte le nombre d'inscrits validés
- */
-public function getNombreInscrits(): int
-{
-    return $this->getInscriptionsValidees()->count();
-}
-
-/**
- * Vérifie si la session est complète (effectif max atteint)
- */
-public function isComplete(): bool
-{
-    if ($this->effectifMax === null) {
-        return false;
+    public function removeInscription(Inscription $inscription): static
+    {
+        if ($this->inscriptions->removeElement($inscription)) {
+            if ($inscription->getSession() === $this) {
+                $inscription->setSession(null);
+            }
+        }
+        return $this;
     }
-    return $this->getNombreInscrits() >= $this->effectifMax;
-}
 
-/**
- * Retourne le nombre de places restantes
- */
-public function getPlacesRestantes(): ?int
-{
-    if ($this->effectifMax === null) {
-        return null;
+    /**
+     * Retourne les inscriptions validées
+     */
+    public function getInscriptionsValidees(): Collection
+    {
+        return $this->inscriptions->filter(
+            fn(Inscription $i) => $i->getStatut() === Inscription::STATUT_VALIDEE
+        );
     }
-    return max(0, $this->effectifMax - $this->getNombreInscrits());
-}
+
+    /**
+     * Compte le nombre d'inscrits validés
+     */
+    public function getNombreInscrits(): int
+    {
+        return $this->getInscriptionsValidees()->count();
+    }
+
+    /**
+     * Vérifie si la session est complète (effectif max atteint)
+     */
+    public function isComplete(): bool
+    {
+        if ($this->effectifMax === null) {
+            return false;
+        }
+        return $this->getNombreInscrits() >= $this->effectifMax;
+    }
+
+    /**
+     * Retourne le nombre de places restantes
+     */
+    public function getPlacesRestantes(): ?int
+    {
+        if ($this->effectifMax === null) {
+            return null;
+        }
+        return max(0, $this->effectifMax - $this->getNombreInscrits());
+    }
+
+    // ========================================
+    // GESTION DES MATIÈRES DE LA SESSION
+    // ========================================
+
+    /**
+     * @return Collection<int, SessionMatiere>
+     */
+    public function getSessionMatieres(): Collection
+    {
+        return $this->sessionMatieres;
+    }
+
+    /**
+     * Retourne uniquement les matières actives de la session
+     * 
+     * @return Collection<int, SessionMatiere>
+     */
+    public function getSessionMatieresActives(): Collection
+    {
+        return $this->sessionMatieres->filter(
+            fn(SessionMatiere $sm) => $sm->isActif()
+        );
+    }
+
+    public function addSessionMatiere(SessionMatiere $sessionMatiere): static
+    {
+        if (!$this->sessionMatieres->contains($sessionMatiere)) {
+            $this->sessionMatieres->add($sessionMatiere);
+            $sessionMatiere->setSession($this);
+        }
+        return $this;
+    }
+
+    public function removeSessionMatiere(SessionMatiere $sessionMatiere): static
+    {
+        if ($this->sessionMatieres->removeElement($sessionMatiere)) {
+            if ($sessionMatiere->getSession() === $this) {
+                $sessionMatiere->setSession(null);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * Initialise les matières de la session depuis le référentiel de la formation
+     * 
+     * Cette méthode copie les FormationMatiere en SessionMatiere.
+     * À appeler lors de la création d'une nouvelle session.
+     * 
+     * @return int Nombre de matières initialisées
+     */
+    public function initMatieresFromFormation(): int
+    {
+        if ($this->formation === null) {
+            return 0;
+        }
+
+        $count = 0;
+        foreach ($this->formation->getFormationMatieres() as $fm) {
+            // Vérifier que la matière n'est pas déjà dans la session
+            $exists = $this->sessionMatieres->exists(
+                fn($key, SessionMatiere $sm) => $sm->getMatiere()?->getId() === $fm->getMatiere()?->getId()
+            );
+
+            if (!$exists) {
+                $sessionMatiere = new SessionMatiere();
+                $sessionMatiere->initFromFormationMatiere($fm);
+                $this->addSessionMatiere($sessionMatiere);
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Vérifie si les matières ont été initialisées
+     */
+    public function hasMatieresInitialisees(): bool
+    {
+        return !$this->sessionMatieres->isEmpty();
+    }
+
+    /**
+     * Calcule le volume horaire total du référentiel pour cette session
+     */
+    public function getVolumeHeuresReferentielTotal(): int
+    {
+        $total = 0;
+        foreach ($this->sessionMatieres as $sm) {
+            if ($sm->isActif()) {
+                $total += $sm->getVolumeHeuresReferentiel() ?? 0;
+            }
+        }
+        return $total;
+    }
+
+    /**
+     * Calcule le volume horaire total planifié pour cette session
+     */
+    public function getVolumeHeuresPlanifieTotal(): int
+    {
+        $total = 0;
+        foreach ($this->sessionMatieres as $sm) {
+            if ($sm->isActif()) {
+                $total += $sm->getVolumeHeuresPlanifie() ?? $sm->getVolumeHeuresReferentiel() ?? 0;
+            }
+        }
+        return $total;
+    }
+
+    /**
+     * Calcule le volume horaire total réalisé pour cette session
+     */
+    public function getVolumeHeuresRealiseTotal(): int
+    {
+        $total = 0;
+        foreach ($this->sessionMatieres as $sm) {
+            if ($sm->isActif()) {
+                $total += $sm->getVolumeHeuresRealise() ?? 0;
+            }
+        }
+        return $total;
+    }
+
+    /**
+     * Calcule le pourcentage de réalisation global
+     */
+    public function getPourcentageRealisationGlobal(): ?float
+    {
+        $planifie = $this->getVolumeHeuresPlanifieTotal();
+        if ($planifie <= 0) {
+            return null;
+        }
+        $realise = $this->getVolumeHeuresRealiseTotal();
+        return round(($realise / $planifie) * 100, 1);
+    }
 
     /**
      * Retourne la couleur avec le #

@@ -28,6 +28,10 @@
                     🎓 Formations
                     <span class="badge">{{ formations|length }}</span>
                 </a>
+                <a href="{{ path('admin_matiere_index') }}" 
+                   class="tabs__link">
+                    📖 Matières
+                </a>
                 <a href="{{ path('admin_formation_index', {tab: 'niveaux'}) }}" 
                    class="tabs__link {{ activeTab == 'niveaux' ? 'tabs__link--active' : '' }}">
                     📊 Niveaux
@@ -108,6 +112,10 @@
                                         </td>
                                         <td class="actions-col">
                                             <div class="btn-group">
+                                                <a href="{{ path('admin_formation_matiere_index', {formationId: formation.id}) }}" 
+                                                   class="btn btn--sm btn--outline" title="Gérer les matières">
+                                                    📖
+                                                </a>
                                                 <a href="{{ path('admin_formation_edit', {id: formation.id}) }}" 
                                                    class="btn btn--sm btn--secondary" title="Modifier">
                                                     ✏️

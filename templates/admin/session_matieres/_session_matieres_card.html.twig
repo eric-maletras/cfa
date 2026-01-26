@@ -1,0 +1,199 @@
+{# 
+    Partial: Affichage des matières d'une session
+    À inclure dans session/show.html.twig
+    
+    Variables requises:
+    - session: l'entité Session
+#}
+
+<div class="section-card">
+    <div class="section-card__header">
+        <h2>📖 Matières de la session</h2>
+        <a href="{{ path('admin_session_matiere_index', {sessionId: session.id}) }}" class="btn btn--secondary btn--sm">
+            Gérer les matières
+        </a>
+    </div>
+
+    {% if session.sessionMatieres is empty %}
+        <div class="empty-state">
+            <p>Aucune matière n'a été définie pour cette session.</p>
+            {% if is_granted('ROLE_ADMIN') %}
+            <form action="{{ path('admin_session_matiere_init', {sessionId: session.id}) }}" method="post" style="display:inline;">
+                <input type="hidden" name="_token" value="{{ csrf_token('init' ~ session.id) }}">
+                <button type="submit" class="btn btn--primary">
+                    🔄 Initialiser depuis le référentiel
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    {% else %}
+        {# Statistiques rapides #}
+        <div class="stats-row stats-row--compact">
+            <div class="stat-item">
+                <span class="stat-item__value">{{ session.sessionMatieresActives|length }}</span>
+                <span class="stat-item__label">matières actives</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-item__value">{{ session.volumeHeuresReferentielTotal }}h</span>
+                <span class="stat-item__label">référentiel</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-item__value">{{ session.volumeHeuresPlanifieTotal }}h</span>
+                <span class="stat-item__label">planifié</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-item__value">{{ session.volumeHeuresRealiseTotal }}h</span>
+                <span class="stat-item__label">réalisé</span>
+            </div>
+            {% set pct = session.pourcentageRealisationGlobal %}
+            {% if pct is not null %}
+            <div class="stat-item">
+                <span class="stat-item__value {{ pct >= 100 ? 'text-success' : (pct >= 50 ? 'text-warning' : 'text-danger') }}">
+                    {{ pct }}%
+                </span>
+                <span class="stat-item__label">réalisation</span>
+            </div>
+            {% endif %}
+        </div>
+
+        {# Barre de progression #}
+        {% if session.volumeHeuresRealiseTotal > 0 %}
+        <div class="progress-container">
+            {% set planifie = session.volumeHeuresPlanifieTotal %}
+            {% set realise = session.volumeHeuresRealiseTotal %}
+            {% set pctBar = planifie > 0 ? ((realise / planifie) * 100)|round(1) : 0 %}
+            <div class="progress-bar-sm">
+                <div class="progress-bar-sm__fill" style="width: {{ pctBar > 100 ? 100 : pctBar }}%;"></div>
+            </div>
+            <span class="progress-label">{{ realise }}h / {{ planifie }}h</span>
+        </div>
+        {% endif %}
+
+        {# Tableau résumé des matières #}
+        <div class="table-responsive">
+            <table class="data-table data-table--compact">
+                <thead>
+                    <tr>
+                        <th>Matière</th>
+                        <th class="text-right">Réf.</th>
+                        <th class="text-right">Plan.</th>
+                        <th class="text-right">Réal.</th>
+                        <th class="text-right">%</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sm in session.sessionMatieres %}
+                    <tr class="{{ not sm.actif ? 'row--inactive' : '' }}">
+                        <td>
+                            <strong>{{ sm.matiere.code }}</strong>
+                            <span class="text-muted">{{ sm.matiere.libelle|length > 30 ? sm.matiere.libelle|slice(0, 30) ~ '...' : sm.matiere.libelle }}</span>
+                        </td>
+                        <td class="text-right">{{ sm.volumeHeuresReferentiel }}h</td>
+                        <td class="text-right">{{ sm.volumeHeuresPlanifie ?? '—' }}</td>
+                        <td class="text-right">{{ sm.volumeHeuresRealise ?? '—' }}</td>
+                        <td class="text-right">
+                            {% set pctSm = sm.pourcentageRealisation %}
+                            {% if pctSm is not null %}
+                                <span class="badge badge--sm {{ pctSm >= 100 ? 'badge--success' : (pctSm >= 50 ? 'badge--warning' : 'badge--danger') }}">
+                                    {{ pctSm }}%
+                                </span>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sm.actif %}
+                                <span class="status status--success status--sm">✓</span>
+                            {% else %}
+                                <span class="status status--danger status--sm">✗</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td><strong>Total</strong></td>
+                        <td class="text-right"><strong>{{ session.volumeHeuresReferentielTotal }}h</strong></td>
+                        <td class="text-right"><strong>{{ session.volumeHeuresPlanifieTotal }}h</strong></td>
+                        <td class="text-right"><strong>{{ session.volumeHeuresRealiseTotal }}h</strong></td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.stats-row--compact {
+    gap: 1rem;
+    padding: 0.75rem 0;
+}
+
+.stats-row--compact .stat-item__value {
+    font-size: 1.25rem;
+}
+
+.stats-row--compact .stat-item__label {
+    font-size: 0.75rem;
+}
+
+.progress-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color, #eee);
+    margin-bottom: 1rem;
+}
+
+.progress-bar-sm {
+    flex: 1;
+    height: 8px;
+    background: var(--bg-light, #e9ecef);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-sm__fill {
+    height: 100%;
+    background: var(--primary-color, #3498db);
+    transition: width 0.3s ease;
+}
+
+.progress-label {
+    font-size: 0.875rem;
+    color: var(--text-muted, #666);
+    white-space: nowrap;
+}
+
+.data-table--compact td,
+.data-table--compact th {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.badge--sm {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+}
+
+.status--sm {
+    font-size: 0.75rem;
+    padding: 0.1rem 0.3rem;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-success { color: #27ae60; }
+.text-warning { color: #f39c12; }
+.text-danger { color: #e74c3c; }
+
+.badge--success { background: #27ae60; color: white; }
+.badge--warning { background: #f39c12; color: white; }
+.badge--danger { background: #e74c3c; color: white; }
+</style>

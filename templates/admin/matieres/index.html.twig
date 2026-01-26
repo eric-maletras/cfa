@@ -1,0 +1,138 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gestion des matières{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_dashboard') }}" class="btn btn--secondary btn--sm">
+                    ← Retour au tableau de bord
+                </a>
+            </div>
+            <h1 class="dashboard__title">📖 Gestion des matières</h1>
+            <p class="dashboard__subtitle">Référentiel des matières enseignées au CFA</p>
+        </header>
+
+        {# Actions et statistiques #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Matières</h2>
+                <a href="{{ path('admin_matiere_new') }}" class="btn btn--primary">
+                    + Nouvelle matière
+                </a>
+            </div>
+            
+            <div class="stats-row">
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ matieres|length }}</span>
+                    <span class="stat-item__label">matières au total</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ matieres|filter(m => m.actif)|length }}</span>
+                    <span class="stat-item__label">matières actives</span>
+                </div>
+            </div>
+        </div>
+
+        {# Liste des matières #}
+        <div class="section-card">
+            {% if matieres is empty %}
+                <div class="empty-state">
+                    <p>Aucune matière n'a encore été créée.</p>
+                    <a href="{{ path('admin_matiere_new') }}" class="btn btn--primary">
+                        Créer la première matière
+                    </a>
+                </div>
+            {% else %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Libellé</th>
+                                <th>Description</th>
+                                <th>Formations</th>
+                                <th>Statut</th>
+                                <th class="actions-col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for matiere in matieres %}
+                            <tr class="{{ not matiere.actif ? 'row--inactive' : '' }}">
+                                <td>
+                                    <strong>{{ matiere.code }}</strong>
+                                </td>
+                                <td>{{ matiere.libelle }}</td>
+                                <td>
+                                    {% if matiere.description %}
+                                        <span class="text-muted" title="{{ matiere.description }}">
+                                            {{ matiere.description|length > 50 ? matiere.description|slice(0, 50) ~ '...' : matiere.description }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% set nbFormations = matiere.nombreFormations %}
+                                    {% if nbFormations > 0 %}
+                                        <span class="badge badge--info" title="Utilisée par {{ nbFormations }} formation(s)">
+                                            {{ nbFormations }} formation{{ nbFormations > 1 ? 's' : '' }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge badge--secondary">Non utilisée</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if matiere.actif %}
+                                        <span class="status status--success">Actif</span>
+                                    {% else %}
+                                        <span class="status status--danger">Inactif</span>
+                                    {% endif %}
+                                </td>
+                                <td class="actions-col">
+                                    <div class="btn-group">
+                                        <a href="{{ path('admin_matiere_show', {id: matiere.id}) }}" 
+                                           class="btn btn--sm btn--outline" title="Voir le détail">
+                                            👁️
+                                        </a>
+                                        <a href="{{ path('admin_matiere_edit', {id: matiere.id}) }}" 
+                                           class="btn btn--sm btn--secondary" title="Modifier">
+                                            ✏️
+                                        </a>
+                                        <form action="{{ path('admin_matiere_toggle', {id: matiere.id}) }}" 
+                                              method="post" style="display:inline;">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ matiere.id) }}">
+                                            <button type="submit" class="btn btn--sm btn--outline" 
+                                                    title="{{ matiere.actif ? 'Désactiver' : 'Activer' }}">
+                                                {{ matiere.actif ? '🔒' : '🔓' }}
+                                            </button>
+                                        </form>
+                                        {% if matiere.nombreFormations == 0 %}
+                                        <form action="{{ path('admin_matiere_delete', {id: matiere.id}) }}" 
+                                              method="post" style="display:inline;"
+                                              onsubmit="return confirm('Supprimer la matière {{ matiere.code }} ?');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ matiere.id) }}">
+                                            <button type="submit" class="btn btn--sm btn--danger" title="Supprimer">
+                                                🗑️
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

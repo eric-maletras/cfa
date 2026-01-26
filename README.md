@@ -1,163 +1,262 @@
-# Module Gestion des Formations - CFA (v2)
+# Module Matières - CFA Application
 
-## Corrections apportées
+## Contenu du package
 
-- ✅ Entité `Formation.php` complète avec tous les champs
-- ✅ Formulaire `FormationType.php` corrigé (noms de propriétés)
-- ✅ Template `form.html.twig` mis à jour
-- ✅ Script SQL de migration inclus
+Ce package contient les fichiers pour le module de gestion des matières, leur liaison avec les formations, et la redescente automatique sur les sessions.
 
-## Fichiers à déployer
+---
+
+## ÉTAPE 1 : Matières et FormationMatiere (Référentiel)
+
+### Entités
+
+- `src/Entity/Matiere.php` - Référentiel des matières (code, libellé, description)
+- `src/Entity/FormationMatiere.php` - Liaison formation ↔ matière avec volume horaire et coefficient
+- `src/Entity/Formation.php` - **MODIFICATION** - Ajout de la relation `formationMatieres`
+
+### Repositories
+
+- `src/Repository/MatiereRepository.php`
+- `src/Repository/FormationMatiereRepository.php`
+
+### Contrôleurs
+
+- `src/Controller/Admin/MatiereController.php` - CRUD admin des matières
+- `src/Controller/Admin/FormationMatiereController.php` - Gestion des matières par formation
+
+### Formulaires
+
+- `src/Form/MatiereType.php`
+- `src/Form/FormationMatiereType.php`
+
+### Templates
+
+- `templates/admin/matieres/index.html.twig` - Liste des matières
+- `templates/admin/matieres/form.html.twig` - Formulaire matière
+- `templates/admin/matieres/show.html.twig` - Détail matière
+- `templates/admin/matieres/formation_matieres.html.twig` - Matières d'une formation
+- `templates/admin/matieres/formation_matiere_form.html.twig` - Formulaire liaison
+
+### Fixtures
+
+- `src/DataFixtures/MatiereFixtures.php` - 9 matières BTS SIO + liaisons
+
+---
+
+## ÉTAPE 2 : SessionMatiere (Redescente sur les sessions)
+
+### Concept
+
+Lors de la création d'une session, les matières du référentiel (FormationMatiere) sont automatiquement copiées vers des SessionMatiere, avec la possibilité d'ajuster les volumes pour cette session spécifique.
 
 ```
-/var/www/cfa/
-├── migrations/
-│   └── update_formation_table.sql    # Script SQL si besoin
-├── public/
-│   └── css/
-│       └── admin.css                 # Styles administration
-├── src/
-│   ├── Controller/
-│   │   ├── Admin/
-│   │   │   └── FormationController.php
-│   │   └── ModuleController.php
-│   ├── Entity/
-│   │   └── Formation.php             # REMPLACER - Version complète
-│   └── Form/
-│       ├── FormationType.php         # REMPLACER - Version corrigée
-│       ├── NiveauQualificationType.php
-│       ├── TypeCertificationType.php
-│       ├── CodeNSFType.php
-│       └── CodeROMEType.php
-└── templates/
-    └── admin/
-        └── formations/
-            ├── index.html.twig
-            ├── form.html.twig        # REMPLACER - Version corrigée
-            └── form_simple.html.twig
+Formation
+    └── FormationMatiere (référentiel)
+            ├── Matiere
+            ├── volumeHeuresReferentiel
+            └── coefficient
+
+    └── Session
+            └── SessionMatiere (copie ajustable)
+                    ├── Matiere
+                    ├── volumeHeuresReferentiel (copié)
+                    ├── volumeHeuresPlanifie (ajustable)
+                    ├── volumeHeuresRealise (suivi)
+                    └── actif (désactivable)
 ```
 
-## Déploiement
+### Entités
+
+- `src/Entity/SessionMatiere.php` - **NOUVEAU** - Matières d'une session
+- `src/Entity/Session.php` - **MODIFICATION** - Ajout relation `sessionMatieres` et méthode `initMatieresFromFormation()`
+
+### Repositories
+
+- `src/Repository/SessionMatiereRepository.php` - **NOUVEAU**
+
+### Contrôleurs
+
+- `src/Controller/Admin/SessionMatiereController.php` - **NOUVEAU** - Gestion des matières d'une session
+- `src/Controller/SessionController.php` - **MODIFICATION** - Appel automatique de `initMatieresFromFormation()` à la création
+
+### Formulaires
+
+- `src/Form/SessionMatiereType.php` - **NOUVEAU**
+
+### Templates
+
+- `templates/admin/session_matieres/index.html.twig` - Liste des matières de session avec édition en masse
+- `templates/admin/session_matieres/form.html.twig` - Formulaire ajout/modification
+- `templates/admin/session_matieres/_session_matieres_card.html.twig` - Partial pour la fiche session
+
+### Fixtures
+
+- `src/DataFixtures/SessionFixtures.php` - **NOUVEAU** - Sessions BTS SIO avec matières initialisées
+
+---
+
+## Installation
 
 ### 1. Copier les fichiers
 
 ```bash
-cd /var/www/cfa
+cd /var/www/cfa.ericm.fr
 
-# Option A : Extraire le ZIP
-unzip cfa-formation-v2.zip -d /tmp/
-cp -r /tmp/cfa-formation-v2/* .
+# Entités
+cp -r src/Entity/* /var/www/cfa.ericm.fr/src/Entity/
 
-# Option B : Copier manuellement chaque fichier
+# Repositories
+cp -r src/Repository/* /var/www/cfa.ericm.fr/src/Repository/
+
+# Contrôleurs
+cp -r src/Controller/* /var/www/cfa.ericm.fr/src/Controller/
+
+# Formulaires
+cp -r src/Form/* /var/www/cfa.ericm.fr/src/Form/
+
+# Fixtures
+cp -r src/DataFixtures/* /var/www/cfa.ericm.fr/src/DataFixtures/
+
+# Templates
+cp -r templates/admin/* /var/www/cfa.ericm.fr/templates/admin/
 ```
 
-### 2. Mettre à jour la base de données
+### 2. Mise à jour du schéma de base de données
 
-**Option A : Migration Doctrine (recommandé)**
 ```bash
-php bin/console doctrine:migrations:diff
+cd /var/www/cfa.ericm.fr
+
+# Vérifier les changements
+php bin/console doctrine:schema:update --dump-sql
+
+# Appliquer les changements
+php bin/console doctrine:schema:update --force
+
+# OU avec les migrations (recommandé en production)
+php bin/console make:migration
 php bin/console doctrine:migrations:migrate
 ```
 
-**Option B : Script SQL direct**
+### 3. Charger les fixtures (environnement de dev)
+
 ```bash
-mysql -u root -p cfa_db < migrations/update_formation_table.sql
+# Charger toutes les fixtures de base (attention : réinitialise tout)
+php bin/console doctrine:fixtures:load --group=base
+
+# OU charger par étapes (si les données existent déjà)
+php bin/console doctrine:fixtures:load --group=matieres --append
+php bin/console doctrine:fixtures:load --group=sessions --append
 ```
 
-**Option C : Dans phpMyAdmin**
-Copier-coller le contenu de `update_formation_table.sql`
-
-### 3. Vider le cache
+### 4. Vider le cache
 
 ```bash
 php bin/console cache:clear
 ```
 
-### 4. Vérifier les routes
+---
 
-```bash
-php bin/console debug:router | grep admin
+## Routes créées
+
+### Étape 1 - Gestion des matières
+
+| Route | URL | Description |
+|-------|-----|-------------|
+| `admin_matiere_index` | `/admin/matieres` | Liste des matières |
+| `admin_matiere_new` | `/admin/matieres/new` | Création matière |
+| `admin_matiere_show` | `/admin/matieres/{id}` | Détail matière |
+| `admin_matiere_edit` | `/admin/matieres/{id}/edit` | Modification |
+| `admin_matiere_delete` | `/admin/matieres/{id}/delete` | Suppression |
+| `admin_matiere_toggle` | `/admin/matieres/{id}/toggle` | Activer/désactiver |
+| `admin_formation_matiere_index` | `/admin/formations/{formationId}/matieres` | Matières formation |
+| `admin_formation_matiere_add` | `/admin/formations/{formationId}/matieres/add` | Ajouter |
+| `admin_formation_matiere_edit` | `/admin/formations/{formationId}/matieres/{id}/edit` | Modifier |
+| `admin_formation_matiere_delete` | `/admin/formations/{formationId}/matieres/{id}/delete` | Retirer |
+
+### Étape 2 - Matières de session
+
+| Route | URL | Description |
+|-------|-----|-------------|
+| `admin_session_matiere_index` | `/admin/sessions/{sessionId}/matieres` | Matières session |
+| `admin_session_matiere_init` | `/admin/sessions/{sessionId}/matieres/init` | Initialiser depuis référentiel |
+| `admin_session_matiere_add` | `/admin/sessions/{sessionId}/matieres/add` | Ajouter hors référentiel |
+| `admin_session_matiere_edit` | `/admin/sessions/{sessionId}/matieres/{id}/edit` | Modifier |
+| `admin_session_matiere_toggle` | `/admin/sessions/{sessionId}/matieres/{id}/toggle` | Activer/désactiver |
+| `admin_session_matiere_delete` | `/admin/sessions/{sessionId}/matieres/{id}/delete` | Supprimer |
+| `admin_session_matiere_update_volumes` | `/admin/sessions/{sessionId}/matieres/update-volumes` | Mise à jour en masse |
+
+---
+
+## Comportement automatique
+
+### À la création d'une session
+
+1. L'utilisateur crée une nouvelle session en choisissant une formation
+2. Après validation, `initMatieresFromFormation()` est automatiquement appelé
+3. Toutes les `FormationMatiere` sont copiées en `SessionMatiere`
+4. Les volumes horaires et coefficients du référentiel sont conservés
+5. L'utilisateur peut ensuite ajuster les volumes planifiés si nécessaire
+
+### Données copiées automatiquement
+
+| FormationMatiere | → | SessionMatiere |
+|------------------|---|----------------|
+| matiere | → | matiere |
+| volumeHeuresReferentiel | → | volumeHeuresReferentiel |
+| coefficient | → | coefficient |
+| ordre | → | ordre |
+| — | → | volumeHeuresPlanifie (null) |
+| — | → | volumeHeuresRealise (null) |
+| — | → | actif (true) |
+
+---
+
+## Intégration dans l'interface
+
+### Accès aux matières du référentiel
+
+Dans `templates/admin/formations/index.html.twig`, l'onglet "📖 Matières" est déjà ajouté.
+
+### Accès aux matières d'une session
+
+Ajouter dans `templates/session/show.html.twig` :
+
+```twig
+{# Section matières #}
+{% include 'admin/session_matieres/_session_matieres_card.html.twig' %}
+
+{# OU juste un bouton d'accès #}
+<a href="{{ path('admin_session_matiere_index', {sessionId: session.id}) }}" 
+   class="btn btn--secondary">
+    📖 Gérer les matières
+</a>
 ```
 
-Résultat attendu :
-```
-admin_formation_index     GET        /admin/formations
-admin_formation_new       GET|POST   /admin/formations/new
-admin_formation_edit      GET|POST   /admin/formations/{id}/edit
-admin_formation_delete    POST       /admin/formations/{id}/delete
-admin_formation_toggle    POST       /admin/formations/{id}/toggle
-admin_niveau_new          GET|POST   /admin/formations/niveau/new
-admin_niveau_edit         GET|POST   /admin/formations/niveau/{id}/edit
-admin_niveau_delete       POST       /admin/formations/niveau/{id}/delete
-admin_type_new            GET|POST   /admin/formations/type/new
-admin_type_edit           GET|POST   /admin/formations/type/{id}/edit
-admin_type_delete         POST       /admin/formations/type/{id}/delete
-admin_nsf_new             GET|POST   /admin/formations/nsf/new
-admin_nsf_edit            GET|POST   /admin/formations/nsf/{id}/edit
-admin_nsf_delete          POST       /admin/formations/nsf/{id}/delete
-admin_rome_new            GET|POST   /admin/formations/rome/new
-admin_rome_edit           GET|POST   /admin/formations/rome/{id}/edit
-admin_rome_delete         POST       /admin/formations/rome/{id}/delete
-```
+---
 
-## Structure de la table Formation
+## Matières créées par les fixtures
 
-```sql
-CREATE TABLE formation (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    niveau_qualification_id INT NOT NULL,
-    type_certification_id INT NOT NULL,
-    intitule VARCHAR(255) NOT NULL,
-    intitule_court VARCHAR(100) DEFAULT NULL,
-    code_rncp VARCHAR(20) DEFAULT NULL,
-    duree_heures SMALLINT DEFAULT NULL,
-    duree_mois SMALLINT DEFAULT NULL,
-    ects SMALLINT DEFAULT NULL,
-    options JSON DEFAULT NULL,
-    description TEXT DEFAULT NULL,
-    objectifs TEXT DEFAULT NULL,
-    prerequis TEXT DEFAULT NULL,
-    debouches TEXT DEFAULT NULL,
-    poursuite_etudes TEXT DEFAULT NULL,
-    date_enregistrement_rncp DATE DEFAULT NULL,
-    date_echeance_rncp DATE DEFAULT NULL,
-    actif TINYINT(1) NOT NULL DEFAULT 1,
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME DEFAULT NULL,
-    
-    INDEX idx_formation_rncp (code_rncp),
-    INDEX idx_formation_actif (actif),
-    
-    CONSTRAINT fk_formation_niveau 
-        FOREIGN KEY (niveau_qualification_id) 
-        REFERENCES ref_niveau_qualification(id),
-    CONSTRAINT fk_formation_type 
-        FOREIGN KEY (type_certification_id) 
-        REFERENCES ref_type_certification(id)
-);
-```
+| Code | Libellé | Volume SLAM | Volume SISR | Coef |
+|------|---------|-------------|-------------|------|
+| CULT | Culture générale et expression | 120h | 120h | 2.0 |
+| ANGL | Anglais | 120h | 120h | 2.0 |
+| MATH | Mathématiques pour l'informatique | 90h | 90h | 2.0 |
+| CEJM | Culture économique, juridique et managériale | 120h | 120h | 3.0 |
+| SI | Support et mise à disposition de services | 240h | 240h | 4.0 |
+| SLAM | Solutions logicielles et applications métiers | 280h | — | 4.0 |
+| SISR | Administration des systèmes et des réseaux | — | 280h | 4.0 |
+| CYBER-SLAM | Cybersécurité (option SLAM) | 70h | — | 4.0 |
+| CYBER-SISR | Cybersécurité (option SISR) | — | 70h | 4.0 |
 
-## Configuration du module
+**Total par option : 1040h**
 
-Vérifier dans la table `module` que la route est bien `admin_formations` :
+## Sessions créées par les fixtures
 
-```sql
-SELECT * FROM module WHERE nom LIKE '%formation%';
+| Code | Libellé | Statut |
+|------|---------|--------|
+| BTSSIO-SLAM-2024 | BTS SIO option SLAM - Promotion 2024-2026 | En cours |
+| BTSSIO-SISR-2024 | BTS SIO option SISR - Promotion 2024-2026 | En cours |
+| BTSSIO-SLAM-2025 | BTS SIO option SLAM - Promotion 2025-2027 | Inscriptions ouvertes |
+| BTSSIO-SISR-2025 | BTS SIO option SISR - Promotion 2025-2027 | Inscriptions ouvertes |
 
--- Si besoin, mettre à jour :
-UPDATE module SET route = 'admin_formations' WHERE nom LIKE '%formation%';
-```
-
-## Dépannage
-
-### Erreur "Can't get a way to read the property..."
-→ L'entité `Formation.php` n'a pas été mise à jour. Remplacer le fichier.
-
-### Routes manquantes (niveau, type, nsf, rome)
-→ Le contrôleur `FormationController.php` n'a pas été copié complètement.
-
-### Erreur 500 sur /admin/formations
-→ Vérifier les logs : `tail -f var/log/dev.log`
-
-### Tables de référence vides
-→ Exécuter les fixtures : `php bin/console doctrine:fixtures:load --append`
+Les sessions en cours ont ~40% de réalisation simulée.

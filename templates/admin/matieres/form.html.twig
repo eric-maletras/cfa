@@ -1,0 +1,117 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_matiere_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la liste
+                </a>
+            </div>
+            <h1 class="dashboard__title">📖 {{ title }}</h1>
+            {% if matiere.id %}
+                <p class="dashboard__subtitle">Modification de la matière {{ matiere.code }}</p>
+            {% else %}
+                <p class="dashboard__subtitle">Créer une nouvelle matière au référentiel</p>
+            {% endif %}
+        </header>
+
+        {# Formulaire #}
+        <div class="section-card">
+            {{ form_start(form, {'attr': {'class': 'form-standard', 'novalidate': 'novalidate'}}) }}
+            
+            <div class="form-grid">
+                <div class="form-group form-group--half">
+                    {{ form_label(form.code) }}
+                    {{ form_widget(form.code) }}
+                    {{ form_errors(form.code) }}
+                    {{ form_help(form.code) }}
+                </div>
+                
+                <div class="form-group form-group--half">
+                    {{ form_label(form.libelle) }}
+                    {{ form_widget(form.libelle) }}
+                    {{ form_errors(form.libelle) }}
+                    {{ form_help(form.libelle) }}
+                </div>
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.description) }}
+                {{ form_widget(form.description) }}
+                {{ form_errors(form.description) }}
+                {{ form_help(form.description) }}
+            </div>
+
+            <div class="form-group">
+                <div class="form-check">
+                    {{ form_widget(form.actif) }}
+                    {{ form_label(form.actif) }}
+                </div>
+                {{ form_help(form.actif) }}
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ path('admin_matiere_index') }}" class="btn btn--secondary">
+                    Annuler
+                </a>
+                <button type="submit" class="btn btn--primary">
+                    {{ matiere.id ? 'Enregistrer les modifications' : 'Créer la matière' }}
+                </button>
+            </div>
+            
+            {{ form_end(form) }}
+        </div>
+
+        {# Si modification, afficher les formations utilisant cette matière #}
+        {% if matiere.id and matiere.nombreFormations > 0 %}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Formations utilisant cette matière</h2>
+            </div>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Formation</th>
+                            <th>Volume horaire</th>
+                            <th>Coefficient</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fm in matiere.formationMatieres %}
+                        <tr>
+                            <td>
+                                <a href="{{ path('admin_formation_matiere_index', {formationId: fm.formation.id}) }}">
+                                    {{ fm.formation.intituleCourt ?? fm.formation.intitule }}
+                                </a>
+                            </td>
+                            <td>{{ fm.volumeHeuresReferentiel }}h</td>
+                            <td>{{ fm.coefficient ?? '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+// Forcer le code en majuscules
+document.querySelector('[name*="[code]"]')?.addEventListener('input', function(e) {
+    this.value = this.value.toUpperCase().replace(/[^A-Z0-9\-]/g, '');
+});
+</script>
+{% endblock %}

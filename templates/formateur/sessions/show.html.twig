@@ -1,0 +1,237 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ session.code }} - Détails{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_formateur_sessions_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour aux sessions
+                </a>
+            </div>
+            <h1 class="dashboard__title">
+                {{ session.code }}
+                {% if isResponsable %}
+                    <span class="badge badge--warning">👑 Responsable pédagogique</span>
+                {% endif %}
+            </h1>
+            <p class="dashboard__subtitle">{{ session.libelle }}</p>
+        </header>
+
+        {# Informations de la session #}
+        <div class="section-card" style="margin-bottom: var(--spacing-xl);">
+            <div class="section-card__header">
+                <h2>📋 Informations de la session</h2>
+                {% set statutClass = {
+                    'planifiee': 'secondary',
+                    'inscriptions_ouvertes': 'info',
+                    'en_cours': 'success',
+                    'terminee': 'dark',
+                    'annulee': 'danger'
+                } %}
+                <span class="status status--{{ statutClass[session.statut] ?? 'secondary' }}">
+                    {{ session.statutLibelle }}
+                </span>
+            </div>
+            
+            <div class="section-card__content">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-item__label">Formation</span>
+                        <span class="info-item__value">
+                            {% if session.formation %}
+                                {{ session.formation.intitule }}
+                            {% else %}
+                                <span class="text-muted">Non définie</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-item__label">Période</span>
+                        <span class="info-item__value">
+                            {{ session.dateDebut|date('d/m/Y') }} → {{ session.dateFin|date('d/m/Y') }}
+                            <br>
+                            <small class="text-muted">({{ session.dureeMois }} mois)</small>
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-item__label">Modalité</span>
+                        <span class="info-item__value">{{ session.modaliteLibelle }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-item__label">Lieu</span>
+                        <span class="info-item__value">
+                            {{ session.lieu ?? 'Non précisé' }}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-item__label">Effectif</span>
+                        <span class="info-item__value">
+                            <strong>{{ session.nombreInscrits }}</strong> apprenti(s) inscrit(s)
+                            {% if session.effectifMax %}
+                                / {{ session.effectifMax }} places
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-item__label">Responsable pédagogique</span>
+                        <span class="info-item__value">
+                            {% if session.responsable %}
+                                {{ session.responsable.nomComplet }}
+                            {% else %}
+                                <span class="text-muted">Non désigné</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Équipe pédagogique #}
+        {% if session.formateurs|length > 0 %}
+            <div class="section-card" style="margin-bottom: var(--spacing-xl);">
+                <div class="section-card__header">
+                    <h2>👥 Équipe pédagogique</h2>
+                    <span class="badge">{{ session.formateurs|length }} formateur(s)</span>
+                </div>
+                
+                <div class="section-card__content">
+                    <ul class="user-list">
+                        {% for formateur in session.formateurs %}
+                            <li class="user-list__item">
+                                <span class="user-list__name">
+                                    {{ formateur.nomComplet }}
+                                    {% if formateur == session.responsable %}
+                                        <span class="badge badge--warning badge--sm">Responsable</span>
+                                    {% endif %}
+                                    {% if formateur == app.user %}
+                                        <span class="badge badge--info badge--sm">Vous</span>
+                                    {% endif %}
+                                </span>
+                                <span class="user-list__email text-muted">{{ formateur.email }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        {% endif %}
+
+        {# Actions rapides #}
+        <div class="form-actions" style="margin-bottom: var(--spacing-xl);">
+            <a href="{{ path('app_formateur_notes_session', {id: session.id}) }}" class="btn btn--primary">
+                📝 Gérer les notes
+            </a>
+            <a href="{{ path('app_formateur_notes_new_session', {sessionId: session.id}) }}" class="btn btn--secondary">
+                ➕ Nouveau devoir
+            </a>
+            <a href="{{ path('app_formateur_notes_moyennes', {id: session.id}) }}" class="btn btn--secondary">
+                📊 Tableau des moyennes
+            </a>
+        </div>
+
+        {# Liste des apprenants #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>🎓 Apprentis inscrits</h2>
+                <span class="badge badge--primary">{{ inscriptions|length }}</span>
+            </div>
+            
+            <div class="section-card__content">
+                {% if inscriptions is empty %}
+                    <div class="empty-state empty-state--compact">
+                        <p>Aucun apprenti inscrit pour le moment.</p>
+                    </div>
+                {% else %}
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Prénom</th>
+                                <th>Email</th>
+                                <th>Date d'inscription</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inscription in inscriptions %}
+                                {% set apprenant = inscription.user %}
+                                <tr>
+                                    <td><strong>{{ apprenant.nom|upper }}</strong></td>
+                                    <td>{{ apprenant.prenom }}</td>
+                                    <td>
+                                        <a href="mailto:{{ apprenant.email }}">{{ apprenant.email }}</a>
+                                    </td>
+                                    <td>
+                                        {{ inscription.dateInscription|date('d/m/Y') }}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+/* Styles additionnels pour cette page */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.info-item {
+    padding: var(--spacing-sm);
+    background: var(--bg-secondary, #f8f9fa);
+    border-radius: var(--radius-sm);
+}
+
+.info-item__label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: var(--spacing-xs);
+}
+
+.info-item__value {
+    display: block;
+    font-weight: 500;
+}
+
+.user-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.user-list__item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--border-color, #dee2e6);
+}
+
+.user-list__item:last-child {
+    border-bottom: none;
+}
+
+.empty-state--compact {
+    padding: var(--spacing-lg);
+    text-align: center;
+}
+
+.empty-state--compact p {
+    margin: 0;
+    color: var(--text-muted);
+}
+</style>
+{% endblock %}

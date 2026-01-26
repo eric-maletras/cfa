@@ -1,0 +1,179 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }} - {{ formation.intituleCourt ?? formation.intitule }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_formation_matiere_index', {formationId: formation.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour aux matières
+                </a>
+            </div>
+            <h1 class="dashboard__title">📚 {{ title }}</h1>
+            <p class="dashboard__subtitle">Formation : {{ formation.intituleCourt ?? formation.intitule }}</p>
+        </header>
+
+        {# Alerte si aucune matière disponible #}
+        {% if matieresDisponibles is defined and matieresDisponibles is empty and not formationMatiere.id %}
+        <div class="alert alert--warning">
+            <strong>Attention :</strong> Toutes les matières actives sont déjà associées à cette formation.
+            <a href="{{ path('admin_matiere_new') }}">Créer une nouvelle matière</a>
+        </div>
+        {% endif %}
+
+        {# Formulaire #}
+        <div class="section-card">
+            {{ form_start(form, {'attr': {'class': 'form-standard', 'novalidate': 'novalidate'}}) }}
+            
+            {% if form.matiere is defined %}
+            <div class="form-group">
+                {{ form_label(form.matiere) }}
+                {{ form_widget(form.matiere) }}
+                {{ form_errors(form.matiere) }}
+                {{ form_help(form.matiere) }}
+            </div>
+            {% else %}
+            {# Mode édition : afficher la matière en lecture seule #}
+            <div class="form-group">
+                <label>Matière</label>
+                <div class="form-static">
+                    <strong>{{ formationMatiere.matiere.code }}</strong> — {{ formationMatiere.matiere.libelle }}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="form-grid">
+                <div class="form-group form-group--third">
+                    {{ form_label(form.volumeHeuresReferentiel) }}
+                    <div class="input-group">
+                        {{ form_widget(form.volumeHeuresReferentiel) }}
+                        <span class="input-group__suffix">heures</span>
+                    </div>
+                    {{ form_errors(form.volumeHeuresReferentiel) }}
+                    {{ form_help(form.volumeHeuresReferentiel) }}
+                </div>
+                
+                <div class="form-group form-group--third">
+                    {{ form_label(form.coefficient) }}
+                    {{ form_widget(form.coefficient) }}
+                    {{ form_errors(form.coefficient) }}
+                    {{ form_help(form.coefficient) }}
+                </div>
+
+                <div class="form-group form-group--third">
+                    {{ form_label(form.ordre) }}
+                    {{ form_widget(form.ordre) }}
+                    {{ form_errors(form.ordre) }}
+                    {{ form_help(form.ordre) }}
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ path('admin_formation_matiere_index', {formationId: formation.id}) }}" class="btn btn--secondary">
+                    Annuler
+                </a>
+                <button type="submit" class="btn btn--primary" {% if matieresDisponibles is defined and matieresDisponibles is empty and not formationMatiere.id %}disabled{% endif %}>
+                    {{ formationMatiere.id ? 'Enregistrer les modifications' : 'Ajouter la matière' }}
+                </button>
+            </div>
+            
+            {{ form_end(form) }}
+        </div>
+
+        {# Aide contextuelle #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>💡 Aide</h2>
+            </div>
+            <div class="help-content">
+                <dl>
+                    <dt>Volume horaire</dt>
+                    <dd>Nombre d'heures prévues au référentiel sur la durée totale de la formation (généralement 2 ans pour un BTS).</dd>
+                    
+                    <dt>Coefficient</dt>
+                    <dd>Coefficient de la matière pour le calcul des moyennes. Laissez vide si non applicable.</dd>
+                    
+                    <dt>Ordre d'affichage</dt>
+                    <dd>Position de la matière dans la liste (0 = première position). Utilisé pour organiser l'affichage.</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block stylesheets_inline %}
+<style>
+.form-static {
+    padding: 0.75rem 1rem;
+    background: var(--bg-light, #f5f5f5);
+    border-radius: 4px;
+    border: 1px solid var(--border-color, #ddd);
+}
+
+.input-group {
+    display: flex;
+    align-items: stretch;
+}
+
+.input-group input {
+    flex: 1;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.input-group__suffix {
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    background: var(--bg-light, #f5f5f5);
+    border: 1px solid var(--border-color, #ddd);
+    border-left: 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.875rem;
+    color: var(--text-muted, #666);
+}
+
+.help-content dl {
+    margin: 0;
+}
+
+.help-content dt {
+    font-weight: 600;
+    margin-top: 1rem;
+}
+
+.help-content dt:first-child {
+    margin-top: 0;
+}
+
+.help-content dd {
+    margin: 0.25rem 0 0 0;
+    color: var(--text-muted, #666);
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+}
+
+.alert--warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+
+.alert a {
+    color: inherit;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,261 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Matières - {{ formation.intituleCourt ?? formation.intitule }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_formation_index', {tab: 'formations'}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour aux formations
+                </a>
+            </div>
+            <h1 class="dashboard__title">📚 {{ formation.intituleCourt ?? formation.intitule }}</h1>
+            <p class="dashboard__subtitle">Matières du référentiel de la formation</p>
+        </header>
+
+        {# Statistiques #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Référentiel des matières</h2>
+                <a href="{{ path('admin_formation_matiere_add', {formationId: formation.id}) }}" class="btn btn--primary">
+                    + Ajouter une matière
+                </a>
+            </div>
+            
+            <div class="stats-row">
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ stats.nbMatieres }}</span>
+                    <span class="stat-item__label">matière{{ stats.nbMatieres > 1 ? 's' : '' }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ stats.totalHeures }}h</span>
+                    <span class="stat-item__label">volume horaire total</span>
+                </div>
+                {% if formation.dureeHeures %}
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ formation.dureeHeures }}h</span>
+                    <span class="stat-item__label">durée formation</span>
+                </div>
+                <div class="stat-item">
+                    {% set diff = formation.dureeHeures - stats.totalHeures %}
+                    <span class="stat-item__value {{ diff < 0 ? 'text-danger' : (diff > 0 ? 'text-warning' : 'text-success') }}">
+                        {{ diff >= 0 ? '+' : '' }}{{ diff }}h
+                    </span>
+                    <span class="stat-item__label">différence</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Liste des matières #}
+        <div class="section-card">
+            {% if formationMatieres is empty %}
+                <div class="empty-state">
+                    <p>Aucune matière n'a été associée à cette formation.</p>
+                    <a href="{{ path('admin_formation_matiere_add', {formationId: formation.id}) }}" class="btn btn--primary">
+                        Ajouter la première matière
+                    </a>
+                </div>
+            {% else %}
+                <div class="table-responsive">
+                    <table class="data-table" id="matieres-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">Ordre</th>
+                                <th>Code</th>
+                                <th>Libellé</th>
+                                <th>Volume horaire</th>
+                                <th>% formation</th>
+                                <th>Coefficient</th>
+                                <th class="actions-col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for fm in formationMatieres %}
+                            <tr data-id="{{ fm.id }}" class="{{ not fm.matiere.actif ? 'row--inactive' : '' }}">
+                                <td class="drag-handle" style="cursor: grab;">
+                                    <span class="badge badge--secondary">{{ fm.ordre }}</span>
+                                </td>
+                                <td>
+                                    <strong>{{ fm.matiere.code }}</strong>
+                                    {% if not fm.matiere.actif %}
+                                        <span class="status status--warning" title="Matière inactive">⚠️</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ path('admin_matiere_show', {id: fm.matiere.id}) }}">
+                                        {{ fm.matiere.libelle }}
+                                    </a>
+                                </td>
+                                <td><strong>{{ fm.volumeHeuresReferentiel }}h</strong></td>
+                                <td>
+                                    {% if stats.totalHeures > 0 %}
+                                        <span class="badge badge--info">
+                                            {{ ((fm.volumeHeuresReferentiel / stats.totalHeures) * 100)|round(1) }}%
+                                        </span>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>{{ fm.coefficient ?? '—' }}</td>
+                                <td class="actions-col">
+                                    <div class="btn-group">
+                                        <a href="{{ path('admin_formation_matiere_edit', {formationId: formation.id, id: fm.id}) }}" 
+                                           class="btn btn--sm btn--secondary" title="Modifier">
+                                            ✏️
+                                        </a>
+                                        <form action="{{ path('admin_formation_matiere_delete', {formationId: formation.id, id: fm.id}) }}" 
+                                              method="post" style="display:inline;"
+                                              onsubmit="return confirm('Retirer la matière {{ fm.matiere.code }} de cette formation ?');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ fm.id) }}">
+                                            <button type="submit" class="btn btn--sm btn--danger" title="Retirer">
+                                                🗑️
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="total-row">
+                                <td colspan="3"><strong>Total</strong></td>
+                                <td><strong>{{ stats.totalHeures }}h</strong></td>
+                                <td><strong>100%</strong></td>
+                                <td>{% if stats.moyenneCoef %}Moy: {{ stats.moyenneCoef }}{% endif %}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                {# Visualisation graphique simple #}
+                <div class="matieres-chart">
+                    <h3>Répartition du volume horaire</h3>
+                    <div class="progress-bar-container">
+                        {% for fm in formationMatieres %}
+                            {% set pct = stats.totalHeures > 0 ? ((fm.volumeHeuresReferentiel / stats.totalHeures) * 100) : 0 %}
+                            <div class="progress-segment" 
+                                 style="width: {{ pct }}%;" 
+                                 title="{{ fm.matiere.code }}: {{ fm.volumeHeuresReferentiel }}h ({{ pct|round(1) }}%)">
+                                {% if pct > 8 %}
+                                    <span>{{ fm.matiere.code }}</span>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="legend">
+                        {% for fm in formationMatieres %}
+                            <span class="legend-item">
+                                <span class="legend-color" style="background: hsl({{ loop.index0 * 40 }}, 70%, 60%);"></span>
+                                {{ fm.matiere.code }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        {# Informations de la formation #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Informations de la formation</h2>
+            </div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-item__label">Intitulé complet</span>
+                    <span class="info-item__value">{{ formation.intitule }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Code RNCP</span>
+                    <span class="info-item__value">{{ formation.codeRncp ?? '—' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Durée</span>
+                    <span class="info-item__value">
+                        {% if formation.dureeMois %}{{ formation.dureeMois }} mois{% endif %}
+                        {% if formation.dureeHeures %} ({{ formation.dureeHeures }}h){% endif %}
+                        {% if not formation.dureeMois and not formation.dureeHeures %}—{% endif %}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Niveau</span>
+                    <span class="info-item__value">{{ formation.niveauQualification ?? '—' }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block stylesheets_inline %}
+<style>
+.progress-bar-container {
+    display: flex;
+    height: 40px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 1rem 0;
+}
+
+.progress-segment {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    min-width: 2px;
+}
+
+.progress-segment:nth-child(1) { background: hsl(0, 70%, 60%); }
+.progress-segment:nth-child(2) { background: hsl(40, 70%, 60%); }
+.progress-segment:nth-child(3) { background: hsl(80, 70%, 60%); }
+.progress-segment:nth-child(4) { background: hsl(120, 70%, 60%); }
+.progress-segment:nth-child(5) { background: hsl(160, 70%, 60%); }
+.progress-segment:nth-child(6) { background: hsl(200, 70%, 60%); }
+.progress-segment:nth-child(7) { background: hsl(240, 70%, 60%); }
+.progress-segment:nth-child(8) { background: hsl(280, 70%, 60%); }
+.progress-segment:nth-child(9) { background: hsl(320, 70%, 60%); }
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+.legend-color:nth-of-type(1) { background: hsl(0, 70%, 60%); }
+
+.matieres-chart {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-color, #ddd);
+}
+
+.total-row {
+    background: var(--bg-light, #f5f5f5);
+}
+</style>
+{% endblock %}

@@ -23,6 +23,7 @@ class ModuleController extends AbstractController
         'admin_absences' => 'admin_absence_index',
         'admin_evaluations' => 'admin_evaluation_index',
         'formateur_notes' => 'app_formateur_notes_index',
+        'formateur_sessions' => 'app_formateur_sessions_index', // NOUVEAU - Module Mes Sessions
         // Ajouter d'autres mappings au fur et à mesure du développement
     ];
 
