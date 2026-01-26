@@ -12,108 +12,103 @@ use Doctrine\Persistence\ObjectManager;
 /**
  * Fixtures pour les sessions de formation
  * 
- * Crée des sessions pour les formations BTS SIO et initialise automatiquement
+ * Crée des sessions pour chaque formation BTS et initialise automatiquement
  * les matières depuis le référentiel de chaque formation.
+ * 
+ * Références créées (utilisées par InscriptionFixtures) :
+ * - session-SIO-SISR-active / session-SIO-SISR-inactive
+ * - session-SIO-SLAM-active / session-SIO-SLAM-inactive
+ * - session-CIEL-IR-active / session-CIEL-IR-inactive
+ * - session-SAM-active / session-SAM-inactive
  */
 class SessionFixtures extends Fixture implements DependentFixtureInterface, FixtureGroupInterface
 {
-    // Références pour les sessions
-    public const SESSION_SIO_SLAM_2024_REF = 'session-sio-slam-2024';
-    public const SESSION_SIO_SISR_2024_REF = 'session-sio-sisr-2024';
-    public const SESSION_SIO_SLAM_2025_REF = 'session-sio-slam-2025';
-    public const SESSION_SIO_SISR_2025_REF = 'session-sio-sisr-2025';
+    // Préfixe pour les références (utilisé par InscriptionFixtures)
+    public const SESSION_PREFIX = 'session-';
+
+    // Mapping BTS → référence formation
+    private const BTS_FORMATIONS = [
+        'SIO-SISR' => FormationFixtures::FORMATION_SIO_SISR_REF,
+        'SIO-SLAM' => FormationFixtures::FORMATION_SIO_SLAM_REF,
+        'CIEL-IR'  => FormationFixtures::FORMATION_CIEL_IR_REF,
+        'SAM'      => FormationFixtures::FORMATION_SAM_REF,
+    ];
+
+    // Couleurs par BTS
+    private const BTS_COLORS = [
+        'SIO-SISR' => '27ae60',
+        'SIO-SLAM' => '3498db',
+        'CIEL-IR'  => '9b59b6',
+        'SAM'      => 'e67e22',
+    ];
 
     public function load(ObjectManager $manager): void
     {
-        $sessions = [
-            // Sessions 2024-2026
-            [
-                'formation_ref' => FormationFixtures::FORMATION_SIO_SLAM_REF,
-                'code' => 'BTSSIO-SLAM-2024',
-                'libelle' => 'BTS SIO option SLAM - Promotion 2024-2026',
-                'dateDebut' => new \DateTime('2024-09-02'),
-                'dateFin' => new \DateTime('2026-07-10'),
-                'statut' => Session::STATUT_EN_COURS,
-                'effectifMin' => 12,
-                'effectifMax' => 30,
-                'lieu' => 'Campus principal',
-                'couleur' => '3498db',
-                'ref' => self::SESSION_SIO_SLAM_2024_REF,
-            ],
-            [
-                'formation_ref' => FormationFixtures::FORMATION_SIO_SISR_REF,
-                'code' => 'BTSSIO-SISR-2024',
-                'libelle' => 'BTS SIO option SISR - Promotion 2024-2026',
-                'dateDebut' => new \DateTime('2024-09-02'),
-                'dateFin' => new \DateTime('2026-07-10'),
-                'statut' => Session::STATUT_EN_COURS,
-                'effectifMin' => 12,
-                'effectifMax' => 30,
-                'lieu' => 'Campus principal',
-                'couleur' => '27ae60',
-                'ref' => self::SESSION_SIO_SISR_2024_REF,
-            ],
-            // Sessions 2025-2027 (planifiées)
-            [
-                'formation_ref' => FormationFixtures::FORMATION_SIO_SLAM_REF,
-                'code' => 'BTSSIO-SLAM-2025',
-                'libelle' => 'BTS SIO option SLAM - Promotion 2025-2027',
-                'dateDebut' => new \DateTime('2025-09-01'),
-                'dateFin' => new \DateTime('2027-07-09'),
-                'statut' => Session::STATUT_INSCRIPTIONS_OUVERTES,
-                'effectifMin' => 12,
-                'effectifMax' => 30,
-                'lieu' => 'Campus principal',
-                'couleur' => '9b59b6',
-                'ref' => self::SESSION_SIO_SLAM_2025_REF,
-            ],
-            [
-                'formation_ref' => FormationFixtures::FORMATION_SIO_SISR_REF,
-                'code' => 'BTSSIO-SISR-2025',
-                'libelle' => 'BTS SIO option SISR - Promotion 2025-2027',
-                'dateDebut' => new \DateTime('2025-09-01'),
-                'dateFin' => new \DateTime('2027-07-09'),
-                'statut' => Session::STATUT_INSCRIPTIONS_OUVERTES,
-                'effectifMin' => 12,
-                'effectifMax' => 30,
-                'lieu' => 'Campus principal',
-                'couleur' => 'e67e22',
-                'ref' => self::SESSION_SIO_SISR_2025_REF,
-            ],
-        ];
-
-        foreach ($sessions as $data) {
+        foreach (self::BTS_FORMATIONS as $btsKey => $formationRef) {
             /** @var Formation $formation */
-            $formation = $this->getReference($data['formation_ref'], Formation::class);
+            $formation = $this->getReference($formationRef, Formation::class);
+            $couleur = self::BTS_COLORS[$btsKey];
+            $codeBase = 'BTS' . str_replace('-', '', $btsKey);
 
-            $session = new Session();
-            $session->setFormation($formation);
-            $session->setCode($data['code']);
-            $session->setLibelle($data['libelle']);
-            $session->setDateDebut($data['dateDebut']);
-            $session->setDateFin($data['dateFin']);
-            $session->setStatut($data['statut']);
-            $session->setEffectifMin($data['effectifMin']);
-            $session->setEffectifMax($data['effectifMax']);
-            $session->setLieu($data['lieu']);
-            $session->setCouleur($data['couleur']);
-            $session->setActif(true);
+            // ============================================
+            // Session ACTIVE (2024-2026) - En cours
+            // ============================================
+            $sessionActive = new Session();
+            $sessionActive->setFormation($formation);
+            $sessionActive->setCode($codeBase . '-2024');
+            $sessionActive->setLibelle($formation->getIntituleCourt() . ' - Promotion 2024-2026');
+            $sessionActive->setDateDebut(new \DateTime('2024-09-02'));
+            $sessionActive->setDateFin(new \DateTime('2026-07-10'));
+            $sessionActive->setStatut(Session::STATUT_EN_COURS);
+            $sessionActive->setEffectifMin(12);
+            $sessionActive->setEffectifMax(30);
+            $sessionActive->setLieu('Campus principal');
+            $sessionActive->setCouleur($couleur);
+            $sessionActive->setActif(true);
 
-            // Initialiser les matières depuis le référentiel de la formation
-            $session->initMatieresFromFormation();
+            // Initialiser les matières depuis le référentiel
+            $sessionActive->initMatieresFromFormation();
 
-            // Simuler quelques heures réalisées pour les sessions en cours
-            if ($data['statut'] === Session::STATUT_EN_COURS) {
-                foreach ($session->getSessionMatieres() as $sm) {
-                    // Simuler environ 40% de réalisation
-                    $planifie = $sm->getVolumeHeuresReferentiel();
-                    $realise = (int) ($planifie * 0.4 * (0.8 + (mt_rand(0, 40) / 100)));
-                    $sm->setVolumeHeuresRealise($realise);
-                }
+            // Simuler ~40% de réalisation pour les sessions en cours
+            foreach ($sessionActive->getSessionMatieres() as $sm) {
+                $planifie = $sm->getVolumeHeuresReferentiel();
+                $realise = (int) ($planifie * 0.4 * (0.8 + (mt_rand(0, 40) / 100)));
+                $sm->setVolumeHeuresRealise($realise);
             }
 
-            $manager->persist($session);
-            $this->addReference($data['ref'], $session);
+            $manager->persist($sessionActive);
+            // Référence attendue par InscriptionFixtures : session-SIO-SISR-active
+            $this->addReference(self::SESSION_PREFIX . $btsKey . '-active', $sessionActive);
+
+            // ============================================
+            // Session INACTIVE (2023-2025) - En cours aussi (2ème année)
+            // ============================================
+            $sessionInactive = new Session();
+            $sessionInactive->setFormation($formation);
+            $sessionInactive->setCode($codeBase . '-2023');
+            $sessionInactive->setLibelle($formation->getIntituleCourt() . ' - Promotion 2023-2025');
+            $sessionInactive->setDateDebut(new \DateTime('2023-09-04'));
+            $sessionInactive->setDateFin(new \DateTime('2025-07-11'));
+            $sessionInactive->setStatut(Session::STATUT_EN_COURS);
+            $sessionInactive->setEffectifMin(12);
+            $sessionInactive->setEffectifMax(30);
+            $sessionInactive->setLieu('Campus principal');
+            $sessionInactive->setCouleur($couleur);
+            $sessionInactive->setActif(true);
+
+            // Initialiser les matières depuis le référentiel
+            $sessionInactive->initMatieresFromFormation();
+
+            // Simuler ~80% de réalisation pour les sessions 2023 (2ème année)
+            foreach ($sessionInactive->getSessionMatieres() as $sm) {
+                $planifie = $sm->getVolumeHeuresReferentiel();
+                $realise = (int) ($planifie * 0.8 * (0.9 + (mt_rand(0, 20) / 100)));
+                $sm->setVolumeHeuresRealise($realise);
+            }
+
+            $manager->persist($sessionInactive);
+            // Référence attendue par InscriptionFixtures : session-SIO-SISR-inactive
+            $this->addReference(self::SESSION_PREFIX . $btsKey . '-inactive', $sessionInactive);
         }
 
         $manager->flush();
