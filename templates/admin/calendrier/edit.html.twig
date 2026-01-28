@@ -1,0 +1,145 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Modifier {{ calendrier.code }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.section-card--danger {
+    border-left: 4px solid #dc3545;
+}
+
+.danger-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.danger-content p {
+    margin: 0;
+    color: var(--text-secondary, #666);
+    flex: 1;
+    min-width: 250px;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container container--narrow">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_calendrier_show', {id: calendrier.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour au calendrier
+                </a>
+            </div>
+            <h1 class="dashboard__title">✏️ Modifier {{ calendrier.code }}</h1>
+            <p class="dashboard__subtitle">{{ calendrier.libelle }}</p>
+        </header>
+
+        {# Formulaire #}
+        <div class="form-container">
+            {{ form_start(form, {'attr': {'class': 'admin-form'}}) }}
+            
+            <div class="form-section">
+                <h3 class="form-section__title">Identification</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form_label(form.code) }}
+                        {{ form_widget(form.code, {'attr': {'class': 'form-control'}}) }}
+                        {{ form_help(form.code) }}
+                        {{ form_errors(form.code) }}
+                    </div>
+                    <div class="form-group">
+                        {{ form_label(form.libelle) }}
+                        {{ form_widget(form.libelle, {'attr': {'class': 'form-control'}}) }}
+                        {{ form_help(form.libelle) }}
+                        {{ form_errors(form.libelle) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section__title">Période</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form_label(form.dateDebut) }}
+                        {{ form_widget(form.dateDebut, {'attr': {'class': 'form-control'}}) }}
+                        {{ form_help(form.dateDebut) }}
+                        {{ form_errors(form.dateDebut) }}
+                    </div>
+                    <div class="form-group">
+                        {{ form_label(form.dateFin) }}
+                        {{ form_widget(form.dateFin, {'attr': {'class': 'form-control'}}) }}
+                        {{ form_help(form.dateFin) }}
+                        {{ form_errors(form.dateFin) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section__title">Horaires par défaut</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form_label(form.heureDebutDefaut) }}
+                        {{ form_widget(form.heureDebutDefaut, {'attr': {'class': 'form-control'}}) }}
+                        {{ form_help(form.heureDebutDefaut) }}
+                        {{ form_errors(form.heureDebutDefaut) }}
+                    </div>
+                    <div class="form-group">
+                        {{ form_label(form.heureFinDefaut) }}
+                        {{ form_widget(form.heureFinDefaut, {'attr': {'class': 'form-control'}}) }}
+                        {{ form_help(form.heureFinDefaut) }}
+                        {{ form_errors(form.heureFinDefaut) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section__title">Statut</h3>
+                <div class="form-check-wrapper">
+                    {{ form_widget(form.actif, {'attr': {'class': 'form-check-input'}}) }}
+                    {{ form_label(form.actif, null, {'label_attr': {'class': 'form-check-label'}}) }}
+                </div>
+                <span class="form-help">{{ form_help(form.actif) }}</span>
+                {{ form_errors(form.actif) }}
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ path('admin_calendrier_show', {id: calendrier.id}) }}" class="btn btn--secondary">
+                    Annuler
+                </a>
+                <button type="submit" class="btn btn--primary">
+                    ✓ Enregistrer les modifications
+                </button>
+            </div>
+
+            {{ form_end(form) }}
+        </div>
+
+        {# Zone de danger #}
+        <div class="section-card section-card--danger">
+            <div class="section-card__header">
+                <h2>⚠️ Zone de danger</h2>
+            </div>
+            <div class="danger-content">
+                <p>
+                    La suppression du calendrier entraînera la suppression de tous les jours fermés associés.
+                    Cette action est irréversible.
+                </p>
+                <form action="{{ path('admin_calendrier_delete', {id: calendrier.id}) }}" 
+                      method="post"
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer le calendrier {{ calendrier.code }} et tous ses jours fermés ?');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete_calendrier_' ~ calendrier.id) }}">
+                    <button type="submit" class="btn btn--danger">
+                        🗑️ Supprimer ce calendrier
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,267 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Jours fermés - {{ calendrier.code }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.filter-form {
+    margin: 0;
+}
+
+.filter-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filter-group label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-muted, #666);
+}
+
+.filter-group select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    min-width: 200px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.table-footer {
+    padding: 1rem 0 0 0;
+    border-top: 1px solid var(--border-color, #e0e0e0);
+    margin-top: 1rem;
+    text-align: right;
+}
+
+.row--weekend {
+    background: #fafafa;
+}
+
+.types-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.type-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--bg-light, #f8f9fa);
+    border-radius: 8px;
+}
+
+.type-card__icone {
+    font-size: 2rem;
+}
+
+.type-card__content {
+    flex: 1;
+}
+
+.type-card__content strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.type-card__content p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted, #666);
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_calendrier_show', {id: calendrier.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour au calendrier
+                </a>
+            </div>
+            <h1 class="dashboard__title">📋 Jours fermés - {{ calendrier.code }}</h1>
+            <p class="dashboard__subtitle">{{ calendrier.libelle }}</p>
+        </header>
+
+        {# Actions et statistiques #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Gestion des jours fermés</h2>
+                <div class="btn-group">
+                    <a href="{{ path('admin_jour_ferme_new', {id: calendrier.id}) }}" class="btn btn--primary">
+                        + Ajouter un jour fermé
+                    </a>
+                    <form action="{{ path('admin_calendrier_import_feries', {id: calendrier.id}) }}" 
+                          method="post" style="display:inline;">
+                        <input type="hidden" name="_token" value="{{ csrf_token('import_feries_' ~ calendrier.id) }}">
+                        <button type="submit" class="btn btn--outline" 
+                                onclick="return confirm('Importer les jours fériés français ?');">
+                            🇫🇷 Importer fériés
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="stats-row">
+                {% for type in types %}
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ countByType[type.value] ?? 0 }}</span>
+                    <span class="stat-item__label">{{ type.icone }} {{ type.libelle }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Filtres #}
+        <div class="section-card">
+            <form method="get" action="{{ path('admin_calendrier_jours_fermes', {id: calendrier.id}) }}" class="filter-form">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="type">Type</label>
+                        <select id="type" name="type">
+                            <option value="">-- Tous les types --</option>
+                            {% for type in types %}
+                                <option value="{{ type.value }}" {{ typeFilter == type.value ? 'selected' }}>
+                                    {{ type.icone }} {{ type.libelle }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="filter-actions">
+                        <button type="submit" class="btn btn--secondary btn--sm">
+                            🔍 Filtrer
+                        </button>
+                        <a href="{{ path('admin_calendrier_jours_fermes', {id: calendrier.id}) }}" class="btn btn--outline btn--sm">
+                            ✕ Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        {# Liste des jours fermés #}
+        <div class="section-card">
+            {% if joursFermes is empty %}
+                <div class="empty-state">
+                    <p>Aucun jour fermé enregistré pour ce calendrier.</p>
+                    <div class="btn-group" style="justify-content: center;">
+                        <a href="{{ path('admin_jour_ferme_new', {id: calendrier.id}) }}" class="btn btn--primary">
+                            Ajouter un jour fermé
+                        </a>
+                        <form action="{{ path('admin_calendrier_import_feries', {id: calendrier.id}) }}" 
+                              method="post" style="display:inline;">
+                            <input type="hidden" name="_token" value="{{ csrf_token('import_feries_' ~ calendrier.id) }}">
+                            <button type="submit" class="btn btn--outline">
+                                🇫🇷 Importer les jours fériés français
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            {% else %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Jour</th>
+                                <th>Libellé</th>
+                                <th>Type</th>
+                                <th class="actions-col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for jour in joursFermes %}
+                            <tr class="{{ jour.weekend ? 'row--weekend' : '' }}">
+                                <td>
+                                    <strong>{{ jour.date|date('d/m/Y') }}</strong>
+                                </td>
+                                <td>
+                                    {{ jour.nomJourSemaine }}
+                                    {% if jour.weekend %}
+                                        <span class="text-muted">(week-end)</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ jour.libelle }}</td>
+                                <td>
+                                    <span class="badge badge--{{ jour.type.badgeClass }}">
+                                        {{ jour.type.icone }} {{ jour.type.libelle }}
+                                    </span>
+                                </td>
+                                <td class="actions-col">
+                                    <div class="btn-group">
+                                        <a href="{{ path('admin_jour_ferme_edit', {id: jour.id}) }}" 
+                                           class="btn btn--sm btn--secondary" title="Modifier">
+                                            ✏️
+                                        </a>
+                                        <form action="{{ path('admin_jour_ferme_delete', {id: jour.id}) }}" 
+                                              method="post" style="display:inline;"
+                                              onsubmit="return confirm('Supprimer le jour fermé du {{ jour.date|date('d/m/Y') }} ?');">
+                                            <input type="hidden" name="_token" 
+                                                   value="{{ csrf_token('delete_jour_ferme_' ~ jour.id) }}">
+                                            <button type="submit" class="btn btn--sm btn--danger" title="Supprimer">
+                                                🗑️
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="table-footer">
+                    <span class="text-muted">{{ joursFermes|length }} jour(s) fermé(s)</span>
+                </div>
+            {% endif %}
+        </div>
+
+        {# Aide contextuelle #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>💡 Types de jours fermés</h2>
+            </div>
+            <div class="types-grid">
+                {% for type in types %}
+                <div class="type-card">
+                    <span class="type-card__icone">{{ type.icone }}</span>
+                    <div class="type-card__content">
+                        <strong>{{ type.libelle }}</strong>
+                        <p>
+                            {% if type.value == 'ferie' %}
+                                Jours fériés nationaux (1er janvier, 14 juillet, etc.)
+                            {% elseif type.value == 'vacances' %}
+                                Périodes de vacances scolaires (Noël, été, etc.)
+                            {% elseif type.value == 'fermeture' %}
+                                Fermetures exceptionnelles du CFA
+                            {% elseif type.value == 'pont' %}
+                                Jours accordés entre un férié et un week-end
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

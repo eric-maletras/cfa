@@ -2,6 +2,8 @@
 
 namespace App\Controller\Admin;
 
+use App\Repository\CalendrierAnneeRepository;
+use App\Repository\JourFermeRepository;
 use App\Repository\SalleRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,16 +22,31 @@ class PlanningController extends AbstractController
      * Sous-dashboard Planning - Hub d'accès aux ressources
      */
     #[Route('', name: 'admin_planning', methods: ['GET'])]
-    public function index(SalleRepository $salleRepository): Response
-    {
-        // Statistiques pour les cartes
+    public function index(
+        SalleRepository $salleRepository,
+        CalendrierAnneeRepository $calendrierRepository,
+        JourFermeRepository $jourFermeRepository
+    ): Response {
+        // Statistiques salles
+        $statsSalles = [
+            'total' => $salleRepository->count([]),
+            'actives' => $salleRepository->count(['actif' => true]),
+            'parType' => $salleRepository->countByType(),
+        ];
+
+        // Statistiques calendrier
+        $calendrierActif = $calendrierRepository->findActif();
+        $statsCalendrier = [
+            'anneeActive' => $calendrierActif?->getCode() ?? 'Aucune',
+            'nbJoursFermes' => $calendrierActif ? $calendrierActif->getNbJoursFermes() : 0,
+            'prochainsFermes' => $calendrierActif 
+                ? $jourFermeRepository->findUpcoming($calendrierActif, 3)
+                : [],
+        ];
+
         $stats = [
-            'salles' => [
-                'total' => $salleRepository->count([]),
-                'actives' => $salleRepository->count(['actif' => true]),
-                'parType' => $salleRepository->countByType(),
-            ],
-            // Futures statistiques pour calendrier, créneaux, etc.
+            'salles' => $statsSalles,
+            'calendrier' => $statsCalendrier,
         ];
 
         // Définition des sous-modules du planning
@@ -43,13 +60,14 @@ class PlanningController extends AbstractController
                 'stats' => $stats['salles']['actives'] . ' salle(s) active(s)',
             ],
             [
-                'nom' => 'Calendrier',
-                'description' => 'Visualiser et gérer le calendrier des sessions',
+                'nom' => 'Calendrier annuel',
+                'description' => 'Gérer les années scolaires et les jours fermés (fériés, vacances, ponts)',
                 'icone' => 'calendar',
-                'route' => null, // À implémenter
+                'route' => 'admin_calendrier_index',
                 'couleur' => 'secondary',
-                'stats' => 'Prochainement',
-                'disabled' => true,
+                'stats' => $calendrierActif 
+                    ? sprintf('%s - %d jour(s) fermé(s)', $statsCalendrier['anneeActive'], $statsCalendrier['nbJoursFermes'])
+                    : 'Aucun calendrier actif',
             ],
             [
                 'nom' => 'Créneaux horaires',
@@ -74,6 +92,7 @@ class PlanningController extends AbstractController
         return $this->render('admin/planning/index.html.twig', [
             'sousModules' => $sousModules,
             'stats' => $stats,
+            'calendrierActif' => $calendrierActif,
         ]);
     }
 }

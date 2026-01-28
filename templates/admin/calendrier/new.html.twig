@@ -1,0 +1,135 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouveau calendrier{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.help-content ul {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.help-content li {
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary, #666);
+}
+
+.help-content li:last-child {
+    margin-bottom: 0;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container container--narrow">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_calendrier_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour aux calendriers
+                </a>
+            </div>
+            <h1 class="dashboard__title">📅 Nouveau calendrier</h1>
+            <p class="dashboard__subtitle">Créer une nouvelle année scolaire</p>
+        </header>
+
+        {# Formulaire #}
+        <div class="form-container">
+            {{ form_start(form, {'attr': {'class': 'admin-form'}}) }}
+            
+            <div class="form-section">
+                <h3 class="form-section__title">Identification</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form_label(form.code) }}
+                        {{ form_widget(form.code, {'attr': {'class': 'form-control'}}) }}
+                        {{ form_help(form.code) }}
+                        {{ form_errors(form.code) }}
+                    </div>
+                    <div class="form-group">
+                        {{ form_label(form.libelle) }}
+                        {{ form_widget(form.libelle, {'attr': {'class': 'form-control'}}) }}
+                        {{ form_help(form.libelle) }}
+                        {{ form_errors(form.libelle) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section__title">Période</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form_label(form.dateDebut) }}
+                        {{ form_widget(form.dateDebut, {'attr': {'class': 'form-control'}}) }}
+                        {{ form_help(form.dateDebut) }}
+                        {{ form_errors(form.dateDebut) }}
+                    </div>
+                    <div class="form-group">
+                        {{ form_label(form.dateFin) }}
+                        {{ form_widget(form.dateFin, {'attr': {'class': 'form-control'}}) }}
+                        {{ form_help(form.dateFin) }}
+                        {{ form_errors(form.dateFin) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section__title">Horaires par défaut</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form_label(form.heureDebutDefaut) }}
+                        {{ form_widget(form.heureDebutDefaut, {'attr': {'class': 'form-control'}}) }}
+                        {{ form_help(form.heureDebutDefaut) }}
+                        {{ form_errors(form.heureDebutDefaut) }}
+                    </div>
+                    <div class="form-group">
+                        {{ form_label(form.heureFinDefaut) }}
+                        {{ form_widget(form.heureFinDefaut, {'attr': {'class': 'form-control'}}) }}
+                        {{ form_help(form.heureFinDefaut) }}
+                        {{ form_errors(form.heureFinDefaut) }}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3 class="form-section__title">Statut</h3>
+                <div class="form-check-wrapper">
+                    {{ form_widget(form.actif, {'attr': {'class': 'form-check-input'}}) }}
+                    {{ form_label(form.actif, null, {'label_attr': {'class': 'form-check-label'}}) }}
+                </div>
+                <span class="form-help">{{ form_help(form.actif) }}</span>
+                {{ form_errors(form.actif) }}
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ path('admin_calendrier_index') }}" class="btn btn--secondary">
+                    Annuler
+                </a>
+                <button type="submit" class="btn btn--primary">
+                    ✓ Créer le calendrier
+                </button>
+            </div>
+
+            {{ form_end(form) }}
+        </div>
+
+        {# Aide #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>💡 Conseils</h2>
+            </div>
+            <div class="help-content">
+                <ul>
+                    <li>Le <strong>code</strong> doit être au format AAAA-AAAA (ex: 2025-2026)</li>
+                    <li>La période standard d'une année scolaire va du 1er septembre au 31 août</li>
+                    <li>Les horaires par défaut servent de base pour la planification des cours</li>
+                    <li>Un seul calendrier peut être actif à la fois</li>
+                    <li>Après création, vous pourrez importer les jours fériés français automatiquement</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

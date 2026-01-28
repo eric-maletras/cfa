@@ -1,0 +1,172 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Calendriers annuels{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.table-footer {
+    padding: 1rem 0 0 0;
+    border-top: 1px solid var(--border-color, #e0e0e0);
+    margin-top: 1rem;
+    text-align: right;
+}
+
+.help-content dl {
+    margin: 1rem 0 0 0;
+}
+
+.help-content dt {
+    font-weight: 600;
+    margin-top: 1rem;
+}
+
+.help-content dt:first-of-type {
+    margin-top: 0;
+}
+
+.help-content dd {
+    margin: 0.25rem 0 0 0;
+    color: var(--text-muted, #666);
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_planning') }}" class="btn btn--secondary btn--sm">
+                    ← Retour au planning
+                </a>
+            </div>
+            <h1 class="dashboard__title">📅 Calendriers annuels</h1>
+            <p class="dashboard__subtitle">Gestion des années scolaires et périodes de formation</p>
+        </header>
+
+        {# Actions #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Calendriers</h2>
+                <a href="{{ path('admin_calendrier_new') }}" class="btn btn--primary">
+                    + Nouveau calendrier
+                </a>
+            </div>
+
+            {% if calendriers is empty %}
+                <div class="empty-state">
+                    <p>Aucun calendrier configuré.</p>
+                    <a href="{{ path('admin_calendrier_new') }}" class="btn btn--primary">
+                        Créer un calendrier
+                    </a>
+                </div>
+            {% else %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Libellé</th>
+                                <th>Période</th>
+                                <th>Horaires par défaut</th>
+                                <th>Jours fermés</th>
+                                <th>Statut</th>
+                                <th class="actions-col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for calendrier in calendriers %}
+                            <tr class="{{ not calendrier.actif ? 'row--inactive' : '' }}">
+                                <td><strong>{{ calendrier.code }}</strong></td>
+                                <td>{{ calendrier.libelle }}</td>
+                                <td>
+                                    {{ calendrier.dateDebut|date('d/m/Y') }}
+                                    →
+                                    {{ calendrier.dateFin|date('d/m/Y') }}
+                                </td>
+                                <td>
+                                    {{ calendrier.heureDebutDefaut|date('H:i') }}
+                                    -
+                                    {{ calendrier.heureFinDefaut|date('H:i') }}
+                                </td>
+                                <td>
+                                    <span class="badge badge--info">
+                                        {{ calendrier.nbJoursFermes }} jour(s)
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if calendrier.actif %}
+                                        <span class="status status--success">Actif</span>
+                                    {% else %}
+                                        <span class="status status--danger">Inactif</span>
+                                    {% endif %}
+                                </td>
+                                <td class="actions-col">
+                                    <div class="btn-group">
+                                        <a href="{{ path('admin_calendrier_show', {id: calendrier.id}) }}" 
+                                           class="btn btn--sm btn--outline" title="Voir">
+                                            👁️
+                                        </a>
+                                        <a href="{{ path('admin_calendrier_edit', {id: calendrier.id}) }}" 
+                                           class="btn btn--sm btn--secondary" title="Modifier">
+                                            ✏️
+                                        </a>
+                                        <form action="{{ path('admin_calendrier_toggle', {id: calendrier.id}) }}" 
+                                              method="post" style="display:inline;">
+                                            <input type="hidden" name="_token" 
+                                                   value="{{ csrf_token('toggle_calendrier_' ~ calendrier.id) }}">
+                                            <button type="submit" class="btn btn--sm btn--outline"
+                                                    title="{{ calendrier.actif ? 'Désactiver' : 'Activer' }}">
+                                                {{ calendrier.actif ? '🔒' : '🔓' }}
+                                            </button>
+                                        </form>
+                                        <form action="{{ path('admin_calendrier_delete', {id: calendrier.id}) }}" 
+                                              method="post" style="display:inline;"
+                                              onsubmit="return confirm('Supprimer le calendrier {{ calendrier.code }} et tous ses jours fermés ?');">
+                                            <input type="hidden" name="_token" 
+                                                   value="{{ csrf_token('delete_calendrier_' ~ calendrier.id) }}">
+                                            <button type="submit" class="btn btn--sm btn--danger" title="Supprimer">
+                                                🗑️
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="table-footer">
+                    <span class="text-muted">{{ calendriers|length }} calendrier(s)</span>
+                </div>
+            {% endif %}
+        </div>
+
+        {# Aide contextuelle #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>💡 À propos des calendriers</h2>
+            </div>
+            <div class="help-content">
+                <p>
+                    Un <strong>calendrier annuel</strong> représente une année scolaire complète avec ses 
+                    jours fermés (fériés, vacances, ponts, fermetures exceptionnelles).
+                </p>
+                <dl>
+                    <dt>Un seul calendrier actif</dt>
+                    <dd>Seul le calendrier actif est utilisé pour les planifications. Activer un calendrier désactive automatiquement les autres.</dd>
+                    
+                    <dt>Jours fermés</dt>
+                    <dd>Vous pouvez importer automatiquement les jours fériés français et ajouter manuellement les vacances et fermetures.</dd>
+                    
+                    <dt>Horaires par défaut</dt>
+                    <dd>Ces horaires servent de base pour la planification des cours.</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

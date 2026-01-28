@@ -1,0 +1,426 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ calendrier.code }} - Calendrier{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.calendrier-nav {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.calendrier-grille {
+    margin-top: 1rem;
+}
+
+.calendrier-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 2px;
+}
+
+.calendrier-jour-header {
+    padding: 0.5rem;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.85rem;
+    background: var(--bg-light, #f8f9fa);
+    color: var(--text-primary, #333);
+}
+
+.calendrier-jour-header--weekend {
+    color: var(--text-muted, #999);
+}
+
+.calendrier-semaine {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.calendrier-jour {
+    min-height: 70px;
+    padding: 0.5rem;
+    background: var(--color-white, #fff);
+    border: 1px solid var(--border-color, #e0e0e0);
+    position: relative;
+    transition: all 0.2s;
+}
+
+.calendrier-jour:hover {
+    border-color: var(--primary-color, #4a90a4);
+}
+
+.calendrier-jour--vide {
+    background: var(--bg-light, #f8f9fa);
+    border-color: transparent;
+}
+
+.calendrier-jour--weekend {
+    background: #f5f5f5;
+}
+
+.calendrier-jour--hors-periode {
+    opacity: 0.4;
+}
+
+.calendrier-jour--aujourdhui {
+    border: 2px solid var(--primary-color, #4a90a4);
+    background: rgba(74, 144, 164, 0.05);
+}
+
+.calendrier-jour--ferme.calendrier-jour--ferie {
+    background: #ffebee;
+    border-left: 3px solid #dc3545;
+}
+
+.calendrier-jour--ferme.calendrier-jour--vacances {
+    background: #e3f2fd;
+    border-left: 3px solid #0d6efd;
+}
+
+.calendrier-jour--ferme.calendrier-jour--fermeture {
+    background: #fff3e0;
+    border-left: 3px solid #fd7e14;
+}
+
+.calendrier-jour--ferme.calendrier-jour--pont {
+    background: #f5f5f5;
+    border-left: 3px solid #6c757d;
+}
+
+.calendrier-jour__numero {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.calendrier-jour__libelle {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-secondary, #666);
+    margin-top: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.calendrier-legende {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.legende-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.legende-couleur {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.legende-couleur--ferie {
+    background: #ffebee;
+    border-left: 3px solid #dc3545;
+}
+
+.legende-couleur--vacances {
+    background: #e3f2fd;
+    border-left: 3px solid #0d6efd;
+}
+
+.legende-couleur--fermeture {
+    background: #fff3e0;
+    border-left: 3px solid #fd7e14;
+}
+
+.legende-couleur--pont {
+    background: #f5f5f5;
+    border-left: 3px solid #6c757d;
+}
+
+.legende-couleur--weekend {
+    background: #f5f5f5;
+}
+
+.prochains-fermes {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.prochain-ferme {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color, #e0e0e0);
+}
+
+.prochain-ferme:last-child {
+    border-bottom: none;
+}
+
+.prochain-ferme__icone {
+    font-size: 1.25rem;
+}
+
+.prochain-ferme__date {
+    font-weight: 600;
+    min-width: 90px;
+}
+
+.prochain-ferme__jour {
+    color: var(--text-muted, #999);
+    font-size: 0.85rem;
+    min-width: 80px;
+}
+
+.prochain-ferme__libelle {
+    flex: 1;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.info-item__label {
+    font-size: 0.85rem;
+    color: var(--text-muted, #666);
+}
+
+.info-item__value {
+    font-weight: 500;
+}
+
+.stat-item--highlight {
+    border-left: 3px solid var(--primary-color, #4a90a4);
+    padding-left: 1rem;
+}
+
+@media (max-width: 768px) {
+    .calendrier-nav {
+        flex-direction: column;
+    }
+    
+    .calendrier-jour {
+        min-height: 50px;
+        padding: 0.25rem;
+    }
+    
+    .calendrier-jour__libelle {
+        display: none;
+    }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_calendrier_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour aux calendriers
+                </a>
+            </div>
+            <h1 class="dashboard__title">📅 {{ calendrier.libelle }}</h1>
+            <p class="dashboard__subtitle">
+                Du {{ calendrier.dateDebut|date('d/m/Y') }} au {{ calendrier.dateFin|date('d/m/Y') }}
+                {% if calendrier.actif %}
+                    <span class="status status--success">Actif</span>
+                {% endif %}
+            </p>
+        </header>
+
+        {# Actions et statistiques #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Vue d'ensemble</h2>
+                <div class="btn-group">
+                    <a href="{{ path('admin_calendrier_edit', {id: calendrier.id}) }}" class="btn btn--secondary btn--sm">
+                        ✏️ Modifier
+                    </a>
+                    <a href="{{ path('admin_calendrier_jours_fermes', {id: calendrier.id}) }}" class="btn btn--primary btn--sm">
+                        📋 Gérer les jours fermés
+                    </a>
+                    <form action="{{ path('admin_calendrier_import_feries', {id: calendrier.id}) }}" 
+                          method="post" style="display:inline;">
+                        <input type="hidden" name="_token" value="{{ csrf_token('import_feries_' ~ calendrier.id) }}">
+                        <button type="submit" class="btn btn--outline btn--sm" 
+                                onclick="return confirm('Importer les jours fériés français pour {{ calendrier.anneesCouvertes|join(' et ') }} ?');">
+                            🇫🇷 Importer fériés France
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="stats-row">
+                {% for type in types %}
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ countByType[type.value] ?? 0 }}</span>
+                    <span class="stat-item__label">{{ type.icone }} {{ type.libelle }}</span>
+                </div>
+                {% endfor %}
+                <div class="stat-item stat-item--highlight">
+                    <span class="stat-item__value">{{ calendrier.nbJoursFermes }}</span>
+                    <span class="stat-item__label">Total jours fermés</span>
+                </div>
+            </div>
+        </div>
+
+        {# Vue calendrier mensuelle #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>{{ calendrierData.nomMois }} {{ calendrierData.annee }}</h2>
+                <div class="calendrier-nav">
+                    <a href="{{ path('admin_calendrier_show', {
+                        id: calendrier.id,
+                        mois: calendrierData.navigation.precedent.mois,
+                        annee: calendrierData.navigation.precedent.annee
+                    }) }}" class="btn btn--outline btn--sm">
+                        ← Mois précédent
+                    </a>
+                    <a href="{{ path('admin_calendrier_show', {id: calendrier.id}) }}" class="btn btn--outline btn--sm">
+                        Aujourd'hui
+                    </a>
+                    <a href="{{ path('admin_calendrier_show', {
+                        id: calendrier.id,
+                        mois: calendrierData.navigation.suivant.mois,
+                        annee: calendrierData.navigation.suivant.annee
+                    }) }}" class="btn btn--outline btn--sm">
+                        Mois suivant →
+                    </a>
+                </div>
+            </div>
+
+            <div class="calendrier-grille">
+                {# En-têtes des jours #}
+                <div class="calendrier-header">
+                    <div class="calendrier-jour-header">Lun</div>
+                    <div class="calendrier-jour-header">Mar</div>
+                    <div class="calendrier-jour-header">Mer</div>
+                    <div class="calendrier-jour-header">Jeu</div>
+                    <div class="calendrier-jour-header">Ven</div>
+                    <div class="calendrier-jour-header calendrier-jour-header--weekend">Sam</div>
+                    <div class="calendrier-jour-header calendrier-jour-header--weekend">Dim</div>
+                </div>
+
+                {# Semaines #}
+                {% for semaine in calendrierData.semaines %}
+                <div class="calendrier-semaine">
+                    {% for jour in semaine %}
+                        {% if jour is null %}
+                            <div class="calendrier-jour calendrier-jour--vide"></div>
+                        {% else %}
+                            <div class="calendrier-jour 
+                                {{ jour.estWeekend ? 'calendrier-jour--weekend' : '' }}
+                                {{ jour.estAujourdHui ? 'calendrier-jour--aujourdhui' : '' }}
+                                {{ not jour.estDansPeriode ? 'calendrier-jour--hors-periode' : '' }}
+                                {{ jour.jourFerme ? 'calendrier-jour--ferme calendrier-jour--' ~ jour.jourFerme.type.value : '' }}">
+                                <span class="calendrier-jour__numero">{{ jour.jour }}</span>
+                                {% if jour.jourFerme %}
+                                    <span class="calendrier-jour__libelle" title="{{ jour.jourFerme.libelle }}">
+                                        {{ jour.jourFerme.type.icone }} {{ jour.jourFerme.libelle|length > 15 ? jour.jourFerme.libelle[:15] ~ '...' : jour.jourFerme.libelle }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+
+            {# Légende #}
+            <div class="calendrier-legende">
+                <span class="legende-item">
+                    <span class="legende-couleur legende-couleur--ferie"></span>
+                    Jour férié
+                </span>
+                <span class="legende-item">
+                    <span class="legende-couleur legende-couleur--vacances"></span>
+                    Vacances
+                </span>
+                <span class="legende-item">
+                    <span class="legende-couleur legende-couleur--fermeture"></span>
+                    Fermeture
+                </span>
+                <span class="legende-item">
+                    <span class="legende-couleur legende-couleur--pont"></span>
+                    Pont
+                </span>
+                <span class="legende-item">
+                    <span class="legende-couleur legende-couleur--weekend"></span>
+                    Week-end
+                </span>
+            </div>
+        </div>
+
+        {# Prochains jours fermés #}
+        {% if prochainsFermes is not empty %}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>📍 Prochains jours fermés</h2>
+            </div>
+            <ul class="prochains-fermes">
+                {% for jour in prochainsFermes %}
+                <li class="prochain-ferme">
+                    <span class="prochain-ferme__icone">{{ jour.type.icone }}</span>
+                    <span class="prochain-ferme__date">{{ jour.date|date('d/m/Y') }}</span>
+                    <span class="prochain-ferme__jour">({{ jour.nomJourSemaine }})</span>
+                    <span class="prochain-ferme__libelle">{{ jour.libelle }}</span>
+                    <span class="badge badge--{{ jour.type.badgeClass }}">{{ jour.type.libelle }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {# Informations détaillées #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>ℹ️ Informations</h2>
+            </div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-item__label">Horaires par défaut</span>
+                    <span class="info-item__value">
+                        {{ calendrier.heureDebutDefaut|date('H:i') }} - {{ calendrier.heureFinDefaut|date('H:i') }}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Années civiles couvertes</span>
+                    <span class="info-item__value">{{ calendrier.anneesCouvertes|join(', ') }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Créé le</span>
+                    <span class="info-item__value">{{ calendrier.createdAt|date('d/m/Y H:i') }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Modifié le</span>
+                    <span class="info-item__value">{{ calendrier.updatedAt|date('d/m/Y H:i') }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

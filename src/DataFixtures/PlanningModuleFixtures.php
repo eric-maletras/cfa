@@ -25,7 +25,7 @@ class PlanningModuleFixtures extends Fixture implements DependentFixtureInterfac
         $modulePlanning = new Module();
         $modulePlanning->setNom('Planning & Ressources');
         $modulePlanning->setDescription('Gérer les salles, calendriers et ressources pédagogiques');
-        $modulePlanning->setIcone('calendar-days');
+        $modulePlanning->setIcone('calendar');
         $modulePlanning->setRoute('admin_planning');
         $modulePlanning->setCouleur('primary');
         $modulePlanning->setOrdre(6); // Après Statistiques (ordre 5)

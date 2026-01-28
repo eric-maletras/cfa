@@ -1,0 +1,96 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouveau jour fermé - {{ calendrier.code }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.help-content ul {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.help-content li {
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary, #666);
+}
+
+.help-content li:last-child {
+    margin-bottom: 0;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container container--narrow">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_calendrier_jours_fermes', {id: calendrier.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour aux jours fermés
+                </a>
+            </div>
+            <h1 class="dashboard__title">➕ Nouveau jour fermé</h1>
+            <p class="dashboard__subtitle">Calendrier : {{ calendrier.libelle }}</p>
+        </header>
+
+        {# Formulaire #}
+        <div class="form-container form-container--compact">
+            {{ form_start(form, {'attr': {'class': 'admin-form'}}) }}
+            
+            <div class="form-section">
+                <div class="form-group">
+                    {{ form_label(form.date) }}
+                    {{ form_widget(form.date, {'attr': {'class': 'form-control', 'min': calendrier.dateDebut|date('Y-m-d'), 'max': calendrier.dateFin|date('Y-m-d')}}) }}
+                    <span class="form-help">
+                        La date doit être comprise entre le {{ calendrier.dateDebut|date('d/m/Y') }} 
+                        et le {{ calendrier.dateFin|date('d/m/Y') }}.
+                    </span>
+                    {{ form_errors(form.date) }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form_label(form.libelle) }}
+                    {{ form_widget(form.libelle, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_help(form.libelle) }}
+                    {{ form_errors(form.libelle) }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form_label(form.type) }}
+                    {{ form_widget(form.type, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_help(form.type) }}
+                    {{ form_errors(form.type) }}
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ path('admin_calendrier_jours_fermes', {id: calendrier.id}) }}" class="btn btn--secondary">
+                    Annuler
+                </a>
+                <button type="submit" class="btn btn--primary">
+                    ✓ Ajouter le jour fermé
+                </button>
+            </div>
+
+            {{ form_end(form) }}
+        </div>
+
+        {# Aide #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>💡 Conseils</h2>
+            </div>
+            <div class="help-content">
+                <ul>
+                    <li><strong>Jour férié</strong> : Jours fériés nationaux (utilisez plutôt l'import automatique)</li>
+                    <li><strong>Vacances</strong> : Périodes de vacances scolaires</li>
+                    <li><strong>Fermeture</strong> : Fermetures exceptionnelles du CFA</li>
+                    <li><strong>Pont</strong> : Jours accordés entre un férié et un week-end</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
