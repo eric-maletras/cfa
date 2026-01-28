@@ -22,8 +22,10 @@ class ModuleController extends AbstractController
         'admin_users' => 'admin_user_index',
         'admin_absences' => 'admin_absence_index',
         'admin_evaluations' => 'admin_evaluation_index',
+        'admin_planning' => 'admin_planning',           // Module Planning & Ressources
+        'admin_salle_index' => 'admin_salle_index',     // Gestion des salles
         'formateur_notes' => 'app_formateur_notes_index',
-        'formateur_sessions' => 'app_formateur_sessions_index', // NOUVEAU - Module Mes Sessions
+        'formateur_sessions' => 'app_formateur_sessions_index',
         // Ajouter d'autres mappings au fur et à mesure du développement
     ];
 

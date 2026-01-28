@@ -1,0 +1,190 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Planning & Ressources{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_dashboard') }}" class="btn btn--secondary btn--sm">
+                    ← Retour au tableau de bord
+                </a>
+            </div>
+            <h1 class="dashboard__title">📅 Planning & Ressources</h1>
+            <p class="dashboard__subtitle">Gestion des salles, créneaux et planification</p>
+        </header>
+
+        {# Statistiques globales #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Vue d'ensemble</h2>
+            </div>
+            
+            <div class="stats-row">
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ stats.salles.actives }}</span>
+                    <span class="stat-item__label">salles actives</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ stats.salles.parType['labo_info'] ?? 0 }}</span>
+                    <span class="stat-item__label">labos informatique</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ stats.salles.parType['salle_cours'] ?? 0 }}</span>
+                    <span class="stat-item__label">salles de cours</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ stats.salles.parType['virtuel'] ?? 0 }}</span>
+                    <span class="stat-item__label">salle(s) virtuelle(s)</span>
+                </div>
+            </div>
+        </div>
+
+        {# Cartes des sous-modules #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Modules</h2>
+            </div>
+            
+            <div class="modules-grid">
+                {% for module in sousModules %}
+                <div class="module-card {{ module.disabled|default(false) ? 'module-card--disabled' : '' }}">
+                    <div class="module-card__icon">
+                        {{ module.icone }}
+                    </div>
+                    <div class="module-card__content">
+                        <h3 class="module-card__title">{{ module.nom }}</h3>
+                        <p class="module-card__description">{{ module.description }}</p>
+                        <span class="module-card__stats">{{ module.stats }}</span>
+                    </div>
+                    {% if module.route and not module.disabled|default(false) %}
+                        <a href="{{ path(module.route) }}" class="btn btn--primary btn--sm">
+                            Accéder →
+                        </a>
+                    {% else %}
+                        <span class="btn btn--secondary btn--sm btn--disabled">
+                            🔒 Bientôt
+                        </span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Aide contextuelle #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>💡 À propos de ce module</h2>
+            </div>
+            <div class="help-content">
+                <p>
+                    Le module <strong>Planning & Ressources</strong> vous permet de gérer l'ensemble des ressources 
+                    liées à la planification des cours : salles, créneaux horaires, calendriers et réservations.
+                </p>
+                <dl>
+                    <dt>Gestion des salles</dt>
+                    <dd>Créez et configurez les salles de cours, laboratoires et espaces virtuels.</dd>
+                    
+                    <dt>Calendrier</dt>
+                    <dd><em>(Prochainement)</em> Visualisez l'emploi du temps global du CFA.</dd>
+                    
+                    <dt>Créneaux horaires</dt>
+                    <dd><em>(Prochainement)</em> Configurez les plages horaires de formation.</dd>
+                    
+                    <dt>Réservations</dt>
+                    <dd><em>(Prochainement)</em> Gérez la réservation des salles par les formateurs.</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block stylesheets_inline %}
+<style>
+.modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.module-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--bg-light, #f8f9fa);
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-color, #4a90a4);
+}
+
+.module-card--disabled {
+    opacity: 0.6;
+    border-left-color: var(--text-muted, #999);
+}
+
+.module-card__icon {
+    font-size: 2rem;
+}
+
+.module-card__content {
+    flex: 1;
+}
+
+.module-card__title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.module-card__description {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: var(--text-muted, #666);
+}
+
+.module-card__stats {
+    font-size: 0.8rem;
+    color: var(--primary-color, #4a90a4);
+    font-weight: 500;
+}
+
+.module-card--disabled .module-card__stats {
+    color: var(--text-muted, #999);
+}
+
+.btn--disabled {
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.help-content dl {
+    margin: 1rem 0 0 0;
+}
+
+.help-content dt {
+    font-weight: 600;
+    margin-top: 1rem;
+}
+
+.help-content dt:first-of-type {
+    margin-top: 0;
+}
+
+.help-content dd {
+    margin: 0.25rem 0 0 0;
+    color: var(--text-muted, #666);
+}
+
+.help-content dd em {
+    color: #999;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}

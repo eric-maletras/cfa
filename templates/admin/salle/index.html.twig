@@ -1,0 +1,229 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gestion des salles{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_planning') }}" class="btn btn--secondary btn--sm">
+                    ← Retour au planning
+                </a>
+            </div>
+            <h1 class="dashboard__title">🚪 Gestion des salles</h1>
+            <p class="dashboard__subtitle">Salles de cours, laboratoires et espaces virtuels</p>
+        </header>
+
+        {# Statistiques par type #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Salles</h2>
+                <a href="{{ path('admin_salle_new') }}" class="btn btn--primary">
+                    + Nouvelle salle
+                </a>
+            </div>
+            
+            <div class="stats-row">
+                {% for type in types %}
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ countByType[type.value] ?? 0 }}</span>
+                    <span class="stat-item__label">{{ type.libelle }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Filtres #}
+        <div class="section-card">
+            <form method="get" action="{{ path('admin_salle_index') }}" class="filter-form">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="search">Recherche</label>
+                        <input type="text" id="search" name="search" 
+                               value="{{ filters.search }}" placeholder="Code ou libellé...">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="type">Type</label>
+                        <select id="type" name="type">
+                            <option value="">-- Tous les types --</option>
+                            {% for type in types %}
+                                <option value="{{ type.value }}" {{ filters.type == type.value ? 'selected' }}>
+                                    {{ type.libelle }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="actif">Statut</label>
+                        <select id="actif" name="actif">
+                            <option value="">-- Tous --</option>
+                            <option value="1" {{ filters.actif == '1' ? 'selected' }}>Actives</option>
+                            <option value="0" {{ filters.actif == '0' ? 'selected' }}>Inactives</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-actions">
+                        <button type="submit" class="btn btn--secondary btn--sm">
+                            🔍 Filtrer
+                        </button>
+                        <a href="{{ path('admin_salle_index') }}" class="btn btn--outline btn--sm">
+                            ✕ Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        {# Liste des salles #}
+        <div class="section-card">
+            {% if salles is empty %}
+                <div class="empty-state">
+                    <p>Aucune salle trouvée.</p>
+                    {% if filters.search or filters.type or filters.actif %}
+                        <a href="{{ path('admin_salle_index') }}" class="btn btn--secondary">
+                            Réinitialiser les filtres
+                        </a>
+                    {% else %}
+                        <a href="{{ path('admin_salle_new') }}" class="btn btn--primary">
+                            Créer une salle
+                        </a>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Libellé</th>
+                                <th>Type</th>
+                                <th>Capacité</th>
+                                <th>Statut</th>
+                                <th class="actions-col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for salle in salles %}
+                            <tr class="{{ not salle.actif ? 'row--inactive' : '' }}">
+                                <td><strong>{{ salle.code }}</strong></td>
+                                <td>{{ salle.libelle }}</td>
+                                <td>
+                                    <span class="badge badge--{{ salle.type.badgeClass }}">
+                                        {{ salle.type.libelle }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if salle.virtuel %}
+                                        <span class="text-muted">∞ Illimitée</span>
+                                    {% elseif salle.capacite %}
+                                        {{ salle.capacite }} places
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if salle.actif %}
+                                        <span class="status status--success">Active</span>
+                                    {% else %}
+                                        <span class="status status--danger">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td class="actions-col">
+                                    <div class="btn-group">
+                                        <a href="{{ path('admin_salle_show', {id: salle.id}) }}" 
+                                           class="btn btn--sm btn--outline" title="Voir">
+                                            👁️
+                                        </a>
+                                        <a href="{{ path('admin_salle_edit', {id: salle.id}) }}" 
+                                           class="btn btn--sm btn--secondary" title="Modifier">
+                                            ✏️
+                                        </a>
+                                        <form action="{{ path('admin_salle_toggle', {id: salle.id}) }}" 
+                                              method="post" style="display:inline;">
+                                            <input type="hidden" name="_token" 
+                                                   value="{{ csrf_token('toggle_salle_' ~ salle.id) }}">
+                                            <button type="submit" class="btn btn--sm btn--outline"
+                                                    title="{{ salle.actif ? 'Désactiver' : 'Activer' }}">
+                                                {{ salle.actif ? '🔒' : '🔓' }}
+                                            </button>
+                                        </form>
+                                        <form action="{{ path('admin_salle_delete', {id: salle.id}) }}" 
+                                              method="post" style="display:inline;"
+                                              onsubmit="return confirm('Supprimer la salle {{ salle.code }} ?');">
+                                            <input type="hidden" name="_token" 
+                                                   value="{{ csrf_token('delete_salle_' ~ salle.id) }}">
+                                            <button type="submit" class="btn btn--sm btn--danger" title="Supprimer">
+                                                🗑️
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="table-footer">
+                    <span class="text-muted">{{ salles|length }} salle(s)</span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block stylesheets_inline %}
+<style>
+.filter-form {
+    margin: 0;
+}
+
+.filter-row {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filter-group label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-muted, #666);
+}
+
+.filter-group input,
+.filter-group select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.table-footer {
+    padding: 1rem 0 0 0;
+    border-top: 1px solid var(--border-color, #e0e0e0);
+    margin-top: 1rem;
+    text-align: right;
+}
+</style>
+{% endblock %}

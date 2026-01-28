@@ -1,0 +1,90 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouvelle salle{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_salle_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la liste
+                </a>
+            </div>
+            <h1 class="dashboard__title">🚪 Nouvelle salle</h1>
+            <p class="dashboard__subtitle">Ajouter une salle au CFA</p>
+        </header>
+
+        {# Formulaire #}
+        <div class="section-card">
+            {{ form_start(form, {'attr': {'class': 'form-standard', 'novalidate': 'novalidate'}}) }}
+            
+            <div class="form-grid">
+                <div class="form-group form-group--half">
+                    {{ form_label(form.code) }}
+                    {{ form_widget(form.code) }}
+                    {{ form_errors(form.code) }}
+                </div>
+                
+                <div class="form-group form-group--half">
+                    {{ form_label(form.libelle) }}
+                    {{ form_widget(form.libelle) }}
+                    {{ form_errors(form.libelle) }}
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group form-group--half">
+                    {{ form_label(form.type) }}
+                    {{ form_widget(form.type) }}
+                    {{ form_errors(form.type) }}
+                </div>
+                
+                <div class="form-group form-group--half">
+                    {{ form_label(form.capacite) }}
+                    {{ form_widget(form.capacite) }}
+                    {{ form_errors(form.capacite) }}
+                </div>
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.description) }}
+                {{ form_widget(form.description) }}
+                {{ form_errors(form.description) }}
+            </div>
+
+            <div class="form-group">
+                <div class="form-check">
+                    {{ form_widget(form.actif) }}
+                    {{ form_label(form.actif) }}
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ path('admin_salle_index') }}" class="btn btn--secondary">
+                    Annuler
+                </a>
+                <button type="submit" class="btn btn--primary">
+                    Créer la salle
+                </button>
+            </div>
+            
+            {{ form_end(form) }}
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+// Forcer le code en majuscules
+document.querySelector('[name*="[code]"]')?.addEventListener('input', function(e) {
+    this.value = this.value.toUpperCase().replace(/[^A-Z0-9\-]/g, '');
+});
+</script>
+{% endblock %}

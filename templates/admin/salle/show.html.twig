@@ -1,0 +1,138 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Salle {{ salle.code }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_salle_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la liste
+                </a>
+            </div>
+            <h1 class="dashboard__title">🚪 {{ salle.code }}</h1>
+            <p class="dashboard__subtitle">{{ salle.libelle }}</p>
+        </header>
+
+        {# Informations générales #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Informations</h2>
+                <a href="{{ path('admin_salle_edit', {id: salle.id}) }}" class="btn btn--secondary btn--sm">
+                    ✏️ Modifier
+                </a>
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-item__label">Code</span>
+                    <span class="info-item__value"><strong>{{ salle.code }}</strong></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Libellé</span>
+                    <span class="info-item__value">{{ salle.libelle }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Type</span>
+                    <span class="info-item__value">
+                        <span class="badge badge--{{ salle.type.badgeClass }}">
+                            {{ salle.type.libelle }}
+                        </span>
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Capacité</span>
+                    <span class="info-item__value">
+                        {% if salle.virtuel %}
+                            ∞ Illimitée (salle virtuelle)
+                        {% elseif salle.capacite %}
+                            {{ salle.capacite }} places
+                        {% else %}
+                            Non définie
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Statut</span>
+                    <span class="info-item__value">
+                        {% if salle.actif %}
+                            <span class="status status--success">Active</span>
+                        {% else %}
+                            <span class="status status--danger">Inactive</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Créée le</span>
+                    <span class="info-item__value">{{ salle.createdAt|date('d/m/Y à H:i') }}</span>
+                </div>
+                {% if salle.updatedAt %}
+                <div class="info-item">
+                    <span class="info-item__label">Modifiée le</span>
+                    <span class="info-item__value">{{ salle.updatedAt|date('d/m/Y à H:i') }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if salle.description %}
+            <div class="info-section">
+                <h3>Description</h3>
+                <p>{{ salle.description|nl2br }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        {# Actions #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>Actions</h2>
+            </div>
+            <div class="btn-group">
+                <a href="{{ path('admin_salle_edit', {id: salle.id}) }}" class="btn btn--secondary">
+                    ✏️ Modifier
+                </a>
+                <form action="{{ path('admin_salle_toggle', {id: salle.id}) }}" method="post" style="display:inline;">
+                    <input type="hidden" name="_token" value="{{ csrf_token('toggle_salle_' ~ salle.id) }}">
+                    <button type="submit" class="btn btn--outline">
+                        {{ salle.actif ? '🔒 Désactiver' : '🔓 Activer' }}
+                    </button>
+                </form>
+                <form action="{{ path('admin_salle_delete', {id: salle.id}) }}" method="post" style="display:inline;"
+                      onsubmit="return confirm('Supprimer définitivement la salle {{ salle.code }} ?');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete_salle_' ~ salle.id) }}">
+                    <button type="submit" class="btn btn--danger">
+                        🗑️ Supprimer
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block stylesheets_inline %}
+<style>
+.info-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.info-section h3 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.info-section p {
+    margin: 0;
+    color: var(--text-muted, #666);
+}
+</style>
+{% endblock %}
