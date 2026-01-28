@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\SessionMatiereRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
@@ -19,6 +21,7 @@ use Symfony\Component\Validator\Constraints as Assert;
  * 2. volumeHeuresReferentiel et coefficient sont copiés depuis FormationMatiere
  * 3. volumeHeuresPlanifie peut être ajusté selon le calendrier de la session
  * 4. volumeHeuresRealise est mis à jour au fil de la formation
+ * 5. Des formateurs peuvent être assignés via SessionMatiereFormateur
  */
 #[ORM\Entity(repositoryClass: SessionMatiereRepository::class)]
 #[ORM\Table(name: 'session_matiere')]
@@ -95,6 +98,24 @@ class SessionMatiere
      */
     #[ORM\Column(type: Types::SMALLINT, options: ['default' => 0])]
     private int $ordre = 0;
+
+    /**
+     * Formateurs assignés à cette matière pour cette session
+     * @var Collection<int, SessionMatiereFormateur>
+     */
+    #[ORM\OneToMany(
+        targetEntity: SessionMatiereFormateur::class,
+        mappedBy: 'sessionMatiere',
+        orphanRemoval: true,
+        cascade: ['persist', 'remove']
+    )]
+    #[ORM\OrderBy(['estResponsable' => 'DESC'])]
+    private Collection $formateurs;
+
+    public function __construct()
+    {
+        $this->formateurs = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -237,6 +258,113 @@ class SessionMatiere
         $this->actif = true;
         
         return $this;
+    }
+
+    // ========================================
+    // GESTION DES FORMATEURS
+    // ========================================
+
+    /**
+     * @return Collection<int, SessionMatiereFormateur>
+     */
+    public function getFormateurs(): Collection
+    {
+        return $this->formateurs;
+    }
+
+    public function addFormateur(SessionMatiereFormateur $formateur): static
+    {
+        if (!$this->formateurs->contains($formateur)) {
+            $this->formateurs->add($formateur);
+            $formateur->setSessionMatiere($this);
+        }
+        return $this;
+    }
+
+    public function removeFormateur(SessionMatiereFormateur $formateur): static
+    {
+        if ($this->formateurs->removeElement($formateur)) {
+            if ($formateur->getSessionMatiere() === $this) {
+                $formateur->setSessionMatiere(null);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * Retourne le nombre de formateurs assignés
+     */
+    public function getNombreFormateurs(): int
+    {
+        return $this->formateurs->count();
+    }
+
+    /**
+     * Vérifie si au moins un formateur est assigné
+     */
+    public function hasFormateurs(): bool
+    {
+        return !$this->formateurs->isEmpty();
+    }
+
+    /**
+     * Retourne le formateur responsable de la matière (s'il existe)
+     */
+    public function getResponsable(): ?User
+    {
+        foreach ($this->formateurs as $smf) {
+            if ($smf->isEstResponsable()) {
+                return $smf->getFormateur();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Retourne les utilisateurs formateurs (sans les infos de liaison)
+     * 
+     * @return User[]
+     */
+    public function getFormateursUsers(): array
+    {
+        return $this->formateurs
+            ->map(fn(SessionMatiereFormateur $smf) => $smf->getFormateur())
+            ->toArray();
+    }
+
+    /**
+     * Vérifie si un utilisateur est assigné comme formateur
+     */
+    public function hasFormateur(User $user): bool
+    {
+        foreach ($this->formateurs as $smf) {
+            if ($smf->getFormateur()?->getId() === $user->getId()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Retourne le total des heures assignées aux formateurs
+     */
+    public function getTotalHeuresAssignees(): int
+    {
+        $total = 0;
+        foreach ($this->formateurs as $smf) {
+            $total += $smf->getHeuresAssignees() ?? 0;
+        }
+        return $total;
+    }
+
+    /**
+     * Calcule les heures restantes à assigner
+     */
+    public function getHeuresRestantesAAssigner(): int
+    {
+        $effectif = $this->getVolumeHeuresEffectif();
+        $assignees = $this->getTotalHeuresAssignees();
+        return max(0, $effectif - $assignees);
     }
 
     public function __toString(): string

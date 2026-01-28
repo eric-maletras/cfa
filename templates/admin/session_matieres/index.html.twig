@@ -12,7 +12,7 @@
         {# En-tête #}
         <header class="dashboard__header">
             <div class="header-actions">
-                <a href="{{ path('app_session_show', {id: session.id}) }}" class="btn btn--secondary btn--sm">
+                <a href="{{ path('admin_session_show', {id: session.id}) }}" class="btn btn--secondary btn--sm">
                     ← Retour à la session
                 </a>
             </div>
@@ -40,6 +40,9 @@
                             </button>
                         </form>
                     {% endif %}
+                    <a href="{{ path('admin_session_matieres_formateurs', {sessionId: session.id}) }}" class="btn btn--primary">
+                        👨‍🏫 Assigner formateurs
+                    </a>
                     <a href="{{ path('admin_session_matiere_add', {sessionId: session.id}) }}" class="btn btn--outline">
                         + Ajouter matière
                     </a>
@@ -99,6 +102,7 @@
                                     <th>Heures réal.</th>
                                     <th>% réal.</th>
                                     <th>Coef.</th>
+                                    <th>Formateurs</th>
                                     <th>Statut</th>
                                     <th class="actions-col">Actions</th>
                                 </tr>
@@ -149,6 +153,23 @@
                                     </td>
                                     <td>{{ sm.coefficient ?? '—' }}</td>
                                     <td>
+                                        {% if sm.formateurs|length > 0 %}
+                                            <div class="formateurs-mini">
+                                                {% for smf in sm.formateurs|slice(0, 3) %}
+                                                    <span class="avatar-mini {{ smf.estResponsable ? 'avatar-mini--responsable' : '' }}" 
+                                                          title="{{ smf.formateur.nomComplet }}{{ smf.estResponsable ? ' (Resp.)' : '' }}">
+                                                        {{ smf.formateur.prenom|slice(0,1)|upper }}{{ smf.formateur.nom|slice(0,1)|upper }}
+                                                    </span>
+                                                {% endfor %}
+                                                {% if sm.formateurs|length > 3 %}
+                                                    <span class="avatar-mini avatar-mini--more">+{{ sm.formateurs|length - 3 }}</span>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted text-sm">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
                                         {% if sm.actif %}
                                             <span class="status status--success">Actif</span>
                                         {% else %}
@@ -157,6 +178,10 @@
                                     </td>
                                     <td class="actions-col">
                                         <div class="btn-group">
+                                            <a href="{{ path('admin_session_matiere_formateurs', {sessionId: session.id, id: sm.id}) }}" 
+                                               class="btn btn--sm btn--outline" title="Gérer les formateurs">
+                                                👨‍🏫
+                                            </a>
                                             <a href="{{ path('admin_session_matiere_edit', {sessionId: session.id, id: sm.id}) }}" 
                                                class="btn btn--sm btn--secondary" title="Modifier">
                                                 ✏️
@@ -188,7 +213,7 @@
                                     <td><strong>{{ stats.totalHeuresRef }}h</strong></td>
                                     <td><strong>{{ stats.totalHeuresPlan ?? stats.totalHeuresRef }}h</strong></td>
                                     <td><strong>{{ stats.totalHeuresReal ?? 0 }}h</strong></td>
-                                    <td colspan="4"></td>
+                                    <td colspan="5"></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -296,9 +321,68 @@
 .text-success { color: #27ae60; }
 .text-warning { color: #f39c12; }
 .text-danger { color: #e74c3c; }
+.text-sm { font-size: 0.8125rem; }
 
 .badge--success { background: #27ae60; color: white; }
 .badge--warning { background: #f39c12; color: white; }
 .badge--danger { background: #e74c3c; color: white; }
+
+/* Avatars mini pour les formateurs */
+.formateurs-mini {
+    display: flex;
+    gap: -4px;
+}
+
+.avatar-mini {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--primary-color, #3498db);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.625rem;
+    font-weight: 600;
+    border: 2px solid white;
+    margin-left: -4px;
+}
+
+.avatar-mini:first-child {
+    margin-left: 0;
+}
+
+.avatar-mini--responsable {
+    background: #1976d2;
+    box-shadow: 0 0 0 2px #ffd700;
+}
+
+.avatar-mini--more {
+    background: var(--text-muted, #999);
+    font-size: 0.6rem;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-item__label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted, #666);
+    margin-bottom: 0.25rem;
+}
+
+.info-item__value {
+    font-weight: 500;
+}
 </style>
 {% endblock %}

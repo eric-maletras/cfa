@@ -1,0 +1,569 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Formateurs - {{ sessionMatiere.matiere.code }} - {{ session.libelle }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_session_matieres_formateurs', {sessionId: session.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Vue d'ensemble
+                </a>
+                <a href="{{ path('admin_session_matiere_index', {sessionId: session.id}) }}" class="btn btn--outline btn--sm">
+                    📖 Liste des matières
+                </a>
+            </div>
+            <h1 class="dashboard__title">👨‍🏫 Formateurs de {{ sessionMatiere.matiere.code }}</h1>
+            <p class="dashboard__subtitle">{{ sessionMatiere.matiere.libelle }} — {{ session.libelle }}</p>
+        </header>
+
+        {# Messages flash #}
+        {% for type, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="alert alert--{{ type }}">{{ message }}</div>
+            {% endfor %}
+        {% endfor %}
+
+        {# Info matière #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>📖 Informations de la matière</h2>
+            </div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-item__label">Code</span>
+                    <span class="info-item__value">{{ sessionMatiere.matiere.code }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Volume référentiel</span>
+                    <span class="info-item__value">{{ sessionMatiere.volumeHeuresReferentiel }}h</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Volume planifié</span>
+                    <span class="info-item__value">{{ sessionMatiere.volumeHeuresPlanifie ?? sessionMatiere.volumeHeuresReferentiel }}h</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Heures assignées</span>
+                    <span class="info-item__value {{ sessionMatiere.totalHeuresAssignees >= sessionMatiere.volumeHeuresEffectif ? 'text-success' : 'text-warning' }}">
+                        {{ sessionMatiere.totalHeuresAssignees }}h / {{ sessionMatiere.volumeHeuresEffectif }}h
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Coefficient</span>
+                    <span class="info-item__value">{{ sessionMatiere.coefficient ?? '—' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__label">Statut</span>
+                    <span class="info-item__value">
+                        {% if sessionMatiere.actif %}
+                            <span class="badge badge--success">Active</span>
+                        {% else %}
+                            <span class="badge badge--danger">Inactive</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="two-columns">
+            {# Formateurs assignés #}
+            <div class="section-card">
+                <div class="section-card__header">
+                    <h2>✅ Formateurs assignés ({{ assignations|length }})</h2>
+                </div>
+                <div class="section-card__body">
+                    {% if assignations is empty %}
+                        <div class="empty-state">
+                            <p>Aucun formateur n'est assigné à cette matière.</p>
+                            <p class="text-muted">Utilisez le formulaire ci-contre pour assigner des formateurs.</p>
+                        </div>
+                    {% else %}
+                        {% for smf in assignations %}
+                            <div class="formateur-card {{ smf.estResponsable ? 'formateur-card--responsable' : '' }}">
+                                <div class="formateur-avatar">
+                                    {{ smf.formateur.prenom|slice(0,1)|upper }}{{ smf.formateur.nom|slice(0,1)|upper }}
+                                </div>
+                                <div class="formateur-info">
+                                    <div class="formateur-name">
+                                        {{ smf.formateur.nomComplet }}
+                                        {% if smf.estResponsable %}
+                                            <span class="badge badge--primary badge--sm">⭐ Responsable</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="formateur-email">{{ smf.formateur.email }}</div>
+                                    {% if smf.heuresAssignees %}
+                                        <div class="formateur-hours">
+                                            <strong>{{ smf.heuresAssignees }}h</strong> assignées
+                                        </div>
+                                    {% endif %}
+                                    {% if smf.commentaire %}
+                                        <div class="formateur-comment">
+                                            <em>{{ smf.commentaire }}</em>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="formateur-actions">
+                                    {# Bouton Responsable #}
+                                    {% if not smf.estResponsable %}
+                                        <form action="{{ path('admin_session_matiere_formateur_responsable', {
+                                            sessionId: session.id,
+                                            smId: sessionMatiere.id,
+                                            smfId: smf.id
+                                        }) }}" method="post" style="display:inline;">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('responsable' ~ smf.id) }}">
+                                            <button type="submit" class="btn btn--outline btn--sm" title="Définir comme responsable">
+                                                ⭐
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    
+                                    {# Bouton Modifier #}
+                                    <button type="button" class="btn btn--secondary btn--sm" 
+                                            onclick="toggleEditForm({{ smf.id }})" title="Modifier">
+                                        ✏️
+                                    </button>
+                                    
+                                    {# Bouton Supprimer #}
+                                    <form action="{{ path('admin_session_matiere_formateur_remove', {
+                                        sessionId: session.id,
+                                        smId: sessionMatiere.id,
+                                        smfId: smf.id
+                                    }) }}" method="post" style="display:inline;"
+                                          onsubmit="return confirm('Retirer {{ smf.formateur.nomComplet|e('js') }} de cette matière ?');">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('remove_formateur' ~ smf.id) }}">
+                                        <button type="submit" class="btn btn--danger btn--sm" title="Retirer">
+                                            🗑️
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            {# Formulaire d'édition (caché par défaut) #}
+                            <div id="edit-form-{{ smf.id }}" class="edit-form" style="display: none;">
+                                <form action="{{ path('admin_session_matiere_formateur_edit', {
+                                    sessionId: session.id,
+                                    smId: sessionMatiere.id,
+                                    smfId: smf.id
+                                }) }}" method="post">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('edit_formateur' ~ smf.id) }}">
+                                    
+                                    <div class="form-row">
+                                        <div class="form-group form-group--third">
+                                            <label>Heures assignées</label>
+                                            <input type="number" name="heures_assignees" 
+                                                   value="{{ smf.heuresAssignees }}" 
+                                                   min="0" max="9999" class="form-control">
+                                        </div>
+                                        <div class="form-group form-group--two-thirds">
+                                            <label>Commentaire</label>
+                                            <input type="text" name="commentaire" 
+                                                   value="{{ smf.commentaire }}" 
+                                                   class="form-control" 
+                                                   placeholder="Notes sur l'intervention...">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-check">
+                                            <input type="checkbox" name="est_responsable" value="1" 
+                                                   {{ smf.estResponsable ? 'checked' : '' }}>
+                                            Responsable de la matière
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="form-actions">
+                                        <button type="button" class="btn btn--secondary btn--sm" 
+                                                onclick="toggleEditForm({{ smf.id }})">
+                                            Annuler
+                                        </button>
+                                        <button type="submit" class="btn btn--primary btn--sm">
+                                            Enregistrer
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+
+            {# Ajouter un formateur #}
+            <div class="section-card">
+                <div class="section-card__header">
+                    <h2>➕ Ajouter un formateur</h2>
+                </div>
+                <div class="section-card__body">
+                    {% if formateursDisponibles is empty %}
+                        <div class="empty-state">
+                            {% if session.formateurs|length == 0 %}
+                                <p>Aucun formateur n'est assigné à cette session.</p>
+                                <a href="{{ path('admin_session_formateurs', {id: session.id}) }}" class="btn btn--primary btn--sm">
+                                    👥 Gérer l'équipe pédagogique
+                                </a>
+                            {% else %}
+                                <p>✅ Tous les formateurs de la session sont déjà assignés à cette matière.</p>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <form action="{{ path('admin_session_matiere_formateur_add', {
+                            sessionId: session.id,
+                            id: sessionMatiere.id
+                        }) }}" method="post" class="form-standard">
+                            <input type="hidden" name="_token" value="{{ csrf_token('add_formateur' ~ sessionMatiere.id) }}">
+                            
+                            <div class="form-group">
+                                <label for="formateur_id">Formateur *</label>
+                                <select name="formateur_id" id="formateur_id" required class="form-control">
+                                    <option value="">-- Sélectionner un formateur --</option>
+                                    {% for f in formateursDisponibles %}
+                                        <option value="{{ f.id }}">{{ f.nomComplet }} ({{ f.email }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="heures_assignees">Heures assignées</label>
+                                <div class="input-group">
+                                    <input type="number" name="heures_assignees" id="heures_assignees" 
+                                           min="0" max="9999" class="form-control"
+                                           placeholder="{{ sessionMatiere.heuresRestantesAAssigner }}">
+                                    <span class="input-group__suffix">h</span>
+                                </div>
+                                <small class="form-help">
+                                    Restant à assigner : {{ sessionMatiere.heuresRestantesAAssigner }}h
+                                </small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-check">
+                                    <input type="checkbox" name="est_responsable" value="1">
+                                    Définir comme responsable de la matière
+                                </label>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn--primary">
+                                    ➕ Ajouter le formateur
+                                </button>
+                            </div>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# Résumé des heures #}
+        {% if assignations|length > 0 %}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>⏱️ Répartition des heures</h2>
+            </div>
+            <div class="hours-summary">
+                <div class="hours-bar-container">
+                    {% set volumeEffectif = sessionMatiere.volumeHeuresEffectif %}
+                    {% for smf in assignations %}
+                        {% if smf.heuresAssignees %}
+                            {% set pct = (smf.heuresAssignees / volumeEffectif * 100)|round(1) %}
+                            <div class="hours-bar__segment" 
+                                 style="width: {{ pct > 100 ? 100 : pct }}%;"
+                                 title="{{ smf.formateur.nomComplet }}: {{ smf.heuresAssignees }}h ({{ pct }}%)">
+                                {{ smf.formateur.prenom|slice(0,1) }}{{ smf.formateur.nom|slice(0,1) }}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                    {% if sessionMatiere.heuresRestantesAAssigner > 0 %}
+                        {% set pctRestant = (sessionMatiere.heuresRestantesAAssigner / volumeEffectif * 100)|round(1) %}
+                        <div class="hours-bar__segment hours-bar__segment--empty" 
+                             style="width: {{ pctRestant }}%;"
+                             title="Non assignées: {{ sessionMatiere.heuresRestantesAAssigner }}h">
+                            ?
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="hours-legend">
+                    {% for smf in assignations %}
+                        {% if smf.heuresAssignees %}
+                        <div class="hours-legend__item">
+                            <span class="hours-legend__color" style="background: hsl({{ loop.index0 * 60 }}, 70%, 50%);"></span>
+                            {{ smf.formateur.nomComplet }}: <strong>{{ smf.heuresAssignees }}h</strong>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                    {% if sessionMatiere.heuresRestantesAAssigner > 0 %}
+                    <div class="hours-legend__item">
+                        <span class="hours-legend__color hours-legend__color--empty"></span>
+                        Non assignées: <strong>{{ sessionMatiere.heuresRestantesAAssigner }}h</strong>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+function toggleEditForm(smfId) {
+    const form = document.getElementById('edit-form-' + smfId);
+    if (form) {
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+}
+</script>
+{% endblock %}
+
+{% block stylesheets_inline %}
+<style>
+.two-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 992px) {
+    .two-columns {
+        grid-template-columns: 1fr;
+    }
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.info-item__label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted, #666);
+}
+
+.info-item__value {
+    font-weight: 600;
+}
+
+.formateur-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--bg-light, #f5f5f5);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border-color, #ddd);
+}
+
+.formateur-card--responsable {
+    background: #e3f2fd;
+    border-color: #2196f3;
+}
+
+.formateur-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary-color, #3498db);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.formateur-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.formateur-name {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.formateur-email {
+    font-size: 0.875rem;
+    color: var(--text-muted, #666);
+}
+
+.formateur-hours {
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.formateur-comment {
+    margin-top: 0.25rem;
+    font-size: 0.8125rem;
+    color: var(--text-muted, #666);
+}
+
+.formateur-actions {
+    display: flex;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.edit-form {
+    padding: 1rem;
+    background: white;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    margin-top: -0.5rem;
+}
+
+.form-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.form-group--third {
+    flex: 1;
+}
+
+.form-group--two-thirds {
+    flex: 2;
+}
+
+.input-group {
+    display: flex;
+}
+
+.input-group input {
+    flex: 1;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.input-group__suffix {
+    display: flex;
+    align-items: center;
+    padding: 0 0.75rem;
+    background: var(--bg-light, #f5f5f5);
+    border: 1px solid var(--border-color, #ddd);
+    border-left: 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.875rem;
+}
+
+.form-help {
+    font-size: 0.75rem;
+    color: var(--text-muted, #666);
+    margin-top: 0.25rem;
+}
+
+.form-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.form-check input {
+    width: auto;
+}
+
+.hours-summary {
+    padding: 1rem;
+}
+
+.hours-bar-container {
+    display: flex;
+    height: 40px;
+    background: var(--bg-light, #e9ecef);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.hours-bar__segment {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.75rem;
+    min-width: 30px;
+}
+
+.hours-bar__segment:nth-child(1) { background: hsl(0, 70%, 50%); }
+.hours-bar__segment:nth-child(2) { background: hsl(60, 70%, 45%); }
+.hours-bar__segment:nth-child(3) { background: hsl(120, 70%, 40%); }
+.hours-bar__segment:nth-child(4) { background: hsl(180, 70%, 40%); }
+.hours-bar__segment:nth-child(5) { background: hsl(240, 70%, 50%); }
+.hours-bar__segment:nth-child(6) { background: hsl(300, 70%, 50%); }
+
+.hours-bar__segment--empty {
+    background: var(--border-color, #ccc) !important;
+    color: var(--text-muted, #666);
+}
+
+.hours-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.hours-legend__item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.hours-legend__color {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+}
+
+.hours-legend__color--empty {
+    background: var(--border-color, #ccc);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted, #666);
+}
+
+.text-success { color: #27ae60; }
+.text-warning { color: #f39c12; }
+.text-danger { color: #e74c3c; }
+
+.badge--sm { font-size: 0.75rem; padding: 0.15rem 0.5rem; }
+.badge--success { background: #27ae60; color: white; }
+.badge--danger { background: #e74c3c; color: white; }
+.badge--primary { background: #3498db; color: white; }
+
+.alert {
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.alert--success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+.alert--error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+.alert--warning { background: #fff3cd; border: 1px solid #ffc107; color: #856404; }
+.alert--info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+</style>
+{% endblock %}

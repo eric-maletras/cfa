@@ -1,0 +1,433 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Assignation formateurs - {{ session.libelle }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_session_matiere_index', {sessionId: session.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour aux matières
+                </a>
+                <a href="{{ path('admin_session_formateurs', {id: session.id}) }}" class="btn btn--outline btn--sm">
+                    👥 Équipe pédagogique
+                </a>
+            </div>
+            <h1 class="dashboard__title">👨‍🏫 Assignation des formateurs aux matières</h1>
+            <p class="dashboard__subtitle">{{ session.libelle }}</p>
+        </header>
+
+        {# Messages flash #}
+        {% for type, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="alert alert--{{ type }}">{{ message }}</div>
+            {% endfor %}
+        {% endfor %}
+
+        {# Alerte si pas de formateurs dans la session #}
+        {% if formateursSession is empty %}
+            <div class="alert alert--warning">
+                <strong>⚠️ Attention :</strong> Aucun formateur n'est assigné à cette session.
+                <a href="{{ path('admin_session_formateurs', {id: session.id}) }}">Ajouter des formateurs à l'équipe</a>
+                avant de pouvoir les assigner aux matières.
+            </div>
+        {% endif %}
+
+        {# Statistiques #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>📊 Récapitulatif</h2>
+            </div>
+            <div class="stats-row">
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ stats.matieresAvecFormateur }}/{{ stats.totalMatieres }}</span>
+                    <span class="stat-item__label">matières couvertes</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-item__value {{ stats.tauxCouverture >= 100 ? 'text-success' : (stats.tauxCouverture >= 50 ? 'text-warning' : 'text-danger') }}">
+                        {{ stats.tauxCouverture }}%
+                    </span>
+                    <span class="stat-item__label">couverture</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ stats.totalAssignations }}</span>
+                    <span class="stat-item__label">assignations</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ stats.formateursIntervenants }}</span>
+                    <span class="stat-item__label">formateurs actifs</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-item__value">{{ stats.totalHeuresAssignees }}h</span>
+                    <span class="stat-item__label">heures assignées</span>
+                </div>
+            </div>
+
+            {# Barre de progression couverture #}
+            <div class="progress-container">
+                <div class="progress-bar-sm">
+                    <div class="progress-bar-sm__fill" 
+                         style="width: {{ stats.tauxCouverture > 100 ? 100 : stats.tauxCouverture }}%;
+                                background: {{ stats.tauxCouverture >= 100 ? '#27ae60' : (stats.tauxCouverture >= 50 ? '#f39c12' : '#e74c3c') }};">
+                    </div>
+                </div>
+                <span class="progress-label">
+                    {{ stats.matieresAvecFormateur }} matières avec formateur / {{ stats.totalMatieres }} total
+                    {% if stats.matieresSansFormateur > 0 %}
+                        <span class="text-danger">({{ stats.matieresSansFormateur }} sans formateur)</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        {# Tableau des matières et formateurs #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>📖 Matières et formateurs assignés</h2>
+            </div>
+            
+            {% if sessionMatieres is empty %}
+                <div class="empty-state">
+                    <p>Aucune matière n'a été définie pour cette session.</p>
+                    <a href="{{ path('admin_session_matiere_index', {sessionId: session.id}) }}" class="btn btn--primary">
+                        Gérer les matières
+                    </a>
+                </div>
+            {% else %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">Ordre</th>
+                                <th>Matière</th>
+                                <th>Heures</th>
+                                <th>Formateurs assignés</th>
+                                <th style="width: 200px;">Ajouter</th>
+                                <th style="width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sm in sessionMatieres %}
+                                {% set smFormateurs = formateursGrouped[sm.id] ?? [] %}
+                                <tr class="{{ not sm.actif ? 'row--inactive' : '' }} {{ smFormateurs is empty and sm.actif ? 'row--warning' : '' }}">
+                                    <td>
+                                        <span class="badge badge--secondary">{{ sm.ordre }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="matiere-info">
+                                            <strong>{{ sm.matiere.code }}</strong>
+                                            <span class="text-muted">{{ sm.matiere.libelle }}</span>
+                                        </div>
+                                        {% if not sm.actif %}
+                                            <span class="badge badge--danger badge--sm">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="hours-info">
+                                            {{ sm.volumeHeuresEffectif }}h
+                                            {% if sm.totalHeuresAssignees > 0 %}
+                                                <br>
+                                                <small class="{{ sm.totalHeuresAssignees >= sm.volumeHeuresEffectif ? 'text-success' : 'text-warning' }}">
+                                                    {{ sm.totalHeuresAssignees }}h assignées
+                                                </small>
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if smFormateurs is not empty %}
+                                            <div class="formateurs-list">
+                                                {% for smf in smFormateurs %}
+                                                    <div class="formateur-chip {{ smf.estResponsable ? 'formateur-chip--responsable' : '' }}"
+                                                         data-smf-id="{{ smf.id }}">
+                                                        <span class="formateur-chip__avatar">
+                                                            {{ smf.formateur.prenom|slice(0,1)|upper }}{{ smf.formateur.nom|slice(0,1)|upper }}
+                                                        </span>
+                                                        <span class="formateur-chip__name">
+                                                            {{ smf.formateur.nomComplet }}
+                                                            {% if smf.estResponsable %}
+                                                                <span class="badge badge--primary badge--xs">Resp.</span>
+                                                            {% endif %}
+                                                            {% if smf.heuresAssignees %}
+                                                                <span class="text-muted">({{ smf.heuresAssignees }}h)</span>
+                                                            {% endif %}
+                                                        </span>
+                                                        <form action="{{ path('admin_session_matiere_formateur_remove', {
+                                                            sessionId: session.id,
+                                                            smId: sm.id,
+                                                            smfId: smf.id
+                                                        }) }}" method="post" class="formateur-chip__remove">
+                                                            <input type="hidden" name="_token" value="{{ csrf_token('remove_formateur' ~ smf.id) }}">
+                                                            <button type="submit" class="btn-remove" title="Retirer" 
+                                                                    onclick="return confirm('Retirer ce formateur de la matière ?');">
+                                                                ×
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted empty-formateurs">
+                                                {% if sm.actif %}
+                                                    ⚠️ Aucun formateur
+                                                {% else %}
+                                                    —
+                                                {% endif %}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if sm.actif and formateursSession is not empty %}
+                                            {% set formateursDispo = [] %}
+                                            {% for f in formateursSession %}
+                                                {% set isAssigne = false %}
+                                                {% for smf in smFormateurs %}
+                                                    {% if smf.formateur.id == f.id %}
+                                                        {% set isAssigne = true %}
+                                                    {% endif %}
+                                                {% endfor %}
+                                                {% if not isAssigne %}
+                                                    {% set formateursDispo = formateursDispo|merge([f]) %}
+                                                {% endif %}
+                                            {% endfor %}
+                                            
+                                            {% if formateursDispo is not empty %}
+                                                <form action="{{ path('admin_session_matiere_formateur_add', {
+                                                    sessionId: session.id,
+                                                    id: sm.id
+                                                }) }}" method="post" class="inline-add-form">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('add_formateur' ~ sm.id) }}">
+                                                    <select name="formateur_id" class="select-inline" required>
+                                                        <option value="">+ Ajouter...</option>
+                                                        {% for f in formateursDispo %}
+                                                            <option value="{{ f.id }}">{{ f.nomComplet }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                    <button type="submit" class="btn btn--primary btn--xs">+</button>
+                                                </form>
+                                            {% else %}
+                                                <span class="text-muted text-sm">Tous assignés</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ path('admin_session_matiere_formateurs', {
+                                            sessionId: session.id,
+                                            id: sm.id
+                                        }) }}" class="btn btn--outline btn--sm" title="Détails">
+                                            ⚙️ Détails
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+
+        {# Légende / Aide #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>💡 Aide</h2>
+            </div>
+            <div class="help-content">
+                <ul class="help-list">
+                    <li><span class="badge badge--primary badge--xs">Resp.</span> = Responsable de la matière (coordinateur pédagogique)</li>
+                    <li>Les lignes <span class="text-warning">jaunes</span> indiquent les matières actives sans formateur assigné</li>
+                    <li>Cliquez sur "Détails" pour gérer les heures assignées et désigner le responsable</li>
+                    <li>Les formateurs disponibles sont ceux assignés à l'équipe pédagogique de la session</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block stylesheets_inline %}
+<style>
+.matiere-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hours-info {
+    white-space: nowrap;
+}
+
+.formateurs-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.formateur-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem 0.25rem 0.25rem;
+    background: var(--bg-light, #f5f5f5);
+    border-radius: 20px;
+    font-size: 0.8125rem;
+    border: 1px solid var(--border-color, #ddd);
+}
+
+.formateur-chip--responsable {
+    background: #e3f2fd;
+    border-color: #2196f3;
+}
+
+.formateur-chip__avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--primary-color, #3498db);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.625rem;
+    font-weight: 600;
+}
+
+.formateur-chip--responsable .formateur-chip__avatar {
+    background: #1976d2;
+}
+
+.formateur-chip__name {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.formateur-chip__remove {
+    display: inline;
+}
+
+.btn-remove {
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted, #999);
+    cursor: pointer;
+    border-radius: 50%;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+    margin-left: 0.25rem;
+}
+
+.btn-remove:hover {
+    background: #ffebee;
+    color: #e74c3c;
+}
+
+.inline-add-form {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.select-inline {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border-color, #ddd);
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    max-width: 140px;
+}
+
+.btn--xs {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.badge--xs {
+    font-size: 0.625rem;
+    padding: 0.1rem 0.3rem;
+}
+
+.row--warning {
+    background: #fff8e1 !important;
+}
+
+.empty-formateurs {
+    font-style: italic;
+}
+
+.progress-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0 0;
+}
+
+.progress-bar-sm {
+    flex: 1;
+    height: 8px;
+    background: var(--bg-light, #e9ecef);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-sm__fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.progress-label {
+    font-size: 0.875rem;
+    color: var(--text-muted, #666);
+    white-space: nowrap;
+}
+
+.help-list {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.help-list li {
+    margin-bottom: 0.5rem;
+}
+
+.text-success { color: #27ae60; }
+.text-warning { color: #f39c12; }
+.text-danger { color: #e74c3c; }
+.text-sm { font-size: 0.8125rem; }
+
+.alert {
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.alert--warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+
+.alert--success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.alert--error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.alert a {
+    color: inherit;
+    font-weight: 600;
+}
+</style>
+{% endblock %}
