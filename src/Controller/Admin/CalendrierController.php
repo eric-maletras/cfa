@@ -9,6 +9,7 @@ use App\Form\CalendrierAnneeType;
 use App\Form\JourFermeType;
 use App\Repository\CalendrierAnneeRepository;
 use App\Repository\JourFermeRepository;
+use App\Repository\SeancePlanifieeRepository;
 use App\Service\JoursFeriesFranceService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -29,6 +30,7 @@ class CalendrierController extends AbstractController
         private CalendrierAnneeRepository $calendrierRepository,
         private JourFermeRepository $jourFermeRepository,
         private JoursFeriesFranceService $joursFeriesService,
+        private SeancePlanifieeRepository $seancePlanifieeRepository,
     ) {
     }
 
@@ -122,8 +124,11 @@ class CalendrierController extends AbstractController
             $joursParDate[$jour->getDate()->format('Y-m-d')] = $jour;
         }
 
+        // Récupération du nombre de séances par jour pour le mois
+        $seancesParJour = $this->seancePlanifieeRepository->countByDateForMonth($annee, $mois);
+
         // Construction de la grille calendrier
-        $calendrierData = $this->buildCalendrierMensuel($annee, $mois, $joursParDate, $calendrier);
+        $calendrierData = $this->buildCalendrierMensuel($annee, $mois, $joursParDate, $calendrier, $seancesParJour);
 
         // Statistiques par type
         $countByType = $this->jourFermeRepository->countByTypeForCalendrier($calendrier);
@@ -218,6 +223,8 @@ class CalendrierController extends AbstractController
                 $calendrier->getCode(),
                 $status
             ));
+        } else {
+            $this->addFlash('error', 'Token de sécurité invalide.');
         }
 
         return $this->redirectToRoute('admin_calendrier_index');
@@ -238,21 +245,30 @@ class CalendrierController extends AbstractController
 
         // Récupérer les années couvertes par le calendrier
         $annees = $calendrier->getAnneesCouvertes();
+
+        // Récupérer les jours fériés pour ces années
         $joursFeries = $this->joursFeriesService->getJoursFeriesPourAnnees($annees);
 
-        $importes = 0;
-        $existants = 0;
+        // Récupérer les dates déjà enregistrées pour éviter les doublons
+        $datesExistantes = [];
+        foreach ($calendrier->getJoursFermes() as $jour) {
+            $datesExistantes[$jour->getDate()->format('Y-m-d')] = true;
+        }
+
+        $nbImportes = 0;
+        $nbIgnores = 0;
 
         foreach ($joursFeries as $ferie) {
-            // Vérifier si la date est dans la période du calendrier
+            $dateStr = $ferie['date']->format('Y-m-d');
+
+            // Vérifier que la date est dans la période du calendrier
             if (!$calendrier->contientDate($ferie['date'])) {
                 continue;
             }
 
-            // Vérifier si le jour existe déjà
-            $existant = $this->jourFermeRepository->findOneByCalendrierAndDate($calendrier, $ferie['date']);
-            if ($existant !== null) {
-                $existants++;
+            // Vérifier si la date existe déjà
+            if (isset($datesExistantes[$dateStr])) {
+                $nbIgnores++;
                 continue;
             }
 
@@ -264,26 +280,26 @@ class CalendrierController extends AbstractController
             $jourFerme->setType(TypeJourFerme::FERIE);
 
             $this->entityManager->persist($jourFerme);
-            $importes++;
+            $nbImportes++;
         }
 
         $this->entityManager->flush();
 
-        if ($importes > 0) {
+        if ($nbImportes > 0) {
             $this->addFlash('success', sprintf(
                 '%d jour(s) férié(s) importé(s) avec succès.',
-                $importes
+                $nbImportes
             ));
         }
 
-        if ($existants > 0) {
+        if ($nbIgnores > 0) {
             $this->addFlash('info', sprintf(
-                '%d jour(s) existaient déjà.',
-                $existants
+                '%d jour(s) ignoré(s) (déjà présents).',
+                $nbIgnores
             ));
         }
 
-        if ($importes === 0 && $existants === 0) {
+        if ($nbImportes === 0 && $nbIgnores === 0) {
             $this->addFlash('warning', 'Aucun jour férié à importer pour cette période.');
         }
 
@@ -291,21 +307,20 @@ class CalendrierController extends AbstractController
     }
 
     /**
-     * Page de gestion des jours fermés
+     * Liste des jours fermés d'un calendrier
      */
     #[Route('/{id}/jours-fermes', name: 'admin_calendrier_jours_fermes', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function joursFermes(CalendrierAnnee $calendrier, Request $request): Response
     {
-        // Filtrage par type
         $typeFilter = $request->query->get('type');
-        
+
         if ($typeFilter) {
             $type = TypeJourFerme::tryFrom($typeFilter);
             $joursFermes = $type 
                 ? $this->jourFermeRepository->findByCalendrierAndType($calendrier, $type)
-                : $calendrier->getJoursFermes()->toArray();
+                : $this->jourFermeRepository->findByCalendrierOrdered($calendrier);
         } else {
-            $joursFermes = $calendrier->getJoursFermes()->toArray();
+            $joursFermes = $this->jourFermeRepository->findByCalendrierOrdered($calendrier);
         }
 
         // Statistiques par type
@@ -439,7 +454,8 @@ class CalendrierController extends AbstractController
         int $annee,
         int $mois,
         array $joursParDate,
-        CalendrierAnnee $calendrier
+        CalendrierAnnee $calendrier,
+        array $seancesParJour = []
     ): array {
         $premierJour = new \DateTimeImmutable(sprintf('%04d-%02d-01', $annee, $mois));
         $dernierJour = $premierJour->modify('last day of this month');
@@ -473,6 +489,7 @@ class CalendrierController extends AbstractController
                 'estAujourdHui' => $dateStr === (new \DateTime())->format('Y-m-d'),
                 'estDansPeriode' => $calendrier->contientDate($date),
                 'jourFerme' => $joursParDate[$dateStr] ?? null,
+                'nbSeances' => $seancesParJour[$dateStr] ?? 0,
             ];
 
             $jourCourant++;
@@ -496,6 +513,7 @@ class CalendrierController extends AbstractController
                     'estAujourdHui' => $dateStr === (new \DateTime())->format('Y-m-d'),
                     'estDansPeriode' => $calendrier->contientDate($date),
                     'jourFerme' => $joursParDate[$dateStr] ?? null,
+                    'nbSeances' => $seancesParJour[$dateStr] ?? 0,
                 ];
 
                 $jourCourant++;

@@ -1,0 +1,133 @@
+{{ form_start(form) }}
+
+{% if show_force_button %}
+    <input type="hidden" name="force_save" value="1">
+{% endif %}
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <strong>Matière et horaires</strong>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    {{ form_label(form.sessionMatiere) }}
+                    {{ form_widget(form.sessionMatiere) }}
+                    {{ form_errors(form.sessionMatiere) }}
+                </div>
+                
+                <div class="mb-3">
+                    {{ form_label(form.jourSemaine) }}
+                    {{ form_widget(form.jourSemaine) }}
+                    {{ form_errors(form.jourSemaine) }}
+                </div>
+                
+                <div class="row">
+                    <div class="col-6">
+                        <div class="mb-3">
+                            {{ form_label(form.heureDebut) }}
+                            {{ form_widget(form.heureDebut) }}
+                            {{ form_errors(form.heureDebut) }}
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="mb-3">
+                            {{ form_label(form.heureFin) }}
+                            {{ form_widget(form.heureFin) }}
+                            {{ form_errors(form.heureFin) }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    {{ form_label(form.semaineType) }}
+                    {{ form_widget(form.semaineType) }}
+                    {{ form_errors(form.semaineType) }}
+                    <small class="text-muted">Semaine A = impaires, Semaine B = paires</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <strong>Période de récurrence</strong>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="mb-3">
+                            {{ form_label(form.dateDebut) }}
+                            {{ form_widget(form.dateDebut) }}
+                            {{ form_errors(form.dateDebut) }}
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="mb-3">
+                            {{ form_label(form.dateFin) }}
+                            {{ form_widget(form.dateFin) }}
+                            {{ form_errors(form.dateFin) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <strong>Salle</strong>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    {{ form_label(form.salle) }}
+                    {{ form_widget(form.salle) }}
+                    {{ form_errors(form.salle) }}
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <strong>Formateur(s)</strong>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    {{ form_widget(form.formateurs) }}
+                    {{ form_errors(form.formateurs) }}
+                    <small class="text-muted">Seuls les formateurs assignés à cette session sont proposés.</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <strong>Options</strong>
+            </div>
+            <div class="card-body">
+                <div class="mb-3 form-check">
+                    {{ form_widget(form.actif) }}
+                    {{ form_label(form.actif) }}
+                    {{ form_errors(form.actif) }}
+                </div>
+                
+                <div class="mb-3">
+                    {{ form_label(form.commentaire) }}
+                    {{ form_widget(form.commentaire) }}
+                    {{ form_errors(form.commentaire) }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="form-actions mt-4">
+    <button type="submit" class="btn btn-primary">
+        {% include 'icons/_icons.html.twig' with {icon: 'check'} %}
+        {% if show_force_button %}Enregistrer malgré les conflits{% else %}Enregistrer{% endif %}
+    </button>
+    <a href="{{ path('admin_session_creneaux_index', {sessionId: session.id}) }}" class="btn btn-secondary">Annuler</a>
+</div>
+
+{{ form_end(form) }}

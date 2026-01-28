@@ -1,0 +1,222 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ jourSemaine }} {{ date|date('d/m/Y') }} - {{ calendrier.libelle }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.jour-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.jour-navigation__current {
+    padding: 0.5rem 1rem;
+    background: var(--bg-light, #f8f9fa);
+    border-radius: 4px;
+    min-width: 180px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.planning-jour {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.planning-creneau {
+    display: flex;
+    border-left: 3px solid var(--primary-color, #007bff);
+    background: var(--bg-light, #f8f9fa);
+    border-radius: 0 4px 4px 0;
+}
+
+.planning-creneau__heure {
+    width: 70px;
+    padding: 1rem;
+    font-weight: bold;
+    color: var(--primary-color, #007bff);
+    border-right: 1px solid var(--border-color, #e0e0e0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.planning-creneau__seances {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+}
+
+.seance-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.seance-item--annulee {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+.seance-item__horaire {
+    width: 100px;
+    font-size: 0.9em;
+    color: var(--text-muted, #6c757d);
+}
+
+.seance-item__details {
+    flex: 1;
+}
+
+.seance-item__matiere {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.seance-item__info {
+    font-size: 0.85em;
+    color: var(--text-muted, #6c757d);
+}
+
+.seance-item__statut {
+    text-align: right;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted, #6c757d);
+}
+
+.empty-state__icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_calendrier_show', {id: calendrier.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour au calendrier
+                </a>
+            </div>
+            <h1 class="dashboard__title">📅 {{ jourSemaine }} {{ date|date('d F Y') }}</h1>
+            <p class="dashboard__subtitle">{{ calendrier.libelle }}</p>
+        </header>
+
+        {# Navigation entre jours #}
+        <div class="jour-navigation">
+            {% if jourPrecedent %}
+                <a href="{{ path('admin_calendrier_jour', {id: calendrier.id, date: jourPrecedent|date('Y-m-d')}) }}" class="btn btn--outline btn--sm">
+                    ← {{ jourPrecedent|date('d/m') }}
+                </a>
+            {% else %}
+                <span class="btn btn--outline btn--sm" style="opacity: 0.5; pointer-events: none;">←</span>
+            {% endif %}
+
+            <span class="jour-navigation__current">
+                {{ jourSemaine }} {{ date|date('d/m/Y') }}
+            </span>
+
+            {% if jourSuivant %}
+                <a href="{{ path('admin_calendrier_jour', {id: calendrier.id, date: jourSuivant|date('Y-m-d')}) }}" class="btn btn--outline btn--sm">
+                    {{ jourSuivant|date('d/m') }} →
+                </a>
+            {% else %}
+                <span class="btn btn--outline btn--sm" style="opacity: 0.5; pointer-events: none;">→</span>
+            {% endif %}
+        </div>
+
+        {# Alerte jour fermé #}
+        {% if jourFerme %}
+        <div class="alert alert--warning">
+            <strong>⚠️ Jour fermé</strong>
+            {% if jourFerme.libelle %}
+                — {{ jourFerme.libelle }}
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {# Planning de la journée #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>📋 Séances planifiées</h2>
+                <span class="badge">{{ seances|length }}</span>
+            </div>
+            
+            {% if seances|length > 0 %}
+                <div class="planning-jour">
+                    {% for heure, seancesHeure in seancesParHeure %}
+                        <div class="planning-creneau">
+                            <div class="planning-creneau__heure">
+                                {{ heure }}
+                            </div>
+                            <div class="planning-creneau__seances">
+                                {% for seance in seancesHeure %}
+                                    <div class="seance-item {% if seance.statut.value == 'annulee' %}seance-item--annulee{% endif %}">
+                                        <div class="seance-item__horaire">
+                                            {{ seance.heureDebut|date('H:i') }} - {{ seance.heureFin|date('H:i') }}
+                                        </div>
+                                        <div class="seance-item__details">
+                                            <div class="seance-item__matiere">
+                                                {{ seance.creneauRecurrent.matiere.libelle|default('Matière non définie') }}
+                                            </div>
+                                            {% if seance.creneauRecurrent.formateurs|first %}
+                                                <div class="seance-item__info">
+                                                    👤 {{ seance.creneauRecurrent.formateurs|first.prenom }} {{ seance.creneauRecurrent.formateurs|first.nom }}
+                                                </div>
+                                            {% endif %}
+                                            {% if seance.salle %}
+                                                <div class="seance-item__info">
+                                                    📍 {{ seance.salle.libelle }}
+                                                </div>
+                                            {% endif %}
+                                            <div class="seance-item__info">
+                                                🎓 {{ seance.creneauRecurrent.session.libelle|default('Session') }}
+                                            </div>
+                                        </div>
+                                        <div class="seance-item__statut">
+                                            {% if seance.statut.value == 'planifiee' %}
+                                                <span class="status status--info">Planifiée</span>
+                                            {% elseif seance.statut.value == 'confirmee' %}
+                                                <span class="status status--success">Confirmée</span>
+                                            {% elseif seance.statut.value == 'annulee' %}
+                                                <span class="status status--danger">Annulée</span>
+                                            {% elseif seance.statut.value == 'reportee' %}
+                                                <span class="status status--warning">Reportée</span>
+                                            {% else %}
+                                                <span class="status">{{ seance.statut }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state__icon">📅</div>
+                    <p>Aucune séance planifiée pour cette journée.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouveau créneau - {{ session.code }}{% endblock %}
+
+
+{% block body %}
+<div class="page-header">
+    <div class="page-header-content">
+        <h1>
+            {% include 'icons/_icons.html.twig' with {icon: 'plus'} %}
+            Nouveau créneau récurrent
+        </h1>
+        <p class="subtitle">{{ session.code }} - {{ session.formation.libelle }}</p>
+    </div>
+</div>
+
+{% for message in app.flashes('success') %}
+    <div class="alert alert-success">{{ message }}</div>
+{% endfor %}
+{% for message in app.flashes('info') %}
+    <div class="alert alert-info">{{ message }}</div>
+{% endfor %}
+{% for message in app.flashes('warning') %}
+    <div class="alert alert-warning">{{ message }}</div>
+{% endfor %}
+
+{% include 'admin/session_creneaux/_form.html.twig' %}
+{% endblock %}

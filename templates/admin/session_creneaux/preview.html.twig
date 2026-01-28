@@ -1,0 +1,161 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Prévisualisation - {{ creneau }}{% endblock %}
+
+
+{% block body %}
+<div class="page-header">
+    <div class="page-header-content">
+        <h1>
+            {% include 'icons/_icons.html.twig' with {icon: 'eye'} %}
+            Prévisualisation
+        </h1>
+        <p class="subtitle">{{ creneau }}</p>
+    </div>
+    <div class="page-header-actions">
+        {% if preview.dates|length > 0 %}
+            <form action="{{ path('admin_session_creneaux_generate', {sessionId: session.id, id: creneau.id}) }}" method="post" class="d-inline">
+                <input type="hidden" name="_token" value="{{ csrf_token('generate' ~ creneau.id) }}">
+                <button type="submit" class="btn btn-success">
+                    {% include 'icons/_icons.html.twig' with {icon: 'refresh'} %}
+                    Générer ces {{ preview.dates|length }} séance(s)
+                </button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <strong>Matière :</strong><br>
+                {{ creneau.sessionMatiere.matiere.code }} - {{ creneau.sessionMatiere.matiere.libelle }}
+            </div>
+            <div class="col-md-3">
+                <strong>Récurrence :</strong><br>
+                {{ creneau.recurrenceLibelle }} de {{ creneau.plageHoraire }}
+            </div>
+            <div class="col-md-3">
+                <strong>Période :</strong><br>
+                {{ creneau.periodeFormatee }}
+            </div>
+            <div class="col-md-3">
+                <strong>Salle :</strong><br>
+                {{ creneau.salle.code }}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if conflits.salles|length > 0 or conflits.formateurs|length > 0 %}
+    <div class="alert alert-warning">
+        <strong>Conflits détectés :</strong>
+        <ul class="mb-0 mt-2">
+            {% for conflit in conflits.salles %}
+                <li>{{ conflit.message }}</li>
+            {% endfor %}
+            {% for conflit in conflits.formateurs %}
+                <li>{{ conflit.message }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center bg-success text-white">
+            <div class="card-body">
+                <h2 class="mb-0">{{ preview.dates|length }}</h2>
+                <small>Séance(s) à générer</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center bg-secondary text-white">
+            <div class="card-body">
+                <h2 class="mb-0">{{ preview.existantes|length }}</h2>
+                <small>Déjà existante(s)</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center bg-warning">
+            <div class="card-body">
+                <h2 class="mb-0">{{ preview.joursFermes|length }}</h2>
+                <small>Jour(s) fermé(s) exclus</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <strong>Séances à générer ({{ preview.dates|length }})</strong>
+            </div>
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                {% if preview.dates|length > 0 %}
+                    <ul class="list-unstyled mb-0">
+                        {% for date in preview.dates %}
+                            <li class="py-1 border-bottom">{{ date|date('l d/m/Y') }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted mb-0">Aucune séance à générer.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <strong>Séances existantes ({{ preview.existantes|length }})</strong>
+            </div>
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                {% if preview.existantes|length > 0 %}
+                    <ul class="list-unstyled mb-0">
+                        {% for dateStr in preview.existantes %}
+                            <li class="py-1 border-bottom text-muted">{{ dateStr|date('l d/m/Y') }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted mb-0">Aucune séance existante.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <strong>Jours fermés exclus ({{ preview.joursFermes|length }})</strong>
+            </div>
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                {% if preview.joursFermes|length > 0 %}
+                    <ul class="list-unstyled mb-0">
+                        {% for dateStr in preview.joursFermes %}
+                            <li class="py-1 border-bottom text-muted">{{ dateStr|date('l d/m/Y') }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted mb-0">Aucun jour fermé sur cette période.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{{ path('admin_session_creneaux_index', {sessionId: session.id}) }}" class="btn btn-secondary">
+        {% include 'icons/_icons.html.twig' with {icon: 'arrow-left'} %}
+        Retour à la liste
+    </a>
+    <a href="{{ path('admin_session_creneaux_edit', {sessionId: session.id, id: creneau.id}) }}" class="btn btn-outline-primary">
+        {% include 'icons/_icons.html.twig' with {icon: 'edit'} %}
+        Modifier le créneau
+    </a>
+</div>
+{% endblock %}
