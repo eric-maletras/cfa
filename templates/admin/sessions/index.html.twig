@@ -329,12 +329,14 @@
                             </small>
                         </td>
                         <td>
-                            {% if session.effectifMax %}
-                                {{ session.effectifMin ?? '-' }} / {{ session.effectifMax }}
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
+    {% if session.effectifMax %}
+        <span class="effectif-badge">
+            {{ session.nombreInscrits }}<span class="effectif-separator">/</span>{{ session.effectifMax }}
+        </span>
+    {% else %}
+        {{ session.nombreInscrits }} inscrit(s)
+    {% endif %}
+</td>
                         <td>
                             <span class="statut-badge statut-{{ session.statut }}">
                                 {{ session.statutLibelle }}
