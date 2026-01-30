@@ -10,24 +10,15 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 /**
- * Entité CreneauRecurrent - Template de répétition pour le planning
+ * Représente un créneau horaire récurrent (modèle)
  * 
- * Un créneau récurrent définit un cours qui se répète chaque semaine
- * (ou en alternance A/B) sur une période donnée.
- * 
- * Les séances planifiées (SeancePlanifiee) sont générées automatiquement
- * à partir de ce créneau par le service GenerateurSeancesService.
- * 
- * Exemple : "SI7 - Lundi 8h-10h - Salle LABO-IT-1 - Toutes les semaines du 02/09 au 30/06"
+ * Un créneau définit une plage horaire qui se répète chaque semaine
+ * sur un jour donné. Il sert de modèle pour générer les séances planifiées.
  */
 #[ORM\Entity(repositoryClass: CreneauRecurrentRepository::class)]
 #[ORM\Table(name: 'creneau_recurrent')]
-#[ORM\Index(columns: ['actif'], name: 'idx_creneau_actif')]
-#[ORM\Index(columns: ['jour_semaine'], name: 'idx_creneau_jour')]
-#[ORM\HasLifecycleCallbacks]
 class CreneauRecurrent
 {
     #[ORM\Id]
@@ -36,89 +27,81 @@ class CreneauRecurrent
     private ?int $id = null;
 
     /**
-     * Session concernée
+     * Session à laquelle appartient ce créneau
      */
     #[ORM\ManyToOne(targetEntity: Session::class)]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    #[Assert\NotNull(message: 'La session est obligatoire.')]
+    #[ORM\JoinColumn(nullable: false)]
+    #[Assert\NotNull(message: 'La session est obligatoire')]
     private ?Session $session = null;
 
     /**
-     * Matière de la session concernée
+     * Jour de la semaine (1=lundi, 7=dimanche)
      */
-    #[ORM\ManyToOne(targetEntity: SessionMatiere::class)]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    #[Assert\NotNull(message: 'La matière est obligatoire.')]
-    private ?SessionMatiere $sessionMatiere = null;
-
-    /**
-     * Salle de cours
-     */
-    #[ORM\ManyToOne(targetEntity: Salle::class)]
-    #[ORM\JoinColumn(nullable: false)]
-    #[Assert\NotNull(message: 'La salle est obligatoire.')]
-    private ?Salle $salle = null;
-
-    /**
-     * Formateurs intervenant sur ce créneau
-     * Peut inclure plusieurs formateurs pour la co-intervention
-     * 
-     * @var Collection<int, User>
-     */
-    #[ORM\ManyToMany(targetEntity: User::class)]
-    #[ORM\JoinTable(name: 'creneau_recurrent_formateur')]
-    #[Assert\Count(min: 1, minMessage: 'Au moins un formateur doit être assigné.')]
-    private Collection $formateurs;
-
-    /**
-     * Jour de la semaine
-     */
-    #[ORM\Column(type: 'smallint', enumType: JourSemaine::class)]
-    #[Assert\NotNull(message: 'Le jour de la semaine est obligatoire.')]
+    #[ORM\Column(type: 'integer', enumType: JourSemaine::class)]
+    #[Assert\NotNull(message: 'Le jour de la semaine est obligatoire')]
     private ?JourSemaine $jourSemaine = null;
+
+    /**
+     * Type de semaine (A, B ou null pour toutes)
+     */
+    #[ORM\Column(type: 'string', length: 1, nullable: true, enumType: SemaineType::class)]
+    private ?SemaineType $semaineType = null;
 
     /**
      * Heure de début du créneau
      */
     #[ORM\Column(type: Types::TIME_MUTABLE)]
-    #[Assert\NotNull(message: "L'heure de début est obligatoire.")]
+    #[Assert\NotNull(message: "L'heure de début est obligatoire")]
     private ?\DateTimeInterface $heureDebut = null;
 
     /**
      * Heure de fin du créneau
      */
     #[ORM\Column(type: Types::TIME_MUTABLE)]
-    #[Assert\NotNull(message: "L'heure de fin est obligatoire.")]
+    #[Assert\NotNull(message: "L'heure de fin est obligatoire")]
+    #[Assert\GreaterThan(propertyPath: 'heureDebut', message: "L'heure de fin doit être après l'heure de début")]
     private ?\DateTimeInterface $heureFin = null;
 
     /**
-     * Date de début de la période de récurrence
+     * Date de début de validité du créneau
      */
     #[ORM\Column(type: Types::DATE_MUTABLE)]
-    #[Assert\NotNull(message: 'La date de début est obligatoire.')]
+    #[Assert\NotNull(message: 'La date de début est obligatoire')]
     private ?\DateTimeInterface $dateDebut = null;
 
     /**
-     * Date de fin de la période de récurrence
+     * Date de fin de validité du créneau
      */
     #[ORM\Column(type: Types::DATE_MUTABLE)]
-    #[Assert\NotNull(message: 'La date de fin est obligatoire.')]
-    #[Assert\GreaterThan(
-        propertyPath: 'dateDebut',
-        message: 'La date de fin doit être postérieure à la date de début.'
-    )]
+    #[Assert\NotNull(message: 'La date de fin est obligatoire')]
+    #[Assert\GreaterThanOrEqual(propertyPath: 'dateDebut', message: 'La date de fin doit être après la date de début')]
     private ?\DateTimeInterface $dateFin = null;
 
     /**
-     * Type de semaine (null = toutes les semaines, A = impaires, B = paires)
+     * Salle assignée (optionnel)
      */
-    #[ORM\Column(type: 'string', length: 1, nullable: true, enumType: SemaineType::class)]
-    private ?SemaineType $semaineType = null;
+    #[ORM\ManyToOne(targetEntity: Salle::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?Salle $salle = null;
 
     /**
-     * Créneau actif
+     * Matière de la session (lien vers SessionMatiere)
      */
-    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => true])]
+    #[ORM\ManyToOne(targetEntity: SessionMatiere::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?SessionMatiere $sessionMatiere = null;
+
+    /**
+     * Formateurs assignés à ce créneau
+     */
+    #[ORM\ManyToMany(targetEntity: User::class)]
+    #[ORM\JoinTable(name: 'creneau_recurrent_formateur')]
+    private Collection $formateurs;
+
+    /**
+     * Indique si le créneau est actif
+     */
+    #[ORM\Column(type: Types::BOOLEAN)]
     private bool $actif = true;
 
     /**
@@ -128,36 +111,16 @@ class CreneauRecurrent
     private ?string $commentaire = null;
 
     /**
-     * Date de création
-     */
-    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
-    private ?\DateTimeInterface $createdAt = null;
-
-    /**
-     * Date de dernière modification
-     */
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
-    private ?\DateTimeInterface $updatedAt = null;
-
-    /**
-     * Séances générées depuis ce créneau
-     * 
-     * @var Collection<int, SeancePlanifiee>
+     * Séances planifiées générées à partir de ce créneau
      */
     #[ORM\OneToMany(targetEntity: SeancePlanifiee::class, mappedBy: 'creneauRecurrent')]
-    #[ORM\OrderBy(['date' => 'ASC'])]
-    private Collection $seances;
+    private Collection $seancesPlanifiees;
 
     public function __construct()
     {
         $this->formateurs = new ArrayCollection();
-        $this->seances = new ArrayCollection();
-        $this->createdAt = new \DateTime();
+        $this->seancesPlanifiees = new ArrayCollection();
     }
-
-    // ========================================
-    // GETTERS / SETTERS
-    // ========================================
 
     public function getId(): ?int
     {
@@ -175,14 +138,69 @@ class CreneauRecurrent
         return $this;
     }
 
-    public function getSessionMatiere(): ?SessionMatiere
+    public function getJourSemaine(): ?JourSemaine
     {
-        return $this->sessionMatiere;
+        return $this->jourSemaine;
     }
 
-    public function setSessionMatiere(?SessionMatiere $sessionMatiere): static
+    public function setJourSemaine(?JourSemaine $jourSemaine): static
     {
-        $this->sessionMatiere = $sessionMatiere;
+        $this->jourSemaine = $jourSemaine;
+        return $this;
+    }
+
+    public function getSemaineType(): ?SemaineType
+    {
+        return $this->semaineType;
+    }
+
+    public function setSemaineType(?SemaineType $semaineType): static
+    {
+        $this->semaineType = $semaineType;
+        return $this;
+    }
+
+    public function getHeureDebut(): ?\DateTimeInterface
+    {
+        return $this->heureDebut;
+    }
+
+    public function setHeureDebut(?\DateTimeInterface $heureDebut): static
+    {
+        $this->heureDebut = $heureDebut;
+        return $this;
+    }
+
+    public function getHeureFin(): ?\DateTimeInterface
+    {
+        return $this->heureFin;
+    }
+
+    public function setHeureFin(?\DateTimeInterface $heureFin): static
+    {
+        $this->heureFin = $heureFin;
+        return $this;
+    }
+
+    public function getDateDebut(): ?\DateTimeInterface
+    {
+        return $this->dateDebut;
+    }
+
+    public function setDateDebut(?\DateTimeInterface $dateDebut): static
+    {
+        $this->dateDebut = $dateDebut;
+        return $this;
+    }
+
+    public function getDateFin(): ?\DateTimeInterface
+    {
+        return $this->dateFin;
+    }
+
+    public function setDateFin(?\DateTimeInterface $dateFin): static
+    {
+        $this->dateFin = $dateFin;
         return $this;
     }
 
@@ -194,6 +212,17 @@ class CreneauRecurrent
     public function setSalle(?Salle $salle): static
     {
         $this->salle = $salle;
+        return $this;
+    }
+
+    public function getSessionMatiere(): ?SessionMatiere
+    {
+        return $this->sessionMatiere;
+    }
+
+    public function setSessionMatiere(?SessionMatiere $sessionMatiere): static
+    {
+        $this->sessionMatiere = $sessionMatiere;
         return $this;
     }
 
@@ -219,72 +248,6 @@ class CreneauRecurrent
         return $this;
     }
 
-    public function getJourSemaine(): ?JourSemaine
-    {
-        return $this->jourSemaine;
-    }
-
-    public function setJourSemaine(JourSemaine $jourSemaine): static
-    {
-        $this->jourSemaine = $jourSemaine;
-        return $this;
-    }
-
-    public function getHeureDebut(): ?\DateTimeInterface
-    {
-        return $this->heureDebut;
-    }
-
-    public function setHeureDebut(\DateTimeInterface $heureDebut): static
-    {
-        $this->heureDebut = $heureDebut;
-        return $this;
-    }
-
-    public function getHeureFin(): ?\DateTimeInterface
-    {
-        return $this->heureFin;
-    }
-
-    public function setHeureFin(\DateTimeInterface $heureFin): static
-    {
-        $this->heureFin = $heureFin;
-        return $this;
-    }
-
-    public function getDateDebut(): ?\DateTimeInterface
-    {
-        return $this->dateDebut;
-    }
-
-    public function setDateDebut(\DateTimeInterface $dateDebut): static
-    {
-        $this->dateDebut = $dateDebut;
-        return $this;
-    }
-
-    public function getDateFin(): ?\DateTimeInterface
-    {
-        return $this->dateFin;
-    }
-
-    public function setDateFin(\DateTimeInterface $dateFin): static
-    {
-        $this->dateFin = $dateFin;
-        return $this;
-    }
-
-    public function getSemaineType(): ?SemaineType
-    {
-        return $this->semaineType;
-    }
-
-    public function setSemaineType(?SemaineType $semaineType): static
-    {
-        $this->semaineType = $semaineType;
-        return $this;
-    }
-
     public function isActif(): bool
     {
         return $this->actif;
@@ -307,42 +270,16 @@ class CreneauRecurrent
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeInterface
-    {
-        return $this->createdAt;
-    }
-
-    public function setCreatedAt(\DateTimeInterface $createdAt): static
-    {
-        $this->createdAt = $createdAt;
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeInterface
-    {
-        return $this->updatedAt;
-    }
-
-    public function setUpdatedAt(?\DateTimeInterface $updatedAt): static
-    {
-        $this->updatedAt = $updatedAt;
-        return $this;
-    }
-
     /**
      * @return Collection<int, SeancePlanifiee>
      */
-    public function getSeances(): Collection
+    public function getSeancesPlanifiees(): Collection
     {
-        return $this->seances;
+        return $this->seancesPlanifiees;
     }
 
-    // ========================================
-    // MÉTHODES MÉTIER
-    // ========================================
-
     /**
-     * Calcule la durée du créneau en minutes
+     * Retourne la durée du créneau en minutes
      */
     public function getDureeMinutes(): int
     {
@@ -350,236 +287,55 @@ class CreneauRecurrent
             return 0;
         }
         
-        $debut = (int) $this->heureDebut->format('H') * 60 + (int) $this->heureDebut->format('i');
-        $fin = (int) $this->heureFin->format('H') * 60 + (int) $this->heureFin->format('i');
+        $diff = $this->heureDebut->diff($this->heureFin);
+        return ($diff->h * 60) + $diff->i;
+    }
+
+    /**
+     * Retourne le libellé formaté du créneau
+     */
+    public function getLibelle(): string
+    {
+        $parts = [];
         
-        return max(0, $fin - $debut);
-    }
-
-    /**
-     * Calcule la durée du créneau en heures (décimales)
-     */
-    public function getDureeHeures(): float
-    {
-        return round($this->getDureeMinutes() / 60, 2);
-    }
-
-    /**
-     * Retourne la plage horaire formatée (ex: "08:00 - 10:00")
-     */
-    public function getPlageHoraire(): string
-    {
-        if (!$this->heureDebut || !$this->heureFin) {
-            return '';
-        }
-        return sprintf(
-            '%s - %s',
-            $this->heureDebut->format('H:i'),
-            $this->heureFin->format('H:i')
-        );
-    }
-
-    /**
-     * Retourne la période formatée (ex: "02/09/2024 - 30/06/2025")
-     */
-    public function getPeriodeFormatee(): string
-    {
-        if (!$this->dateDebut || !$this->dateFin) {
-            return '';
-        }
-        return sprintf(
-            '%s - %s',
-            $this->dateDebut->format('d/m/Y'),
-            $this->dateFin->format('d/m/Y')
-        );
-    }
-
-    /**
-     * Retourne le libellé de la récurrence
-     */
-    public function getRecurrenceLibelle(): string
-    {
-        $libelle = $this->jourSemaine?->getLibelle() ?? '';
-        
-        if ($this->semaineType !== null) {
-            $libelle .= ' (' . $this->semaineType->getLibelleCourt() . ')';
+        if ($this->jourSemaine) {
+            $parts[] = $this->jourSemaine->getLibelle();
         }
         
-        return $libelle;
-    }
-
-    /**
-     * Vérifie si une date correspond à ce créneau (jour + semaine A/B)
-     */
-    public function correspondADate(\DateTimeInterface $date): bool
-    {
-        // Vérifier le jour de la semaine
-        $jourIso = (int) $date->format('N');
-        if ($this->jourSemaine?->value !== $jourIso) {
-            return false;
-        }
-        
-        // Vérifier la semaine A/B si définie
-        if ($this->semaineType !== null) {
-            return $this->semaineType->correspondA($date);
-        }
-        
-        return true;
-    }
-
-    /**
-     * Compte le nombre de séances générées
-     */
-    public function getNombreSeances(): int
-    {
-        return $this->seances->count();
-    }
-
-    /**
-     * Compte le nombre de séances non modifiées manuellement
-     */
-    public function getNombreSeancesNonModifiees(): int
-    {
-        return $this->seances->filter(
-            fn(SeancePlanifiee $s) => !$s->isModifieeDepuisCreneau()
-        )->count();
-    }
-
-    /**
-     * Retourne les noms des formateurs (séparés par virgule)
-     */
-    public function getFormateursNoms(): string
-    {
-        $noms = $this->formateurs->map(
-            fn(User $u) => $u->getNomComplet()
-        )->toArray();
-        
-        return implode(', ', $noms);
-    }
-
-    /**
-     * Retourne la matière (raccourci)
-     */
-    public function getMatiere(): ?Matiere
-    {
-        return $this->sessionMatiere?->getMatiere();
-    }
-
-    // ========================================
-    // VALIDATIONS
-    // ========================================
-
-    /**
-     * Validation : heureDebut < heureFin
-     */
-    #[Assert\Callback]
-    public function validateHeures(ExecutionContextInterface $context): void
-    {
         if ($this->heureDebut && $this->heureFin) {
-            if ($this->heureDebut >= $this->heureFin) {
-                $context->buildViolation("L'heure de fin doit être postérieure à l'heure de début.")
-                    ->atPath('heureFin')
-                    ->addViolation();
-            }
+            $parts[] = sprintf('%s-%s', 
+                $this->heureDebut->format('H:i'),
+                $this->heureFin->format('H:i')
+            );
         }
+        
+        if ($this->sessionMatiere?->getMatiere()) {
+            $parts[] = $this->sessionMatiere->getMatiere()->getCode();
+        }
+        
+        return implode(' - ', array_filter($parts));
     }
 
     /**
-     * Validation : heures par tranches de 15 minutes
+     * Clone l'entité (pour duplication)
      */
-    #[Assert\Callback]
-    public function validateTranchesHoraires(ExecutionContextInterface $context): void
+    public function __clone()
     {
-        foreach (['heureDebut' => $this->heureDebut, 'heureFin' => $this->heureFin] as $field => $heure) {
-            if ($heure) {
-                $minutes = (int) $heure->format('i');
-                if ($minutes % 15 !== 0) {
-                    $context->buildViolation('Les heures doivent être par tranches de 15 minutes (00, 15, 30, 45).')
-                        ->atPath($field)
-                        ->addViolation();
-                }
-            }
+        $this->id = null;
+        
+        // Cloner la collection de formateurs
+        $formateursCopy = new ArrayCollection();
+        foreach ($this->formateurs as $formateur) {
+            $formateursCopy->add($formateur);
         }
+        $this->formateurs = $formateursCopy;
+        
+        // Nouvelle collection pour les séances
+        $this->seancesPlanifiees = new ArrayCollection();
     }
-
-    /**
-     * Validation : la matière doit appartenir à la session
-     */
-    #[Assert\Callback]
-    public function validateMatiereSession(ExecutionContextInterface $context): void
-    {
-        if ($this->session && $this->sessionMatiere) {
-            if ($this->sessionMatiere->getSession()?->getId() !== $this->session->getId()) {
-                $context->buildViolation('La matière sélectionnée ne fait pas partie de cette session.')
-                    ->atPath('sessionMatiere')
-                    ->addViolation();
-            }
-        }
-    }
-
-    /**
-     * Validation : les formateurs doivent être assignés à la session
-     */
-    #[Assert\Callback]
-    public function validateFormateursSession(ExecutionContextInterface $context): void
-    {
-        if ($this->session && !$this->formateurs->isEmpty()) {
-            $formateursSession = $this->session->getFormateurs();
-            foreach ($this->formateurs as $formateur) {
-                if (!$formateursSession->contains($formateur)) {
-                    $context->buildViolation(sprintf(
-                        'Le formateur "%s" n\'est pas assigné à cette session.',
-                        $formateur->getNomComplet()
-                    ))
-                        ->atPath('formateurs')
-                        ->addViolation();
-                }
-            }
-        }
-    }
-
-    /**
-     * Validation : capacité de la salle suffisante (sauf virtuel)
-     */
-    #[Assert\Callback]
-    public function validateCapaciteSalle(ExecutionContextInterface $context): void
-    {
-        if ($this->salle && $this->session) {
-            if (!$this->salle->isVirtuel() && $this->salle->getCapacite() !== null) {
-                $effectifMax = $this->session->getEffectifMax();
-                if ($effectifMax !== null && $this->salle->getCapacite() < $effectifMax) {
-                    $context->buildViolation(sprintf(
-                        'La capacité de la salle (%d) est insuffisante pour l\'effectif maximum de la session (%d).',
-                        $this->salle->getCapacite(),
-                        $effectifMax
-                    ))
-                        ->atPath('salle')
-                        ->addViolation();
-                }
-            }
-        }
-    }
-
-    // ========================================
-    // CALLBACKS DOCTRINE
-    // ========================================
-
-    #[ORM\PreUpdate]
-    public function preUpdate(): void
-    {
-        $this->updatedAt = new \DateTime();
-    }
-
-    // ========================================
-    // REPRÉSENTATION
-    // ========================================
 
     public function __toString(): string
     {
-        $matiere = $this->sessionMatiere?->getMatiere()?->getCode() ?? '?';
-        $jour = $this->jourSemaine?->getLibelleCourt() ?? '?';
-        $horaire = $this->getPlageHoraire() ?: '?';
-        
-        return sprintf('%s - %s %s', $matiere, $jour, $horaire);
+        return $this->getLibelle();
     }
 }

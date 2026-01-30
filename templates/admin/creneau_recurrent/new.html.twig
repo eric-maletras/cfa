@@ -1,0 +1,28 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouveau créneau récurrent - Planning{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_creneau_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour aux créneaux
+                </a>
+            </div>
+            <h1 class="dashboard__title">➕ Nouveau créneau récurrent</h1>
+            <p class="dashboard__subtitle">Définir un nouveau créneau de cours répétitif</p>
+        </header>
+
+        <div class="section-card">
+            {% include 'admin/creneau_recurrent/_form.html.twig' %}
+        </div>
+    </div>
+</section>
+{% endblock %}

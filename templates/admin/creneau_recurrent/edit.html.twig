@@ -1,0 +1,75 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Modifier créneau - Planning{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.danger-zone {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border: 1px solid #f5c6cb;
+    border-radius: 8px;
+    background: #fff5f5;
+}
+.danger-zone h3 {
+    margin: 0 0 1rem 0;
+    color: #dc3545;
+    font-size: 1rem;
+}
+.danger-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+.danger-action p {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.9rem;
+    color: #666;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_creneau_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour aux créneaux
+                </a>
+            </div>
+            <h1 class="dashboard__title">✏️ Modifier le créneau</h1>
+            <p class="dashboard__subtitle">
+                {{ creneau.jourSemaine.libelle }} {{ creneau.heureDebut|date('H:i') }}-{{ creneau.heureFin|date('H:i') }}
+                {% if creneau.sessionMatiere and creneau.sessionMatiere.matiere %}
+                    · {{ creneau.sessionMatiere.matiere.code }}
+                {% endif %}
+            </p>
+        </header>
+
+        <div class="section-card">
+            {% include 'admin/creneau_recurrent/_form.html.twig' %}
+        </div>
+
+        {# Zone de danger #}
+        <div class="danger-zone">
+            <h3>⚠️ Zone de danger</h3>
+            <div class="danger-action">
+                <div>
+                    <strong>Supprimer ce créneau</strong>
+                    <p>Cette action est irréversible. Les séances déjà générées ne seront pas supprimées.</p>
+                </div>
+                <form action="{{ path('admin_creneau_delete', {id: creneau.id}) }}" 
+                      method="post" 
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce créneau ?');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ creneau.id) }}">
+                    <button type="submit" class="btn btn--danger">Supprimer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

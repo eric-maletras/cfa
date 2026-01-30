@@ -1,0 +1,355 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Conflits détectés - Créneau{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.conflits-page {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.alert-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.alert-banner__icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.alert-banner__content h2 {
+    margin: 0 0 0.5rem 0;
+    color: #856404;
+    font-size: 1.25rem;
+}
+
+.alert-banner__content p {
+    margin: 0;
+    color: #856404;
+}
+
+.creneau-resume {
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.creneau-resume h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    color: #333;
+    border-bottom: 2px solid #4a90d9;
+    padding-bottom: 0.5rem;
+}
+
+.creneau-resume__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.creneau-resume__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.creneau-resume__label {
+    font-size: 0.8rem;
+    color: #666;
+    text-transform: uppercase;
+}
+
+.creneau-resume__value {
+    font-weight: 500;
+    color: #333;
+}
+
+.conflits-section {
+    margin-bottom: 2rem;
+}
+
+.conflits-section h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem 0;
+    font-size: 1.1rem;
+    color: #dc3545;
+}
+
+.conflit-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: #fff;
+    border: 1px solid #f5c6cb;
+    border-left: 4px solid #dc3545;
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+}
+
+.conflit-card__icon {
+    font-size: 1.25rem;
+    color: #dc3545;
+}
+
+.conflit-card__content {
+    flex: 1;
+}
+
+.conflit-card__message {
+    font-weight: 500;
+    color: #721c24;
+    margin-bottom: 0.5rem;
+}
+
+.conflit-card__details {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.conflit-card__details a {
+    color: #4a90d9;
+    text-decoration: none;
+}
+
+.conflit-card__details a:hover {
+    text-decoration: underline;
+}
+
+.actions-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-top: 2rem;
+}
+
+.actions-section h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    color: #333;
+}
+
+.actions-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn--warning {
+    background: #ffc107;
+    color: #212529;
+    border: none;
+}
+
+.btn--warning:hover {
+    background: #e0a800;
+}
+
+.warning-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: #fff3cd;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #856404;
+}
+
+.warning-note::before {
+    content: "⚠️";
+}
+
+/* Badges */
+.jour-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+.jour-lundi { background: #e3f2fd; color: #1565c0; }
+.jour-mardi { background: #f3e5f5; color: #7b1fa2; }
+.jour-mercredi { background: #e8f5e9; color: #2e7d32; }
+.jour-jeudi { background: #fff3e0; color: #ef6c00; }
+.jour-vendredi { background: #fce4ec; color: #c2185b; }
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        <div class="conflits-page">
+            {# Bannière d'alerte #}
+            <div class="alert-banner">
+                <span class="alert-banner__icon">⚠️</span>
+                <div class="alert-banner__content">
+                    <h2>Conflits détectés</h2>
+                    <p>
+                        Le créneau que vous souhaitez {{ mode == 'new' ? 'créer' : 'modifier' }} 
+                        présente des conflits avec d'autres créneaux existants.
+                        Veuillez vérifier les informations ci-dessous avant de continuer.
+                    </p>
+                </div>
+            </div>
+
+            {# Résumé du créneau en cours #}
+            <div class="creneau-resume">
+                <h3>📋 Créneau en cours de {{ mode == 'new' ? 'création' : 'modification' }}</h3>
+                <div class="creneau-resume__grid">
+                    <div class="creneau-resume__item">
+                        <span class="creneau-resume__label">Session</span>
+                        <span class="creneau-resume__value">{{ creneau.session.code }}</span>
+                    </div>
+                    <div class="creneau-resume__item">
+                        <span class="creneau-resume__label">Jour</span>
+                        <span class="creneau-resume__value">
+                            <span class="jour-badge jour-{{ creneau.jourSemaine.name|lower }}">
+                                {{ creneau.jourSemaine.libelle }}
+                            </span>
+                        </span>
+                    </div>
+                    <div class="creneau-resume__item">
+                        <span class="creneau-resume__label">Horaires</span>
+                        <span class="creneau-resume__value">
+                            {{ creneau.heureDebut|date('H:i') }} - {{ creneau.heureFin|date('H:i') }}
+                        </span>
+                    </div>
+                    <div class="creneau-resume__item">
+                        <span class="creneau-resume__label">Période</span>
+                        <span class="creneau-resume__value">
+                            {{ creneau.dateDebut|date('d/m/Y') }} → {{ creneau.dateFin|date('d/m/Y') }}
+                        </span>
+                    </div>
+                    {% if creneau.salle %}
+                    <div class="creneau-resume__item">
+                        <span class="creneau-resume__label">Salle</span>
+                        <span class="creneau-resume__value">{{ creneau.salle.code }}</span>
+                    </div>
+                    {% endif %}
+                    {% if creneau.formateurs|length > 0 %}
+                    <div class="creneau-resume__item">
+                        <span class="creneau-resume__label">Formateur(s)</span>
+                        <span class="creneau-resume__value">
+                            {% for f in creneau.formateurs %}
+                                {{ f.nomComplet }}{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# Conflits de salle #}
+            {% if conflits.salle|length > 0 %}
+            <div class="conflits-section">
+                <h3>🚪 Conflits de salle ({{ conflits.salle|length }})</h3>
+                {% for conflit in conflits.salle %}
+                <div class="conflit-card">
+                    <span class="conflit-card__icon">🚪</span>
+                    <div class="conflit-card__content">
+                        <div class="conflit-card__message">{{ conflit.message }}</div>
+                        <div class="conflit-card__details">
+                            {% if conflit.creneau.sessionMatiere and conflit.creneau.sessionMatiere.matiere %}
+                                Matière : {{ conflit.creneau.sessionMatiere.matiere.code }} ·
+                            {% endif %}
+                            <a href="{{ path('admin_creneau_show', {id: conflit.creneau.id}) }}">
+                                Voir le créneau en conflit →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {# Conflits de formateurs #}
+            {% if conflits.formateurs|length > 0 %}
+            <div class="conflits-section">
+                <h3>👤 Conflits de formateurs ({{ conflits.formateurs|length }})</h3>
+                {% for conflit in conflits.formateurs %}
+                <div class="conflit-card">
+                    <span class="conflit-card__icon">👤</span>
+                    <div class="conflit-card__content">
+                        <div class="conflit-card__message">{{ conflit.message }}</div>
+                        <div class="conflit-card__details">
+                            {% if conflit.creneau.sessionMatiere and conflit.creneau.sessionMatiere.matiere %}
+                                Matière : {{ conflit.creneau.sessionMatiere.matiere.code }} ·
+                            {% endif %}
+                            <a href="{{ path('admin_creneau_show', {id: conflit.creneau.id}) }}">
+                                Voir le créneau en conflit →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {# Actions #}
+            <div class="actions-section">
+                <h3>Que souhaitez-vous faire ?</h3>
+                
+                <div class="warning-note">
+                    Enregistrer malgré les conflits peut entraîner des problèmes de planification.
+                    Il est recommandé de corriger les conflits avant de continuer.
+                </div>
+
+                <div class="actions-buttons">
+                    {# Retour à l'édition #}
+                    {% if mode == 'new' %}
+                        <a href="{{ path('admin_creneau_new', {session: creneau.session.id}) }}" class="btn btn--primary">
+                            ← Retour pour corriger
+                        </a>
+                    {% else %}
+                        <a href="{{ path('admin_creneau_edit', {id: creneau.id}) }}" class="btn btn--primary">
+                            ← Retour pour corriger
+                        </a>
+                    {% endif %}
+
+                    {# Enregistrer quand même #}
+                    {% if mode == 'new' %}
+                        <form action="{{ path('admin_creneau_new_confirm') }}" method="post" style="display:inline;">
+                            <input type="hidden" name="_token" value="{{ csrf_token('confirm_creneau') }}">
+                            <button type="submit" class="btn btn--warning" 
+                                    onclick="return confirm('Êtes-vous sûr de vouloir créer ce créneau malgré les conflits ?');">
+                                ⚠️ Enregistrer quand même
+                            </button>
+                        </form>
+                    {% else %}
+                        <form action="{{ path('admin_creneau_edit_confirm', {id: creneau.id}) }}" method="post" style="display:inline;">
+                            <input type="hidden" name="_token" value="{{ csrf_token('confirm_creneau') }}">
+                            <button type="submit" class="btn btn--warning"
+                                    onclick="return confirm('Êtes-vous sûr de vouloir modifier ce créneau malgré les conflits ?');">
+                                ⚠️ Enregistrer quand même
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    {# Annuler #}
+                    <a href="{{ path('admin_creneau_index') }}" class="btn btn--secondary">
+                        Annuler
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

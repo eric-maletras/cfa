@@ -71,12 +71,11 @@ class PlanningController extends AbstractController
             ],
             [
                 'nom' => 'Créneaux horaires',
-                'description' => 'Configurer les plages horaires de cours',
+                'description' => 'Configurer les plages horaires de cours récurrentes',
                 'icone' => 'clock',
-                'route' => null, // À implémenter
+                'route' => 'admin_creneau_index',
                 'couleur' => 'secondary',
-                'stats' => 'Prochainement',
-                'disabled' => true,
+                'stats' => 'Gérer les créneaux',
             ],
             [
                 'nom' => 'Réservations',

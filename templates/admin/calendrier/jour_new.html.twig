@@ -1,0 +1,218 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Ajouter une séance - {{ jourSemaine }} {{ date|date('d/m/Y') }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.form-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.form-row > * {
+    flex: 1;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-primary, #333);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color, #4a90a4);
+    box-shadow: 0 0 0 3px rgba(74, 144, 164, 0.1);
+}
+
+.form-help {
+    font-size: 0.85rem;
+    color: var(--text-muted, #6c757d);
+    margin-top: 0.25rem;
+}
+
+.alert--conflict {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.alert--conflict ul {
+    margin: 0.5rem 0 0 1.5rem;
+    padding: 0;
+}
+
+.btn-group-form {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color, #e0e0e0);
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_calendrier_jour', {id: calendrier.id, date: dateStr}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la journée
+                </a>
+            </div>
+            <h1 class="dashboard__title">➕ Ajouter une séance</h1>
+            <p class="dashboard__subtitle">{{ jourSemaine }} {{ date|date('d F Y') }} - {{ calendrier.libelle }}</p>
+        </header>
+
+        {# Alertes conflits #}
+        {% if conflits|length > 0 %}
+        <div class="alert--conflict">
+            <strong>⚠️ Conflits détectés :</strong>
+            <ul>
+                {% for conflit in conflits %}
+                    <li>{{ conflit }}</li>
+                {% endfor %}
+            </ul>
+            <p style="margin-top: 0.5rem; font-size: 0.9rem;">
+                Vous pouvez ignorer ces conflits en cochant la case ci-dessous.
+            </p>
+        </div>
+        {% endif %}
+
+        {# Formulaire #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>📝 Informations de la séance</h2>
+            </div>
+
+            {{ form_start(form, {'attr': {'class': 'form-seance', 'novalidate': 'novalidate'}}) }}
+                
+                <div class="form-grid">
+                    {# Session #}
+                    <div class="form-group">
+                        {{ form_label(form.session) }}
+                        {{ form_widget(form.session) }}
+                        {{ form_errors(form.session) }}
+                    </div>
+
+                    {# Matière #}
+                    <div class="form-group">
+                        {{ form_label(form.sessionMatiere) }}
+                        {{ form_widget(form.sessionMatiere) }}
+                        {{ form_errors(form.sessionMatiere) }}
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    {# Heure début #}
+                    <div class="form-group">
+                        {{ form_label(form.heureDebut) }}
+                        {{ form_widget(form.heureDebut) }}
+                        {{ form_errors(form.heureDebut) }}
+                    </div>
+
+                    {# Heure fin #}
+                    <div class="form-group">
+                        {{ form_label(form.heureFin) }}
+                        {{ form_widget(form.heureFin) }}
+                        {{ form_errors(form.heureFin) }}
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    {# Salle #}
+                    <div class="form-group">
+                        {{ form_label(form.salle) }}
+                        {{ form_widget(form.salle) }}
+                        {{ form_errors(form.salle) }}
+                    </div>
+
+                    {# Statut #}
+                    <div class="form-group">
+                        {{ form_label(form.statut) }}
+                        {{ form_widget(form.statut) }}
+                        {{ form_errors(form.statut) }}
+                    </div>
+                </div>
+
+                {# Formateurs #}
+                <div class="form-group">
+                    {{ form_label(form.formateurs) }}
+                    {{ form_widget(form.formateurs) }}
+                    <p class="form-help">{{ form.formateurs.vars.help|default('') }}</p>
+                    {{ form_errors(form.formateurs) }}
+                </div>
+
+                {# Commentaire #}
+                <div class="form-group">
+                    {{ form_label(form.commentaire) }}
+                    {{ form_widget(form.commentaire) }}
+                    {{ form_errors(form.commentaire) }}
+                </div>
+
+                {# Ignorer conflits #}
+                {% if conflits|length > 0 %}
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" name="ignorer_conflits" value="1">
+                        Ignorer les conflits et enregistrer quand même
+                    </label>
+                </div>
+                {% endif %}
+
+                <div class="btn-group-form">
+                    <a href="{{ path('admin_calendrier_jour', {id: calendrier.id, date: dateStr}) }}" class="btn btn--secondary">
+                        Annuler
+                    </a>
+                    <button type="submit" class="btn btn--primary">
+                        ✅ Enregistrer la séance
+                    </button>
+                </div>
+
+            {{ form_end(form) }}
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+// Rechargement dynamique des matières et formateurs lors du changement de session
+document.addEventListener('DOMContentLoaded', function() {
+    const sessionSelect = document.getElementById('{{ form.session.vars.id }}');
+    
+    if (sessionSelect) {
+        sessionSelect.addEventListener('change', function() {
+            // Soumettre le formulaire pour recharger les options
+            // (Alternative: utiliser AJAX pour un rechargement sans soumission)
+            this.form.submit();
+        });
+    }
+});
+</script>
+{% endblock %}

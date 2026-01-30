@@ -1,0 +1,480 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Générer les séances - {{ creneau.session.code }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+.generer-page {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+/* Résumé du créneau */
+.creneau-resume {
+    background: linear-gradient(135deg, #4a90a4 0%, #357a8c 100%);
+    color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.creneau-resume h2 {
+    margin: 0 0 1rem 0;
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+.creneau-resume__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.creneau-resume__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.creneau-resume__label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+.creneau-resume__value {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+/* Statistiques */
+.stats-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+    .stats-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.stat-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.25rem;
+    text-align: center;
+}
+
+.stat-card--success {
+    border-left: 4px solid #28a745;
+}
+
+.stat-card--warning {
+    border-left: 4px solid #ffc107;
+}
+
+.stat-card--info {
+    border-left: 4px solid #17a2b8;
+}
+
+.stat-card--danger {
+    border-left: 4px solid #dc3545;
+}
+
+.stat-card__value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.stat-card--success .stat-card__value { color: #28a745; }
+.stat-card--warning .stat-card__value { color: #ffc107; }
+.stat-card--info .stat-card__value { color: #17a2b8; }
+.stat-card--danger .stat-card__value { color: #dc3545; }
+
+.stat-card__label {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+/* Prévisualisation */
+.preview-section {
+    margin-bottom: 2rem;
+}
+
+.preview-section h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.preview-table th,
+.preview-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.preview-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #333;
+}
+
+.preview-table tr:hover {
+    background: #f8f9fa;
+}
+
+.preview-table tr.row--creer {
+    background: #e8f5e9;
+}
+
+.preview-table tr.row--existante {
+    background: #fff3e0;
+}
+
+.preview-table tr.row--jour-ferme {
+    background: #ffebee;
+    color: #999;
+}
+
+.action-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.action-badge--creer {
+    background: #c8e6c9;
+    color: #2e7d32;
+}
+
+.action-badge--existante {
+    background: #ffe0b2;
+    color: #e65100;
+}
+
+.action-badge--jour-ferme {
+    background: #ffcdd2;
+    color: #c62828;
+}
+
+/* Actions */
+.actions-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+}
+
+.actions-section h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+}
+
+.actions-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.option-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+}
+
+.option-group input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+}
+
+.option-group label {
+    flex: 1;
+}
+
+.option-group label strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.option-group label span {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.option-group--warning {
+    border-color: #ffc107;
+    background: #fffbf0;
+}
+
+.actions-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e0e0e0;
+}
+
+.btn--success {
+    background: #28a745;
+    color: #fff;
+    border: none;
+}
+
+.btn--success:hover {
+    background: #218838;
+}
+
+/* Info existantes */
+.info-existantes {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+}
+
+.info-existantes__icon {
+    font-size: 1.5rem;
+}
+
+.info-existantes__content p {
+    margin: 0;
+}
+
+.info-existantes__content p:first-child {
+    font-weight: 500;
+}
+
+.info-existantes__content p:last-child {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 0.25rem;
+}
+
+/* Scroll preview */
+.preview-scroll {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+}
+
+.preview-scroll .preview-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        <div class="generer-page">
+            {# En-tête #}
+            <header class="dashboard__header">
+                <div class="header-actions">
+                    <a href="{{ path('admin_creneau_show', {id: creneau.id}) }}" class="btn btn--secondary btn--sm">
+                        ← Retour au créneau
+                    </a>
+                </div>
+                <h1 class="dashboard__title">📅 Générer les séances</h1>
+                <p class="dashboard__subtitle">
+                    Prévisualisation et génération des séances planifiées
+                </p>
+            </header>
+
+            {# Résumé du créneau #}
+            <div class="creneau-resume">
+                <h2>Créneau récurrent</h2>
+                <div class="creneau-resume__grid">
+                    <div class="creneau-resume__item">
+                        <span class="creneau-resume__label">Session</span>
+                        <span class="creneau-resume__value">{{ creneau.session.code }}</span>
+                    </div>
+                    <div class="creneau-resume__item">
+                        <span class="creneau-resume__label">Jour</span>
+                        <span class="creneau-resume__value">{{ creneau.jourSemaine.libelle }}</span>
+                    </div>
+                    <div class="creneau-resume__item">
+                        <span class="creneau-resume__label">Horaires</span>
+                        <span class="creneau-resume__value">{{ creneau.heureDebut|date('H:i') }} - {{ creneau.heureFin|date('H:i') }}</span>
+                    </div>
+                    <div class="creneau-resume__item">
+                        <span class="creneau-resume__label">Semaine</span>
+                        <span class="creneau-resume__value">{{ creneau.semaineType ? 'Semaine ' ~ creneau.semaineType.value : 'Toutes' }}</span>
+                    </div>
+                    <div class="creneau-resume__item">
+                        <span class="creneau-resume__label">Période</span>
+                        <span class="creneau-resume__value">{{ creneau.dateDebut|date('d/m/Y') }} → {{ creneau.dateFin|date('d/m/Y') }}</span>
+                    </div>
+                    {% if creneau.sessionMatiere and creneau.sessionMatiere.matiere %}
+                    <div class="creneau-resume__item">
+                        <span class="creneau-resume__label">Matière</span>
+                        <span class="creneau-resume__value">{{ creneau.sessionMatiere.matiere.code }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# Statistiques #}
+            <div class="stats-cards">
+                <div class="stat-card stat-card--info">
+                    <div class="stat-card__value">{{ preview.stats.total }}</div>
+                    <div class="stat-card__label">Dates totales</div>
+                </div>
+                <div class="stat-card stat-card--success">
+                    <div class="stat-card__value">{{ preview.stats.aCreer }}</div>
+                    <div class="stat-card__label">À créer</div>
+                </div>
+                <div class="stat-card stat-card--warning">
+                    <div class="stat-card__value">{{ preview.stats.existantes }}</div>
+                    <div class="stat-card__label">Déjà existantes</div>
+                </div>
+                <div class="stat-card stat-card--danger">
+                    <div class="stat-card__value">{{ preview.stats.joursFermes }}</div>
+                    <div class="stat-card__label">Jours fermés</div>
+                </div>
+            </div>
+
+            {# Info séances existantes #}
+            {% if nbSeancesExistantes > 0 %}
+            <div class="info-existantes">
+                <span class="info-existantes__icon">ℹ️</span>
+                <div class="info-existantes__content">
+                    <p>{{ nbSeancesExistantes }} séance(s) déjà générée(s) pour ce créneau.</p>
+                    {% if hasModifiees %}
+                        <p>⚠️ Certaines séances ont été modifiées manuellement et ne seront pas affectées par une régénération.</p>
+                    {% else %}
+                        <p>Aucune séance n'a été modifiée manuellement.</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {# Prévisualisation #}
+            <div class="section-card preview-section">
+                <div class="section-card__header">
+                    <h3>📋 Prévisualisation des {{ preview.stats.total }} dates</h3>
+                </div>
+                
+                {% if preview.dates|length == 0 %}
+                    <div class="empty-state">
+                        <p>Aucune date à générer pour ce créneau.</p>
+                    </div>
+                {% else %}
+                    <div class="preview-scroll">
+                        <table class="preview-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Jour</th>
+                                    <th>Action</th>
+                                    <th>Détails</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in preview.dates %}
+                                <tr class="row--{{ item.action }}">
+                                    <td>{{ item.date|date('d/m/Y') }}</td>
+                                    <td>{{ item.jourSemaine }}</td>
+                                    <td>
+                                        {% if item.action == 'creer' %}
+                                            <span class="action-badge action-badge--creer">✓ À créer</span>
+                                        {% elseif item.action == 'existante' %}
+                                            <span class="action-badge action-badge--existante">⏸ Existante</span>
+                                        {% elseif item.action == 'jour_ferme' %}
+                                            <span class="action-badge action-badge--jour-ferme">✗ Jour fermé</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.jourFerme %}
+                                            {{ item.jourFerme.type.icone }} {{ item.jourFerme.libelle }}
+                                        {% elseif item.seanceExistante %}
+                                            Séance #{{ item.seanceExistante.id }}
+                                            {% if item.seanceExistante.modifieeDepuisCreneau %}
+                                                <em>(modifiée)</em>
+                                            {% endif %}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </div>
+
+            {# Actions #}
+            {% if preview.stats.aCreer > 0 or (nbSeancesExistantes > 0) %}
+            <div class="actions-section">
+                <h3>🚀 Actions</h3>
+                
+                <form action="{{ path('admin_creneau_generer_confirm', {id: creneau.id}) }}" method="post" class="actions-form">
+                    <input type="hidden" name="_token" value="{{ csrf_token('generer' ~ creneau.id) }}">
+                    
+                    {% if nbSeancesExistantes > 0 and not hasModifiees %}
+                    <div class="option-group option-group--warning">
+                        <input type="checkbox" name="regenerer" id="regenerer" value="1">
+                        <label for="regenerer">
+                            <strong>🔄 Régénérer toutes les séances</strong>
+                            <span>Supprime les séances existantes (non modifiées) et les recrée. Utile si le créneau a été modifié.</span>
+                        </label>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="actions-buttons">
+                        <a href="{{ path('admin_creneau_show', {id: creneau.id}) }}" class="btn btn--secondary">
+                            Annuler
+                        </a>
+                        
+                        {% if preview.stats.aCreer > 0 %}
+                        <button type="submit" class="btn btn--success">
+                            ✓ Générer {{ preview.stats.aCreer }} séance(s)
+                        </button>
+                        {% else %}
+                        <button type="submit" class="btn btn--primary" {% if not nbSeancesExistantes %}disabled{% endif %}>
+                            🔄 Régénérer les séances
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+            {% else %}
+            <div class="actions-section">
+                <p>Aucune action disponible. Toutes les dates correspondent à des jours fermés ou des séances existantes.</p>
+                <a href="{{ path('admin_creneau_show', {id: creneau.id}) }}" class="btn btn--secondary">
+                    ← Retour
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

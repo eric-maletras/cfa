@@ -3,13 +3,7 @@
 namespace App\Enum;
 
 /**
- * Enum des statuts possibles d'une séance planifiée
- * 
- * Workflow des statuts :
- * - PLANIFIEE : état initial après génération
- * - CONFIRMEE : séance validée, prête à avoir lieu
- * - ANNULEE : séance annulée (reste visible dans l'historique)
- * - REPORTEE : séance décalée (nécessite reprogrammation)
+ * Statuts possibles d'une séance planifiée
  */
 enum StatutSeance: string
 {
@@ -17,9 +11,10 @@ enum StatutSeance: string
     case CONFIRMEE = 'confirmee';
     case ANNULEE = 'annulee';
     case REPORTEE = 'reportee';
+    case TERMINEE = 'terminee';
 
     /**
-     * Retourne le libellé du statut
+     * Retourne le libellé en français
      */
     public function getLibelle(): string
     {
@@ -28,6 +23,7 @@ enum StatutSeance: string
             self::CONFIRMEE => 'Confirmée',
             self::ANNULEE => 'Annulée',
             self::REPORTEE => 'Reportée',
+            self::TERMINEE => 'Terminée',
         };
     }
 
@@ -41,6 +37,7 @@ enum StatutSeance: string
             self::CONFIRMEE => '✅',
             self::ANNULEE => '❌',
             self::REPORTEE => '🔄',
+            self::TERMINEE => '✔️',
         };
     }
 
@@ -50,10 +47,11 @@ enum StatutSeance: string
     public function getBadgeClass(): string
     {
         return match ($this) {
-            self::PLANIFIEE => 'info',
-            self::CONFIRMEE => 'success',
-            self::ANNULEE => 'danger',
-            self::REPORTEE => 'warning',
+            self::PLANIFIEE => 'badge--info',
+            self::CONFIRMEE => 'badge--success',
+            self::ANNULEE => 'badge--danger',
+            self::REPORTEE => 'badge--warning',
+            self::TERMINEE => 'badge--secondary',
         };
     }
 
@@ -63,35 +61,23 @@ enum StatutSeance: string
     public function getCouleur(): string
     {
         return match ($this) {
-            self::PLANIFIEE => '#3498db',
-            self::CONFIRMEE => '#27ae60',
-            self::ANNULEE => '#e74c3c',
-            self::REPORTEE => '#f39c12',
+            self::PLANIFIEE => '#17a2b8',
+            self::CONFIRMEE => '#28a745',
+            self::ANNULEE => '#dc3545',
+            self::REPORTEE => '#ffc107',
+            self::TERMINEE => '#6c757d',
         };
     }
 
     /**
-     * Vérifie si la séance est active (non annulée)
+     * Indique si la séance peut être modifiée
      */
-    public function isActive(): bool
+    public function estModifiable(): bool
     {
-        return $this !== self::ANNULEE;
-    }
-
-    /**
-     * Vérifie si la séance peut être modifiée
-     */
-    public function isModifiable(): bool
-    {
-        return in_array($this, [self::PLANIFIEE, self::CONFIRMEE, self::REPORTEE]);
-    }
-
-    /**
-     * Vérifie si la séance compte dans les heures réalisées
-     */
-    public function compteHeures(): bool
-    {
-        return $this === self::CONFIRMEE;
+        return match ($this) {
+            self::PLANIFIEE, self::CONFIRMEE, self::REPORTEE => true,
+            self::ANNULEE, self::TERMINEE => false,
+        };
     }
 
     /**
@@ -99,35 +85,14 @@ enum StatutSeance: string
      * 
      * @return self[]
      */
-    public function transitionsPossibles(): array
+    public function getTransitionsPossibles(): array
     {
         return match ($this) {
             self::PLANIFIEE => [self::CONFIRMEE, self::ANNULEE, self::REPORTEE],
-            self::CONFIRMEE => [self::ANNULEE, self::REPORTEE],
-            self::ANNULEE => [], // Pas de transition depuis annulée
+            self::CONFIRMEE => [self::TERMINEE, self::ANNULEE, self::REPORTEE],
+            self::ANNULEE => [self::PLANIFIEE], // Possibilité de réactiver
             self::REPORTEE => [self::PLANIFIEE, self::CONFIRMEE, self::ANNULEE],
+            self::TERMINEE => [], // Pas de transition depuis terminée
         };
-    }
-
-    /**
-     * Vérifie si une transition vers un autre statut est possible
-     */
-    public function peutTransitionnerVers(self $cible): bool
-    {
-        return in_array($cible, $this->transitionsPossibles());
-    }
-
-    /**
-     * Retourne les choix pour un formulaire Symfony
-     * 
-     * @return array<string, self>
-     */
-    public static function getFormChoices(): array
-    {
-        $choices = [];
-        foreach (self::cases() as $case) {
-            $choices[$case->getLibelle()] = $case;
-        }
-        return $choices;
     }
 }

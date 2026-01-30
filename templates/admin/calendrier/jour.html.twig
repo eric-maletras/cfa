@@ -30,7 +30,7 @@
 
 .planning-creneau {
     display: flex;
-    border-left: 3px solid var(--primary-color, #007bff);
+    border-left: 3px solid var(--primary-color, #4a90a4);
     background: var(--bg-light, #f8f9fa);
     border-radius: 0 4px 4px 0;
 }
@@ -39,7 +39,7 @@
     width: 70px;
     padding: 1rem;
     font-weight: bold;
-    color: var(--primary-color, #007bff);
+    color: var(--primary-color, #4a90a4);
     border-right: 1px solid var(--border-color, #e0e0e0);
     display: flex;
     align-items: center;
@@ -56,23 +56,41 @@
 
 .seance-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 1rem;
     padding: 0.75rem;
     background: white;
     border-radius: 4px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    transition: box-shadow 0.2s;
+}
+
+.seance-item:hover {
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 
 .seance-item--annulee {
     opacity: 0.6;
+    background: #fafafa;
+}
+
+.seance-item--annulee .seance-item__matiere {
     text-decoration: line-through;
 }
 
+.seance-item--confirmee {
+    border-left: 3px solid #27ae60;
+}
+
+.seance-item--reportee {
+    border-left: 3px solid #f39c12;
+}
+
 .seance-item__horaire {
-    width: 100px;
-    font-size: 0.9em;
+    width: 90px;
+    font-size: 0.85em;
     color: var(--text-muted, #6c757d);
+    font-weight: 500;
 }
 
 .seance-item__details {
@@ -82,15 +100,83 @@
 .seance-item__matiere {
     font-weight: 600;
     margin-bottom: 0.25rem;
+    color: var(--text-primary, #333);
 }
 
 .seance-item__info {
     font-size: 0.85em;
     color: var(--text-muted, #6c757d);
+    margin-bottom: 0.15rem;
+}
+
+.seance-item__commentaire {
+    font-size: 0.8em;
+    color: #e74c3c;
+    font-style: italic;
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: #fff5f5;
+    border-radius: 3px;
+}
+
+.seance-item__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-end;
 }
 
 .seance-item__statut {
-    text-align: right;
+    margin-bottom: 0.5rem;
+}
+
+.seance-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.seance-actions .btn--icon {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+/* Dropdown pour changement de statut */
+.statut-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.statut-dropdown__content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background: white;
+    min-width: 160px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-radius: 4px;
+    z-index: 100;
+    padding: 0.5rem 0;
+}
+
+.statut-dropdown:hover .statut-dropdown__content,
+.statut-dropdown:focus-within .statut-dropdown__content {
+    display: block;
+}
+
+.statut-dropdown__item {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    text-align: left;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.statut-dropdown__item:hover {
+    background: var(--bg-light, #f8f9fa);
 }
 
 .empty-state {
@@ -102,6 +188,43 @@
 .empty-state__icon {
     font-size: 3rem;
     margin-bottom: 1rem;
+}
+
+/* Modal de confirmation */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    max-width: 400px;
+    width: 90%;
+}
+
+.modal-content h3 {
+    margin-bottom: 1rem;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
 }
 </style>
 {% endblock %}
@@ -157,7 +280,12 @@
         <div class="section-card">
             <div class="section-card__header">
                 <h2>📋 Séances planifiées</h2>
-                <span class="badge">{{ seances|length }}</span>
+                <div class="btn-group">
+                    <span class="badge">{{ seances|length }}</span>
+                    <a href="{{ path('admin_calendrier_jour_new', {id: calendrier.id, date: dateStr}) }}" class="btn btn--primary btn--sm">
+                        ➕ Ajouter une séance
+                    </a>
+                </div>
             </div>
             
             {% if seances|length > 0 %}
@@ -169,17 +297,17 @@
                             </div>
                             <div class="planning-creneau__seances">
                                 {% for seance in seancesHeure %}
-                                    <div class="seance-item {% if seance.statut.value == 'annulee' %}seance-item--annulee{% endif %}">
+                                    <div class="seance-item seance-item--{{ seance.statut.value }}">
                                         <div class="seance-item__horaire">
                                             {{ seance.heureDebut|date('H:i') }} - {{ seance.heureFin|date('H:i') }}
                                         </div>
                                         <div class="seance-item__details">
                                             <div class="seance-item__matiere">
-                                                {{ seance.creneauRecurrent.matiere.libelle|default('Matière non définie') }}
+                                                {{ seance.sessionMatiere.matiere.libelle|default('Matière non définie') }}
                                             </div>
-                                            {% if seance.creneauRecurrent.formateurs|first %}
+                                            {% if seance.formateurs|length > 0 %}
                                                 <div class="seance-item__info">
-                                                    👤 {{ seance.creneauRecurrent.formateurs|first.prenom }} {{ seance.creneauRecurrent.formateurs|first.nom }}
+                                                    👤 {% for formateur in seance.formateurs %}{{ formateur.nomComplet }}{% if not loop.last %}, {% endif %}{% endfor %}
                                                 </div>
                                             {% endif %}
                                             {% if seance.salle %}
@@ -188,21 +316,63 @@
                                                 </div>
                                             {% endif %}
                                             <div class="seance-item__info">
-                                                🎓 {{ seance.creneauRecurrent.session.libelle|default('Session') }}
+                                                🎓 {{ seance.session.libelle|default('Session') }}
                                             </div>
-                                        </div>
-                                        <div class="seance-item__statut">
-                                            {% if seance.statut.value == 'planifiee' %}
-                                                <span class="status status--info">Planifiée</span>
-                                            {% elseif seance.statut.value == 'confirmee' %}
-                                                <span class="status status--success">Confirmée</span>
-                                            {% elseif seance.statut.value == 'annulee' %}
-                                                <span class="status status--danger">Annulée</span>
-                                            {% elseif seance.statut.value == 'reportee' %}
-                                                <span class="status status--warning">Reportée</span>
-                                            {% else %}
-                                                <span class="status">{{ seance.statut }}</span>
+                                            {% if seance.modifieeDepuisCreneau %}
+                                                <div class="seance-item__info">
+                                                    ✏️ <em>Modifiée manuellement</em>
+                                                </div>
                                             {% endif %}
+                                            {% if seance.commentaire %}
+                                                <div class="seance-item__commentaire">
+                                                    💬 {{ seance.commentaire }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="seance-item__actions">
+                                            <div class="seance-item__statut">
+                                                <span class="status status--{{ seance.statut.badgeClass }}">
+                                                    {{ seance.statut.icone }} {{ seance.statut.libelle }}
+                                                </span>
+                                            </div>
+                                            <div class="seance-actions">
+                                                {# Bouton modifier #}
+                                                <a href="{{ path('admin_calendrier_jour_edit', {id: calendrier.id, date: dateStr, seanceId: seance.id}) }}" 
+                                                   class="btn btn--outline btn--icon" title="Modifier">
+                                                    ✏️
+                                                </a>
+                                                
+                                                {# Dropdown changement de statut #}
+                                                {% if seance.statut.transitionsPossibles|length > 0 %}
+                                                <div class="statut-dropdown">
+                                                    <button type="button" class="btn btn--outline btn--icon" title="Changer le statut">
+                                                        🔄
+                                                    </button>
+                                                    <div class="statut-dropdown__content">
+                                                        {% for nouveauStatut in seance.statut.transitionsPossibles %}
+                                                            <form action="{{ path('admin_calendrier_jour_statut', {id: calendrier.id, date: dateStr, seanceId: seance.id}) }}" method="post" style="margin:0;">
+                                                                <input type="hidden" name="_token" value="{{ csrf_token('change_statut_' ~ seance.id) }}">
+                                                                <input type="hidden" name="statut" value="{{ nouveauStatut.value }}">
+                                                                <button type="submit" class="statut-dropdown__item">
+                                                                    {{ nouveauStatut.icone }} {{ nouveauStatut.libelle }}
+                                                                </button>
+                                                            </form>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                                {% endif %}
+                                                
+                                                {# Bouton supprimer #}
+                                                <form action="{{ path('admin_calendrier_jour_delete', {id: calendrier.id, date: dateStr, seanceId: seance.id}) }}" 
+                                                      method="post" 
+                                                      style="margin:0;"
+                                                      onsubmit="return confirm('Supprimer cette séance ?');">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('delete_seance_' ~ seance.id) }}">
+                                                    <button type="submit" class="btn btn--danger btn--icon" title="Supprimer">
+                                                        🗑️
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </div>
                                     </div>
                                 {% endfor %}
@@ -214,8 +384,25 @@
                 <div class="empty-state">
                     <div class="empty-state__icon">📅</div>
                     <p>Aucune séance planifiée pour cette journée.</p>
+                    <a href="{{ path('admin_calendrier_jour_new', {id: calendrier.id, date: dateStr}) }}" class="btn btn--primary">
+                        ➕ Ajouter une séance
+                    </a>
                 </div>
             {% endif %}
+        </div>
+
+        {# Légende des statuts #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2>📊 Légende des statuts</h2>
+            </div>
+            <div class="stats-row">
+                {% for statut in statuts %}
+                <div class="stat-item">
+                    <span class="status status--{{ statut.badgeClass }}">{{ statut.icone }} {{ statut.libelle }}</span>
+                </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
 </section>

@@ -3,10 +3,7 @@
 namespace App\Enum;
 
 /**
- * Enum des jours de la semaine pour les créneaux récurrents
- * 
- * Valeurs alignées sur ISO-8601 (1=lundi, 7=dimanche)
- * Note : Dimanche (7) non inclus car le CFA ne fait pas cours le dimanche
+ * Jours de la semaine (valeurs ISO : 1=lundi, 7=dimanche)
  */
 enum JourSemaine: int
 {
@@ -16,9 +13,10 @@ enum JourSemaine: int
     case JEUDI = 4;
     case VENDREDI = 5;
     case SAMEDI = 6;
+    case DIMANCHE = 7;
 
     /**
-     * Retourne le libellé du jour
+     * Retourne le libellé en français avec majuscule
      */
     public function getLibelle(): string
     {
@@ -29,13 +27,14 @@ enum JourSemaine: int
             self::JEUDI => 'Jeudi',
             self::VENDREDI => 'Vendredi',
             self::SAMEDI => 'Samedi',
+            self::DIMANCHE => 'Dimanche',
         };
     }
 
     /**
-     * Retourne le libellé court (3 lettres)
+     * Retourne le libellé abrégé (3 lettres)
      */
-    public function getLibelleCourt(): string
+    public function getLibelleAbrege(): string
     {
         return match ($this) {
             self::LUNDI => 'Lun',
@@ -44,34 +43,36 @@ enum JourSemaine: int
             self::JEUDI => 'Jeu',
             self::VENDREDI => 'Ven',
             self::SAMEDI => 'Sam',
+            self::DIMANCHE => 'Dim',
         };
     }
 
     /**
-     * Retourne la couleur associée (pour l'UI)
+     * Retourne le numéro ISO du jour (1=lundi, 7=dimanche)
      */
-    public function getCouleur(): string
+    public function getNumero(): int
     {
-        return match ($this) {
-            self::LUNDI => '#3498db',    // Bleu
-            self::MARDI => '#27ae60',    // Vert
-            self::MERCREDI => '#9b59b6', // Violet
-            self::JEUDI => '#e67e22',    // Orange
-            self::VENDREDI => '#e74c3c', // Rouge
-            self::SAMEDI => '#95a5a6',   // Gris
-        };
+        return $this->value;
     }
 
     /**
-     * Vérifie si c'est un jour de week-end
+     * Crée un JourSemaine à partir du numéro ISO
      */
-    public function isWeekend(): bool
+    public static function fromNumero(int $numero): self
     {
-        return $this === self::SAMEDI;
+        return self::from($numero);
     }
 
     /**
-     * Retourne tous les jours ouvrables (lundi à vendredi)
+     * Indique si c'est un jour ouvrable (lundi à vendredi)
+     */
+    public function isOuvrable(): bool
+    {
+        return $this->value <= 5;
+    }
+
+    /**
+     * Retourne la liste des jours ouvrables
      * 
      * @return self[]
      */
@@ -84,45 +85,5 @@ enum JourSemaine: int
             self::JEUDI,
             self::VENDREDI,
         ];
-    }
-
-    /**
-     * Retourne tous les jours avec samedi
-     * 
-     * @return self[]
-     */
-    public static function tousLesJours(): array
-    {
-        return self::cases();
-    }
-
-    /**
-     * Crée depuis un numéro ISO (1-6)
-     */
-    public static function fromIso(int $iso): ?self
-    {
-        return match ($iso) {
-            1 => self::LUNDI,
-            2 => self::MARDI,
-            3 => self::MERCREDI,
-            4 => self::JEUDI,
-            5 => self::VENDREDI,
-            6 => self::SAMEDI,
-            default => null,
-        };
-    }
-
-    /**
-     * Retourne les choix pour un formulaire Symfony
-     * 
-     * @return array<string, self>
-     */
-    public static function getFormChoices(): array
-    {
-        $choices = [];
-        foreach (self::cases() as $case) {
-            $choices[$case->getLibelle()] = $case;
-        }
-        return $choices;
     }
 }
