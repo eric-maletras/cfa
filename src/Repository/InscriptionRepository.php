@@ -3,12 +3,13 @@
 namespace App\Repository;
 
 use App\Entity\Inscription;
-use App\Entity\Session;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
+ * Repository pour l'entité Inscription
+ *
  * @extends ServiceEntityRepository<Inscription>
  */
 class InscriptionRepository extends ServiceEntityRepository
@@ -19,53 +20,90 @@ class InscriptionRepository extends ServiceEntityRepository
     }
 
     /**
-     * Récupère les inscriptions d'une session avec filtres
+     * Trouve les inscriptions actives d'un utilisateur
      * 
      * @return Inscription[]
      */
-    public function findBySessionWithFilters(
-        Session $session,
-        ?string $statut = null,
-        ?string $recherche = null
-    ): array {
-        $qb = $this->createQueryBuilder('i')
-            ->join('i.user', 'u')
-            ->andWhere('i.session = :session')
-            ->setParameter('session', $session)
-            ->orderBy('u.nom', 'ASC')
-            ->addOrderBy('u.prenom', 'ASC');
-        
-        if ($statut !== null && $statut !== '') {
-            $qb->andWhere('i.statut = :statut')
-               ->setParameter('statut', $statut);
-        }
-        
-        if ($recherche !== null && trim($recherche) !== '') {
-            $qb->andWhere(
-                $qb->expr()->orX(
-                    $qb->expr()->like('LOWER(u.nom)', ':recherche'),
-                    $qb->expr()->like('LOWER(u.prenom)', ':recherche'),
-                    $qb->expr()->like('LOWER(u.email)', ':recherche')
-                )
-            )->setParameter('recherche', '%' . strtolower(trim($recherche)) . '%');
-        }
-        
-        return $qb->getQuery()->getResult();
-    }
-
-    /**
-     * Récupère les inscriptions d'un utilisateur
-     * 
-     * @return Inscription[]
-     */
-    public function findByUser(User $user): array
+    public function findActiveByUser(User $user): array
     {
         return $this->createQueryBuilder('i')
             ->join('i.session', 's')
-            ->join('s.formation', 'f')
             ->andWhere('i.user = :user')
+            ->andWhere('i.statut = :statut')
+            ->andWhere('s.actif = true')
             ->setParameter('user', $user)
+            ->setParameter('statut', Inscription::STATUT_VALIDEE)
             ->orderBy('s.dateDebut', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Trouve les apprentis actifs d'une session
+     * 
+     * @return User[]
+     */
+    public function findApprentisActifsBySession(int $sessionId): array
+    {
+        $inscriptions = $this->createQueryBuilder('i')
+            ->select('i', 'u')
+            ->join('i.user', 'u')
+            ->andWhere('i.session = :sessionId')
+            ->andWhere('i.statut = :statut')
+            ->andWhere('u.actif = true')
+            ->setParameter('sessionId', $sessionId)
+            ->setParameter('statut', Inscription::STATUT_VALIDEE)
+            ->orderBy('u.nom', 'ASC')
+            ->addOrderBy('u.prenom', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $apprentis = [];
+        foreach ($inscriptions as $inscription) {
+            $apprentis[] = $inscription->getUser();
+        }
+
+        return $apprentis;
+    }
+
+    /**
+     * Trouve les apprentis actifs d'une formation (toutes sessions confondues)
+     * 
+     * @return User[]
+     */
+    public function findApprentisActifsByFormation(int $formationId): array
+    {
+        $inscriptions = $this->createQueryBuilder('i')
+            ->select('DISTINCT u')
+            ->join('i.user', 'u')
+            ->join('i.session', 's')
+            ->andWhere('s.formation = :formationId')
+            ->andWhere('i.statut = :statut')
+            ->andWhere('u.actif = true')
+            ->andWhere('s.actif = true')
+            ->setParameter('formationId', $formationId)
+            ->setParameter('statut', Inscription::STATUT_VALIDEE)
+            ->orderBy('u.nom', 'ASC')
+            ->addOrderBy('u.prenom', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $inscriptions;
+    }
+
+    /**
+     * Trouve les inscriptions par session
+     * 
+     * @return Inscription[]
+     */
+    public function findBySession(int $sessionId): array
+    {
+        return $this->createQueryBuilder('i')
+            ->join('i.user', 'u')
+            ->andWhere('i.session = :sessionId')
+            ->setParameter('sessionId', $sessionId)
+            ->orderBy('u.nom', 'ASC')
+            ->addOrderBy('u.prenom', 'ASC')
             ->getQuery()
             ->getResult();
     }
@@ -75,109 +113,105 @@ class InscriptionRepository extends ServiceEntityRepository
      * 
      * @return array<string, int>
      */
-    public function countByStatutForSession(Session $session): array
+    public function countByStatutForSession(int $sessionId): array
     {
-        $result = $this->createQueryBuilder('i')
+        $results = $this->createQueryBuilder('i')
             ->select('i.statut, COUNT(i.id) as total')
-            ->andWhere('i.session = :session')
-            ->setParameter('session', $session)
+            ->andWhere('i.session = :sessionId')
+            ->setParameter('sessionId', $sessionId)
             ->groupBy('i.statut')
             ->getQuery()
             ->getResult();
-        
+
         $counts = [];
-        foreach (Inscription::STATUTS as $code => $libelle) {
+        foreach (Inscription::STATUTS as $code => $label) {
             $counts[$code] = 0;
         }
-        foreach ($result as $row) {
+        foreach ($results as $row) {
             $counts[$row['statut']] = (int) $row['total'];
         }
-        
+
         return $counts;
     }
 
     /**
-     * Récupère le nombre total d'inscrits validés pour une session
+     * Trouve les inscriptions validées d'une session
+     * 
+     * @return Inscription[]
      */
-    public function countValidesForSession(Session $session): int
+    public function findValidesBySession(int $sessionId): array
     {
-        return (int) $this->createQueryBuilder('i')
-            ->select('COUNT(i.id)')
-            ->andWhere('i.session = :session')
+        return $this->createQueryBuilder('i')
+            ->join('i.user', 'u')
+            ->andWhere('i.session = :sessionId')
             ->andWhere('i.statut = :statut')
-            ->setParameter('session', $session)
+            ->setParameter('sessionId', $sessionId)
             ->setParameter('statut', Inscription::STATUT_VALIDEE)
+            ->orderBy('u.nom', 'ASC')
+            ->addOrderBy('u.prenom', 'ASC')
             ->getQuery()
-            ->getSingleScalarResult();
+            ->getResult();
     }
 
     /**
-     * Vérifie si un utilisateur est déjà inscrit à une session
+     * Vérifie si un utilisateur est inscrit à une session
      */
-    public function isUserInscrit(User $user, Session $session): bool
+    public function isUserInscrit(User $user, int $sessionId): bool
     {
         $count = $this->createQueryBuilder('i')
             ->select('COUNT(i.id)')
             ->andWhere('i.user = :user')
-            ->andWhere('i.session = :session')
+            ->andWhere('i.session = :sessionId')
+            ->andWhere('i.statut = :statut')
             ->setParameter('user', $user)
-            ->setParameter('session', $session)
+            ->setParameter('sessionId', $sessionId)
+            ->setParameter('statut', Inscription::STATUT_VALIDEE)
             ->getQuery()
             ->getSingleScalarResult();
-        
+
         return $count > 0;
     }
 
     /**
-     * Récupère les apprentis disponibles pour inscription à une session
-     * (ceux qui ne sont pas déjà inscrits)
+     * Trouve les apprentis avec des inscriptions actives
      * 
      * @return User[]
      */
-    public function findApprentisDisponibles(Session $session, string $roleApprenti = 'ROLE_APPRENTI'): array
+    public function findAllApprentisActifs(): array
     {
-        $em = $this->getEntityManager();
-        
-        // Sous-requête pour les IDs déjà inscrits
-        $subQuery = $this->createQueryBuilder('i2')
-            ->select('IDENTITY(i2.user)')
-            ->andWhere('i2.session = :session');
-        
-        // Requête principale sur les utilisateurs apprentis
-        $qb = $em->createQueryBuilder()
-            ->select('u')
-            ->from(User::class, 'u')
-            ->join('u.rolesEntities', 'r')
-            ->andWhere('r.code = :roleCode')
+        return $this->createQueryBuilder('i')
+            ->select('DISTINCT u')
+            ->join('i.user', 'u')
+            ->join('i.session', 's')
+            ->andWhere('i.statut = :statut')
             ->andWhere('u.actif = true')
-            ->andWhere($qb->expr()->notIn('u.id', $subQuery->getDQL()))
-            ->setParameter('roleCode', $roleApprenti)
-            ->setParameter('session', $session)
+            ->andWhere('s.actif = true')
+            ->setParameter('statut', Inscription::STATUT_VALIDEE)
             ->orderBy('u.nom', 'ASC')
-            ->addOrderBy('u.prenom', 'ASC');
-        
-        return $qb->getQuery()->getResult();
+            ->addOrderBy('u.prenom', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 
     /**
-     * Récupère les inscriptions actives en cours pour un utilisateur
-     * 
-     * @return Inscription[]
+     * Sauvegarde une inscription
      */
-    public function findInscriptionsActivesEnCours(User $user): array
+    public function save(Inscription $inscription, bool $flush = false): void
     {
-        $now = new \DateTime();
-        
-        return $this->createQueryBuilder('i')
-            ->join('i.session', 's')
-            ->andWhere('i.user = :user')
-            ->andWhere('i.statut = :statut')
-            ->andWhere('s.dateDebut <= :now')
-            ->andWhere('s.dateFin >= :now')
-            ->setParameter('user', $user)
-            ->setParameter('statut', Inscription::STATUT_VALIDEE)
-            ->setParameter('now', $now)
-            ->getQuery()
-            ->getResult();
+        $this->getEntityManager()->persist($inscription);
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    /**
+     * Supprime une inscription
+     */
+    public function remove(Inscription $inscription, bool $flush = false): void
+    {
+        $this->getEntityManager()->remove($inscription);
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
     }
 }

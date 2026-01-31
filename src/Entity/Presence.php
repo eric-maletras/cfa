@@ -95,10 +95,19 @@ class Presence
     private ?\DateTimeInterface $dateEnvoiEmail = null;
 
     /**
-     * Motif de l'absence (si absent justifié)
+     * Motif d'absence prédéfini (relation vers MotifAbsence)
+     * Utilisé lors de la justification d'une absence
+     */
+    #[ORM\ManyToOne(targetEntity: MotifAbsence::class, inversedBy: 'presences')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?MotifAbsence $motifAbsence = null;
+
+    /**
+     * Commentaire libre de justification (ancien champ motif_absence renommé)
+     * Permet d'ajouter des précisions en plus du motif prédéfini
      */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
-    private ?string $motifAbsence = null;
+    private ?string $commentaireJustification = null;
 
     /**
      * Minutes de retard (si statut RETARD ou en attente avec retard pré-enregistré)
@@ -232,14 +241,25 @@ class Presence
         return $this;
     }
 
-    public function getMotifAbsence(): ?string
+    public function getMotifAbsence(): ?MotifAbsence
     {
         return $this->motifAbsence;
     }
 
-    public function setMotifAbsence(?string $motifAbsence): static
+    public function setMotifAbsence(?MotifAbsence $motifAbsence): static
     {
         $this->motifAbsence = $motifAbsence;
+        return $this;
+    }
+
+    public function getCommentaireJustification(): ?string
+    {
+        return $this->commentaireJustification;
+    }
+
+    public function setCommentaireJustification(?string $commentaireJustification): static
+    {
+        $this->commentaireJustification = $commentaireJustification;
         return $this;
     }
 
@@ -350,7 +370,13 @@ class Presence
      */
     public function signer(string $ip, string $userAgent): static
     {
-        $this->statut = StatutPresence::PRESENT;
+        // Si retard pré-enregistré, marquer comme RETARD, sinon PRESENT
+        if ($this->minutesRetard && $this->minutesRetard > 0) {
+            $this->statut = StatutPresence::RETARD;
+        } else {
+            $this->statut = StatutPresence::PRESENT;
+        }
+        
         $this->dateSignature = new \DateTime();
         $this->ipSignature = $ip;
         $this->userAgentSignature = $userAgent;
@@ -360,10 +386,10 @@ class Presence
     /**
      * Marque comme absent
      */
-    public function marquerAbsent(?string $motif = null): static
+    public function marquerAbsent(?string $commentaire = null): static
     {
         $this->statut = StatutPresence::ABSENT;
-        $this->motifAbsence = $motif;
+        $this->commentaireJustification = $commentaire;
         $this->token = null; // Pas besoin de token pour un absent
         return $this;
     }
@@ -371,12 +397,16 @@ class Presence
     /**
      * Marque comme absence justifiée
      * 
-     * Seule modification autorisée par le formateur (pas de validation de présence)
+     * Seule modification autorisée par le formateur/admin (pas de validation de présence)
+     * 
+     * @param MotifAbsence|null $motif Motif prédéfini (optionnel)
+     * @param string|null $commentaire Commentaire libre (optionnel)
      */
-    public function justifierAbsence(string $motif): static
+    public function justifierAbsence(?MotifAbsence $motif = null, ?string $commentaire = null): static
     {
         $this->statut = StatutPresence::ABSENT_JUSTIFIE;
         $this->motifAbsence = $motif;
+        $this->commentaireJustification = $commentaire;
         return $this;
     }
 
@@ -430,6 +460,28 @@ class Presence
     }
 
     /**
+     * Vérifie si l'absence peut être justifiée
+     */
+    public function peutEtreJustifiee(): bool
+    {
+        return in_array($this->statut, [
+            StatutPresence::ABSENT,
+            StatutPresence::NON_SIGNE,
+        ]);
+    }
+
+    /**
+     * Retourne le libellé du motif (prédéfini ou commentaire)
+     */
+    public function getMotifLibelle(): ?string
+    {
+        if ($this->motifAbsence) {
+            return $this->motifAbsence->getLibelle();
+        }
+        return $this->commentaireJustification;
+    }
+
+    /**
      * Retourne une description du statut
      */
     public function getDescription(): string
@@ -442,6 +494,10 @@ class Presence
         
         if ($this->minutesRetard) {
             $desc .= sprintf(' - %d min de retard', $this->minutesRetard);
+        }
+        
+        if ($this->motifAbsence) {
+            $desc .= sprintf(' - Motif: %s', $this->motifAbsence->getLibelle());
         }
         
         return $desc;

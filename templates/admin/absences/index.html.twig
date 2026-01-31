@@ -1,0 +1,327 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Gestion des absences{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+    .stats-card {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-xl);
+    }
+    
+    .stat-item {
+        background: var(--color-white);
+        border-radius: var(--border-radius);
+        padding: var(--spacing-md);
+        text-align: center;
+        box-shadow: var(--shadow-sm);
+        border-left: 4px solid var(--color-primary);
+    }
+    
+    .stat-item--danger { border-left-color: #dc3545; }
+    .stat-item--warning { border-left-color: #ffc107; }
+    .stat-item--success { border-left-color: #28a745; }
+    .stat-item--info { border-left-color: #17a2b8; }
+    
+    .stat-item__value {
+        font-size: var(--font-size-2xl);
+        font-weight: var(--font-weight-bold);
+        color: var(--color-primary);
+    }
+    
+    .stat-item--danger .stat-item__value { color: #dc3545; }
+    .stat-item--warning .stat-item__value { color: #856404; }
+    .stat-item--success .stat-item__value { color: #28a745; }
+    .stat-item--info .stat-item__value { color: #17a2b8; }
+    
+    .stat-item__label {
+        font-size: var(--font-size-sm);
+        color: var(--color-text-secondary);
+        margin-top: var(--spacing-xs);
+    }
+
+    .taux-presence {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+    }
+
+    .taux-presence__bar {
+        width: 60px;
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .taux-presence__fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+
+    .taux-presence__fill--success { background: #28a745; }
+    .taux-presence__fill--warning { background: #ffc107; }
+    .taux-presence__fill--danger { background: #dc3545; }
+
+    .sessions-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+    }
+
+    .session-badge {
+        font-size: var(--font-size-xs);
+        padding: 2px 8px;
+        border-radius: 12px;
+        background: var(--color-off-white);
+        color: var(--color-text-secondary);
+    }
+
+    .filters-form {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: var(--spacing-md);
+        align-items: end;
+    }
+
+    .heures-absence {
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .heures-absence--critical {
+        color: #dc3545;
+    }
+
+    .heures-absence--warning {
+        color: #856404;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_dashboard') }}" class="btn btn--secondary btn--sm">
+                    ← Retour au tableau de bord
+                </a>
+            </div>
+            <h1 class="dashboard__title">📊 Gestion des absences</h1>
+            <p class="dashboard__subtitle">Suivi des absences et présences des apprentis</p>
+        </header>
+
+        {# Filtres #}
+        <div class="tabs" style="margin-bottom: var(--spacing-xl);">
+            <div class="tabs__content">
+                <form method="get" action="{{ path('admin_absence_index') }}" class="filters-form">
+                    <div class="form-group">
+                        <label for="recherche">Rechercher</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="recherche" 
+                               name="q" 
+                               value="{{ recherche }}"
+                               placeholder="Nom, prénom...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="filtreFormation">Formation</label>
+                        <select class="form-control" id="filtreFormation" name="formation">
+                            <option value="">Toutes les formations</option>
+                            {% for formation in formations %}
+                                <option value="{{ formation.id }}" {% if filtreFormation == formation.id ~ '' %}selected{% endif %}>
+                                    {{ formation.intituleCourt ?? formation.intitule }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="filtreSession">Session</label>
+                        <select class="form-control" id="filtreSession" name="session">
+                            <option value="">Toutes les sessions</option>
+                            {% for session in sessions %}
+                                <option value="{{ session.id }}" {% if filtreSession == session.id ~ '' %}selected{% endif %}>
+                                    {{ session.code }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="dateDebut">Du</label>
+                        <input type="date" 
+                               class="form-control" 
+                               id="dateDebut" 
+                               name="date_debut" 
+                               value="{{ dateDebut }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="dateFin">Au</label>
+                        <input type="date" 
+                               class="form-control" 
+                               id="dateFin" 
+                               name="date_fin" 
+                               value="{{ dateFin }}">
+                    </div>
+                    
+                    <div class="form-group" style="display: flex; gap: var(--spacing-sm);">
+                        <button type="submit" class="btn btn--primary btn--sm">Filtrer</button>
+                        <a href="{{ path('admin_absence_index') }}" class="btn btn--secondary btn--sm">Réinitialiser</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {# Statistiques globales #}
+        {% set totalApprentis = apprentisStats|length %}
+        {% set totalAbsences = 0 %}
+        {% set totalHeures = 0 %}
+        {% set apprentisEnAlerte = 0 %}
+        {% for item in apprentisStats %}
+            {% set totalAbsences = totalAbsences + (item.stats.absents ?? 0) + (item.stats.nonSignes ?? 0) %}
+            {% set totalHeures = totalHeures + item.heuresAbsence %}
+            {% if item.heuresAbsence >= 20 %}
+                {% set apprentisEnAlerte = apprentisEnAlerte + 1 %}
+            {% endif %}
+        {% endfor %}
+
+        <div class="stats-card">
+            <div class="stat-item">
+                <div class="stat-item__value">{{ totalApprentis }}</div>
+                <div class="stat-item__label">Apprentis</div>
+            </div>
+            <div class="stat-item stat-item--danger">
+                <div class="stat-item__value">{{ totalAbsences }}</div>
+                <div class="stat-item__label">Absences totales</div>
+            </div>
+            <div class="stat-item stat-item--warning">
+                <div class="stat-item__value">{{ totalHeures|number_format(1, ',', ' ') }}h</div>
+                <div class="stat-item__label">Heures d'absence</div>
+            </div>
+            <div class="stat-item stat-item--info">
+                <div class="stat-item__value">{{ apprentisEnAlerte }}</div>
+                <div class="stat-item__label">En alerte (&gt;20h)</div>
+            </div>
+        </div>
+
+        {# Liste des apprentis #}
+        <div class="tab-pane__header">
+            <h2>{{ totalApprentis }} apprenti(s)</h2>
+        </div>
+
+        {% if apprentisStats is empty %}
+            <div class="empty-state">
+                <p>Aucun apprenti ne correspond aux critères de recherche.</p>
+            </div>
+        {% else %}
+            <div class="tabs">
+                <div class="tabs__content">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Apprenti</th>
+                                    <th>Session(s)</th>
+                                    <th style="text-align: center;">Taux présence</th>
+                                    <th style="text-align: center;">Présents</th>
+                                    <th style="text-align: center;">Absents</th>
+                                    <th style="text-align: center;">Retards</th>
+                                    <th style="text-align: center;">Non signés</th>
+                                    <th style="text-align: center;">Heures abs.</th>
+                                    <th class="actions-col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in apprentisStats %}
+                                    {% set apprenti = item.apprenti %}
+                                    {% set stats = item.stats %}
+                                    {% set tauxPresence = stats.tauxPresence ?? 0 %}
+                                    
+                                    <tr class="{{ item.heuresAbsence >= 30 ? 'row--alerte' : '' }}">
+                                        <td>
+                                            <a href="{{ path('admin_absence_show', {id: apprenti.id}) }}">
+                                                <strong>{{ apprenti.nomComplet }}</strong>
+                                            </a>
+                                            <div class="text-muted" style="font-size: var(--font-size-xs);">
+                                                {{ apprenti.email }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="sessions-list">
+                                                {% for inscription in item.inscriptions %}
+                                                    <span class="session-badge">
+                                                        {{ inscription.session.code }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted">Aucune</span>
+                                                {% endfor %}
+                                            </div>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <div class="taux-presence">
+                                                <div class="taux-presence__bar">
+                                                    <div class="taux-presence__fill taux-presence__fill--{{ tauxPresence >= 90 ? 'success' : (tauxPresence >= 70 ? 'warning' : 'danger') }}" 
+                                                         style="width: {{ tauxPresence }}%"></div>
+                                                </div>
+                                                <span>{{ tauxPresence }}%</span>
+                                            </div>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <span class="badge badge--success">{{ stats.presents ?? 0 }}</span>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <span class="badge badge--danger">{{ stats.absents ?? 0 }}</span>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <span class="badge badge--warning">{{ stats.retards ?? 0 }}</span>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            {% if stats.nonSignes ?? 0 > 0 %}
+                                                <span class="badge badge--danger">{{ stats.nonSignes }}</span>
+                                            {% else %}
+                                                <span class="badge">0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <span class="heures-absence {{ item.heuresAbsence >= 30 ? 'heures-absence--critical' : (item.heuresAbsence >= 20 ? 'heures-absence--warning' : '') }}">
+                                                {{ item.heuresAbsence|number_format(1, ',', ' ') }}h
+                                            </span>
+                                        </td>
+                                        <td class="actions-col">
+                                            <div class="btn-group">
+                                                <a href="{{ path('admin_absence_show', {id: apprenti.id}) }}" 
+                                                   class="btn btn--primary btn--sm" 
+                                                   title="Voir le détail">
+                                                    👁️ Détail
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+    // Mise à jour dynamique du filtre session en fonction de la formation
+    document.getElementById('filtreFormation').addEventListener('change', function() {
+        // On pourrait implémenter un filtre AJAX ici pour les sessions
+        // Pour l'instant, on soumet simplement le formulaire
+    });
+</script>
+{% endblock %}

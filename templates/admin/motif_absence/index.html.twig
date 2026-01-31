@@ -1,0 +1,186 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Motifs d'absence{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+    .motif-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: var(--border-radius);
+        font-size: var(--font-size-sm);
+    }
+
+    .motif-badge--success { background: #d4edda; color: #155724; }
+    .motif-badge--info { background: #d1ecf1; color: #0c5460; }
+    .motif-badge--warning { background: #fff3cd; color: #856404; }
+    .motif-badge--danger { background: #f8d7da; color: #721c24; }
+    .motif-badge--secondary { background: #e2e3e5; color: #383d41; }
+
+    .justificatif-icon {
+        color: #dc3545;
+        font-weight: bold;
+    }
+
+    .stats-mini {
+        font-size: var(--font-size-xs);
+        color: var(--color-text-secondary);
+    }
+
+    .ordre-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--color-off-white);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-semibold);
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_dashboard') }}" class="btn btn--secondary btn--sm">
+                    ← Retour au tableau de bord
+                </a>
+            </div>
+            <h1 class="dashboard__title">📋 Motifs d'absence</h1>
+            <p class="dashboard__subtitle">Gérer les motifs prédéfinis pour la justification des absences</p>
+        </header>
+
+        {# Actions #}
+        <div class="tab-pane__header" style="margin-bottom: var(--spacing-lg);">
+            <h2>{{ motifs|length }} motif(s)</h2>
+            <a href="{{ path('admin_motif_absence_new') }}" class="btn btn--primary">
+                ➕ Nouveau motif
+            </a>
+        </div>
+
+        {# Liste #}
+        {% if motifs is empty %}
+            <div class="empty-state">
+                <p>Aucun motif d'absence configuré.</p>
+                <a href="{{ path('admin_motif_absence_new') }}" class="btn btn--primary">
+                    Créer le premier motif
+                </a>
+            </div>
+        {% else %}
+            <div class="tabs">
+                <div class="tabs__content">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;">Ordre</th>
+                                    <th>Motif</th>
+                                    <th>Code</th>
+                                    <th style="text-align: center;">Justificatif</th>
+                                    <th style="text-align: center;">Utilisations</th>
+                                    <th style="text-align: center;">Statut</th>
+                                    <th class="actions-col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for motif in motifs %}
+                                    <tr class="{{ not motif.actif ? 'row--inactive' : '' }}">
+                                        <td style="text-align: center;">
+                                            <span class="ordre-badge">{{ motif.ordre }}</span>
+                                        </td>
+                                        <td>
+                                            <div class="motif-badge motif-badge--{{ motif.couleur ?? 'secondary' }}">
+                                                {% if motif.icone %}
+                                                    <span>{{ motif.icone }}</span>
+                                                {% endif %}
+                                                <strong>{{ motif.libelle }}</strong>
+                                            </div>
+                                            {% if motif.description %}
+                                                <div class="stats-mini" style="margin-top: 4px;">
+                                                    {{ motif.description|u.truncate(50, '...') }}
+                                                </div>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <code>{{ motif.code }}</code>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            {% if motif.justificatifObligatoire %}
+                                                <span class="justificatif-icon" title="Justificatif obligatoire">📎 Oui</span>
+                                            {% else %}
+                                                <span class="text-muted">Non</span>
+                                            {% endif %}
+                                        </td>
+                                        <td style="text-align: center;">
+                                            {% set nbUtilisations = statsUtilisation[motif.id] ?? 0 %}
+                                            {% if nbUtilisations > 0 %}
+                                                <span class="badge badge--info">{{ nbUtilisations }}</span>
+                                            {% else %}
+                                                <span class="text-muted">0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td style="text-align: center;">
+                                            {% if motif.actif %}
+                                                <span class="badge badge--success">Actif</span>
+                                            {% else %}
+                                                <span class="badge badge--secondary">Inactif</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="actions-col">
+                                            <div class="btn-group">
+                                                <a href="{{ path('admin_motif_absence_edit', {id: motif.id}) }}" 
+                                                   class="btn btn--secondary btn--sm" 
+                                                   title="Modifier">
+                                                    ✏️
+                                                </a>
+                                                <form method="post" 
+                                                      action="{{ path('admin_motif_absence_toggle', {id: motif.id}) }}" 
+                                                      style="display: inline;">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('toggle_motif_' ~ motif.id) }}">
+                                                    <button type="submit" 
+                                                            class="btn btn--{{ motif.actif ? 'warning' : 'success' }} btn--sm"
+                                                            title="{{ motif.actif ? 'Désactiver' : 'Activer' }}">
+                                                        {{ motif.actif ? '🚫' : '✅' }}
+                                                    </button>
+                                                </form>
+                                                {% if (statsUtilisation[motif.id] ?? 0) == 0 %}
+                                                    <form method="post" 
+                                                          action="{{ path('admin_motif_absence_delete', {id: motif.id}) }}" 
+                                                          style="display: inline;"
+                                                          onsubmit="return confirm('Supprimer le motif {{ motif.libelle|e('js') }} ?')">
+                                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_motif_' ~ motif.id) }}">
+                                                        <button type="submit" 
+                                                                class="btn btn--danger btn--sm"
+                                                                title="Supprimer">
+                                                            🗑️
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {# Légende #}
+            <div class="stats-mini" style="margin-top: var(--spacing-lg);">
+                <strong>Légende :</strong> 
+                📎 = Justificatif obligatoire |
+                Les motifs utilisés ne peuvent pas être supprimés (désactivez-les plutôt)
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

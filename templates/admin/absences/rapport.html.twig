@@ -1,0 +1,320 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Rapport d'heures d'absence{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+    .rapport-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: var(--spacing-xl);
+        margin-bottom: var(--spacing-xl);
+        flex-wrap: wrap;
+    }
+
+    .rapport-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-xl);
+    }
+
+    .stat-card {
+        background: var(--color-white);
+        border-radius: var(--border-radius);
+        padding: var(--spacing-lg);
+        text-align: center;
+        box-shadow: var(--shadow-sm);
+        border-top: 4px solid var(--color-primary);
+    }
+
+    .stat-card--danger { border-top-color: #dc3545; }
+    .stat-card--warning { border-top-color: #ffc107; }
+    .stat-card--success { border-top-color: #28a745; }
+    .stat-card--info { border-top-color: #17a2b8; }
+
+    .stat-card__value {
+        font-size: var(--font-size-2xl);
+        font-weight: var(--font-weight-bold);
+        color: var(--color-primary);
+    }
+
+    .stat-card--danger .stat-card__value { color: #dc3545; }
+    .stat-card--warning .stat-card__value { color: #856404; }
+    .stat-card--success .stat-card__value { color: #28a745; }
+    .stat-card--info .stat-card__value { color: #17a2b8; }
+
+    .stat-card__label {
+        font-size: var(--font-size-sm);
+        color: var(--color-text-secondary);
+        margin-top: var(--spacing-xs);
+    }
+
+    .filters-card {
+        background: var(--color-white);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow);
+        padding: var(--spacing-lg);
+        margin-bottom: var(--spacing-xl);
+    }
+
+    .filters-form {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--spacing-md);
+        align-items: end;
+    }
+
+    .export-buttons {
+        display: flex;
+        gap: var(--spacing-md);
+        flex-wrap: wrap;
+    }
+
+    .row--alerte {
+        background: #fff3cd !important;
+    }
+
+    .row--alerte:hover {
+        background: #ffe8a1 !important;
+    }
+
+    .heures-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-weight: var(--font-weight-semibold);
+        font-size: var(--font-size-sm);
+    }
+
+    .heures-badge--danger {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .heures-badge--warning {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .heures-badge--success {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .progress-mini {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+    }
+
+    .progress-mini__bar {
+        flex: 1;
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-mini__fill {
+        height: 100%;
+        border-radius: 4px;
+    }
+
+    .progress-mini__fill--success { background: #28a745; }
+    .progress-mini__fill--warning { background: #ffc107; }
+    .progress-mini__fill--danger { background: #dc3545; }
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_absence_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la gestion des absences
+                </a>
+            </div>
+            <h1 class="dashboard__title">📊 Rapport d'heures d'absence</h1>
+            <p class="dashboard__subtitle">Synthèse des heures d'absence par apprenti</p>
+        </header>
+
+        {# Filtres #}
+        <div class="filters-card">
+            <form method="get" action="{{ path('admin_absences_rapport') }}" class="filters-form">
+                <div class="form-group">
+                    <label for="filtreFormation">Formation</label>
+                    <select class="form-control" id="filtreFormation" name="formation">
+                        <option value="">Toutes les formations</option>
+                        {% for formation in formations %}
+                            <option value="{{ formation.id }}" {% if filtreFormation == formation.id ~ '' %}selected{% endif %}>
+                                {{ formation.intituleCourt ?? formation.intitule }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="filtreSession">Session</label>
+                    <select class="form-control" id="filtreSession" name="session">
+                        <option value="">Toutes les sessions</option>
+                        {% for session in sessions %}
+                            <option value="{{ session.id }}" {% if filtreSession == session.id ~ '' %}selected{% endif %}>
+                                {{ session.code }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="dateDebut">Du</label>
+                    <input type="date" class="form-control" id="dateDebut" name="date_debut" value="{{ dateDebut }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="dateFin">Au</label>
+                    <input type="date" class="form-control" id="dateFin" name="date_fin" value="{{ dateFin }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="seuilAlerte">Seuil alerte (h)</label>
+                    <input type="number" class="form-control" id="seuilAlerte" name="seuil" value="{{ seuilAlerte }}" min="1" max="100">
+                </div>
+                
+                <div class="form-group" style="display: flex; gap: var(--spacing-sm);">
+                    <button type="submit" class="btn btn--primary btn--sm">Filtrer</button>
+                    <a href="{{ path('admin_absences_rapport') }}" class="btn btn--secondary btn--sm">Réinitialiser</a>
+                </div>
+            </form>
+        </div>
+
+        {# Statistiques globales #}
+        <div class="rapport-stats">
+            <div class="stat-card">
+                <div class="stat-card__value">{{ totaux.nbApprentis }}</div>
+                <div class="stat-card__label">Apprentis</div>
+            </div>
+            <div class="stat-card stat-card--danger">
+                <div class="stat-card__value">{{ totaux.heuresAbsence|number_format(1, ',', ' ') }}h</div>
+                <div class="stat-card__label">Heures d'absence totales</div>
+            </div>
+            <div class="stat-card stat-card--success">
+                <div class="stat-card__value">{{ totaux.heuresJustifiees|number_format(1, ',', ' ') }}h</div>
+                <div class="stat-card__label">Heures justifiées</div>
+            </div>
+            <div class="stat-card stat-card--warning">
+                <div class="stat-card__value">{{ totaux.heuresNonJustifiees|number_format(1, ',', ' ') }}h</div>
+                <div class="stat-card__label">Heures non justifiées</div>
+            </div>
+            <div class="stat-card stat-card--info">
+                <div class="stat-card__value">{{ totaux.nbEnAlerte }}</div>
+                <div class="stat-card__label">En alerte (≥{{ seuilAlerte }}h)</div>
+            </div>
+        </div>
+
+        {# Boutons d'export #}
+        <div class="export-buttons" style="margin-bottom: var(--spacing-xl);">
+            <a href="{{ path('admin_absences_rapport_csv', {
+                formation: filtreFormation,
+                session: filtreSession,
+                date_debut: dateDebut,
+                date_fin: dateFin
+            }) }}" class="btn btn--secondary">
+                📥 Exporter CSV
+            </a>
+            <a href="{{ path('admin_absences_rapport_pdf', {
+                formation: filtreFormation,
+                session: filtreSession,
+                date_debut: dateDebut,
+                date_fin: dateFin,
+                seuil: seuilAlerte
+            }) }}" class="btn btn--secondary" target="_blank">
+                📄 Aperçu PDF
+            </a>
+        </div>
+
+        {# Tableau du rapport #}
+        {% if rapportData is empty %}
+            <div class="empty-state">
+                <p>Aucun apprenti ne correspond aux critères de recherche.</p>
+            </div>
+        {% else %}
+            <div class="tabs">
+                <div class="tabs__content">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Apprenti</th>
+                                    <th>Session</th>
+                                    <th style="text-align: center;">Taux présence</th>
+                                    <th style="text-align: center;">Heures totales</th>
+                                    <th style="text-align: center;">Justifiées</th>
+                                    <th style="text-align: center;">Non justifiées</th>
+                                    <th class="actions-col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in rapportData %}
+                                    {% set tauxPresence = item.stats.tauxPresence ?? 0 %}
+                                    <tr class="{{ item.enAlerte ? 'row--alerte' : '' }}">
+                                        <td>
+                                            <strong>{{ item.apprenti.nomComplet }}</strong>
+                                            {% if item.enAlerte %}
+                                                <span title="En alerte">⚠️</span>
+                                            {% endif %}
+                                            <div class="text-muted" style="font-size: var(--font-size-xs);">
+                                                {{ item.apprenti.email }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% for inscription in item.inscriptions %}
+                                                <span class="badge">{{ inscription.session.code }}</span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endfor %}
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <div class="progress-mini">
+                                                <div class="progress-mini__bar">
+                                                    <div class="progress-mini__fill progress-mini__fill--{{ tauxPresence >= 90 ? 'success' : (tauxPresence >= 70 ? 'warning' : 'danger') }}" 
+                                                         style="width: {{ tauxPresence }}%"></div>
+                                                </div>
+                                                <span>{{ tauxPresence }}%</span>
+                                            </div>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <span class="heures-badge heures-badge--{{ item.heuresAbsence >= 30 ? 'danger' : (item.heuresAbsence >= 10 ? 'warning' : 'success') }}">
+                                                {{ item.heuresAbsence|number_format(1, ',', ' ') }}h
+                                            </span>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <span class="text-success">{{ item.heuresJustifiees|number_format(1, ',', ' ') }}h</span>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <span class="{{ item.heuresNonJustifiees >= seuilAlerte ? 'text-danger' : '' }}" style="font-weight: var(--font-weight-semibold);">
+                                                {{ item.heuresNonJustifiees|number_format(1, ',', ' ') }}h
+                                            </span>
+                                        </td>
+                                        <td class="actions-col">
+                                            <a href="{{ path('admin_absence_show', {id: item.apprenti.id}) }}" 
+                                               class="btn btn--primary btn--sm" 
+                                               title="Voir le détail">
+                                                👁️ Détail
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

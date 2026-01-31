@@ -193,6 +193,60 @@
 .compteur strong {
     color: var(--color-primary);
 }
+
+/* ========================================
+   ALERTE HORS HORAIRES
+   ======================================== */
+.alert-horaire {
+    background: #fff3e0;
+    border-left: 4px solid #ff9800;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.alert-horaire__icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.alert-horaire__content {
+    flex: 1;
+}
+
+.alert-horaire__title {
+    font-weight: 600;
+    color: #e65100;
+    margin-bottom: 0.25rem;
+}
+
+.alert-horaire__text {
+    color: #bf360c;
+    font-size: 0.9rem;
+}
+
+/* Formulaire désactivé */
+.appel-form--disabled {
+    opacity: 0.6;
+    pointer-events: none;
+    user-select: none;
+}
+
+.appel-form--disabled .apprenti-row:hover {
+    background: transparent;
+}
+
+/* Bouton désactivé */
+.btn--disabled {
+    background: #ccc !important;
+    border-color: #ccc !important;
+    color: #666 !important;
+    cursor: not-allowed !important;
+    pointer-events: none;
+}
 </style>
 {% endblock %}
 
@@ -233,28 +287,45 @@
             <div class="alert alert--warning">{{ message }}</div>
         {% endfor %}
 
+        {# Alerte si hors horaires #}
+        {% if not seanceEnCours %}
+            <div class="alert-horaire">
+                <span class="alert-horaire__icon">⏰</span>
+                <div class="alert-horaire__content">
+                    <div class="alert-horaire__title">Appel impossible actuellement</div>
+                    <div class="alert-horaire__text">
+                        L'appel ne peut être effectué que pendant le créneau du cours, 
+                        soit entre <strong>{{ seance.heureDebut|date('H:i') }}</strong> 
+                        et <strong>{{ seance.heureFin|date('H:i') }}</strong>.
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
         {# Info box #}
+        {% if seanceEnCours %}
         <div class="info-box">
             <strong>📝 Instructions :</strong><br>
             1. Cochez les apprentis <strong>physiquement présents</strong> dans la salle<br>
             2. Les apprentis non cochés seront marqués <strong>absents</strong><br>
             3. Un email de signature sera envoyé aux présents pour confirmer leur présence
         </div>
+        {% endif %}
 
         {% if apprentis|length > 0 %}
             {# Formulaire de création d'appel #}
             <form action="{{ path('app_appel_creer', {id: seance.id}) }}" method="post" id="form-appel">
                 <input type="hidden" name="_token" value="{{ csrf_token('appel_creer_' ~ seance.id) }}">
                 
-                <div class="appel-form">
+                <div class="appel-form {{ not seanceEnCours ? 'appel-form--disabled' : '' }}">
                     <div class="appel-form__header">
                         <h2 class="appel-form__title">👥 Liste des apprentis inscrits</h2>
                     </div>
                     <div class="appel-form__body">
                         {# Sélection rapide #}
                         <div class="selection-rapide">
-                            <button type="button" onclick="selectionnerTous()">✅ Tous présents</button>
-                            <button type="button" onclick="deselectionnerTous()">❌ Aucun présent</button>
+                            <button type="button" onclick="selectionnerTous()" {{ not seanceEnCours ? 'disabled' : '' }}>✅ Tous présents</button>
+                            <button type="button" onclick="deselectionnerTous()" {{ not seanceEnCours ? 'disabled' : '' }}>❌ Aucun présent</button>
                         </div>
 
                         {# Compteur #}
@@ -271,7 +342,8 @@
                                                name="apprentis_presents[]" 
                                                value="{{ apprenti.id }}"
                                                id="apprenti-{{ apprenti.id }}"
-                                               class="checkbox-apprenti">
+                                               class="checkbox-apprenti"
+                                               {{ not seanceEnCours ? 'disabled' : '' }}>
                                     </div>
                                     <label for="apprenti-{{ apprenti.id }}" class="apprenti-row__avatar">
                                         {{ apprenti.prenom|first|upper }}{{ apprenti.nom|first|upper }}
@@ -293,7 +365,7 @@
                             <div class="appel-options__title">⚙️ Options</div>
                             <div class="option-group">
                                 <label for="expiration_minutes">Durée de validité des liens :</label>
-                                <select name="expiration_minutes" id="expiration_minutes">
+                                <select name="expiration_minutes" id="expiration_minutes" {{ not seanceEnCours ? 'disabled' : '' }}>
                                     <option value="15">15 minutes</option>
                                     <option value="20" selected>20 minutes (recommandé)</option>
                                     <option value="40">40 minutes</option>
@@ -306,9 +378,15 @@
                             <a href="{{ path('app_formateur_planning_seance', {id: seance.id}) }}" class="btn btn--secondary">
                                 Annuler
                             </a>
-                            <button type="submit" class="btn btn--primary">
-                                📧 Créer l'appel et envoyer les emails
-                            </button>
+                            {% if seanceEnCours %}
+                                <button type="submit" class="btn btn--primary">
+                                    📧 Créer l'appel et envoyer les emails
+                                </button>
+                            {% else %}
+                                <button type="button" class="btn btn--primary btn--disabled" disabled title="L'appel ne peut être fait que pendant le cours">
+                                    🔒 Appel indisponible (hors horaires)
+                                </button>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -340,7 +418,7 @@ function updateCompteur() {
 
 // Sélectionner tous
 function selectionnerTous() {
-    document.querySelectorAll('.checkbox-apprenti').forEach(cb => {
+    document.querySelectorAll('.checkbox-apprenti:not(:disabled)').forEach(cb => {
         cb.checked = true;
     });
     updateCompteur();
@@ -348,7 +426,7 @@ function selectionnerTous() {
 
 // Désélectionner tous
 function deselectionnerTous() {
-    document.querySelectorAll('.checkbox-apprenti').forEach(cb => {
+    document.querySelectorAll('.checkbox-apprenti:not(:disabled)').forEach(cb => {
         cb.checked = false;
     });
     updateCompteur();

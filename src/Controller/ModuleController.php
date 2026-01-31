@@ -26,6 +26,7 @@ class ModuleController extends AbstractController
         'admin_salle_index' => 'admin_salle_index',     // Gestion des salles
         'formateur_notes' => 'app_formateur_notes_index',
         'formateur_sessions' => 'app_formateur_sessions_index',
+        'formateur_planning' => 'app_formateur_planning',
         // Ajouter d'autres mappings au fur et à mesure du développement
     ];
 

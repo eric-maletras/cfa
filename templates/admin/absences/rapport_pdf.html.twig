@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Rapport d'heures d'absence</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #333;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 15px;
+        }
+        
+        .header h1 {
+            font-size: 18px;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .periode {
+            background: #f8f9fa;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .stats-grid {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        
+        .stat-box {
+            flex: 1;
+            background: #f8f9fa;
+            padding: 10px;
+            text-align: center;
+            border-radius: 4px;
+            border-top: 3px solid #2c3e50;
+        }
+        
+        .stat-box.danger { border-top-color: #dc3545; }
+        .stat-box.warning { border-top-color: #ffc107; }
+        .stat-box.success { border-top-color: #28a745; }
+        .stat-box.info { border-top-color: #17a2b8; }
+        
+        .stat-box .value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .stat-box.danger .value { color: #dc3545; }
+        .stat-box.warning .value { color: #856404; }
+        .stat-box.success .value { color: #28a745; }
+        .stat-box.info .value { color: #17a2b8; }
+        
+        .stat-box .label {
+            font-size: 9px;
+            color: #666;
+            margin-top: 3px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 6px;
+            text-align: left;
+        }
+        
+        th {
+            background: #2c3e50;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        tr.alerte {
+            background: #fff3cd !important;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .text-right {
+            text-align: right;
+        }
+        
+        .text-danger {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .text-success {
+            color: #28a745;
+        }
+        
+        .footer {
+            margin-top: 30px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+            font-size: 9px;
+            color: #666;
+            text-align: center;
+        }
+        
+        @media print {
+            body {
+                padding: 0;
+            }
+            
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="margin-bottom: 20px; text-align: center;">
+        <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer;">🖨️ Imprimer / Enregistrer en PDF</button>
+    </div>
+
+    <div class="header">
+        <h1>📊 Rapport d'heures d'absence</h1>
+        <div class="subtitle">CFA - Gestion des présences</div>
+    </div>
+    
+    <div class="periode">
+        <strong>Période :</strong> du {{ dateDebut|date('d/m/Y') }} au {{ dateFin|date('d/m/Y') }}
+        &nbsp;|&nbsp;
+        <strong>Seuil d'alerte :</strong> {{ seuilAlerte }}h
+    </div>
+    
+    <div class="stats-grid">
+        <div class="stat-box">
+            <div class="value">{{ totaux.nbApprentis }}</div>
+            <div class="label">Apprentis</div>
+        </div>
+        <div class="stat-box danger">
+            <div class="value">{{ totaux.heuresAbsence|number_format(1, ',', ' ') }}h</div>
+            <div class="label">Heures totales</div>
+        </div>
+        <div class="stat-box success">
+            <div class="value">{{ totaux.heuresJustifiees|number_format(1, ',', ' ') }}h</div>
+            <div class="label">Justifiées</div>
+        </div>
+        <div class="stat-box warning">
+            <div class="value">{{ totaux.heuresNonJustifiees|number_format(1, ',', ' ') }}h</div>
+            <div class="label">Non justifiées</div>
+        </div>
+        <div class="stat-box info">
+            <div class="value">{{ totaux.nbEnAlerte }}</div>
+            <div class="label">En alerte</div>
+        </div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 25%;">Apprenti</th>
+                <th style="width: 15%;">Session</th>
+                <th class="text-center" style="width: 12%;">Taux présence</th>
+                <th class="text-center" style="width: 12%;">Heures totales</th>
+                <th class="text-center" style="width: 12%;">Justifiées</th>
+                <th class="text-center" style="width: 12%;">Non justifiées</th>
+                <th class="text-center" style="width: 12%;">Statut</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in rapportData %}
+                <tr class="{{ item.enAlerte ? 'alerte' : '' }}">
+                    <td>
+                        <strong>{{ item.apprenti.nom|upper }}</strong> {{ item.apprenti.prenom }}
+                    </td>
+                    <td>
+                        {% for inscription in item.inscriptions %}
+                            {{ inscription.session.code }}{% if not loop.last %}, {% endif %}
+                        {% else %}
+                            -
+                        {% endfor %}
+                    </td>
+                    <td class="text-center">{{ item.stats.tauxPresence ?? 0 }}%</td>
+                    <td class="text-center">{{ item.heuresAbsence|number_format(1, ',', ' ') }}h</td>
+                    <td class="text-center text-success">{{ item.heuresJustifiees|number_format(1, ',', ' ') }}h</td>
+                    <td class="text-center {{ item.heuresNonJustifiees >= seuilAlerte ? 'text-danger' : '' }}">
+                        {{ item.heuresNonJustifiees|number_format(1, ',', ' ') }}h
+                    </td>
+                    <td class="text-center">
+                        {% if item.enAlerte %}
+                            ⚠️ ALERTE
+                        {% else %}
+                            ✓ OK
+                        {% endif %}
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="7" class="text-center">Aucun apprenti</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        Généré le {{ "now"|date('d/m/Y à H:i') }} - CFA Gestion des présences
+    </div>
+</body>
+</html>

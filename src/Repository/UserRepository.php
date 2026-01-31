@@ -10,6 +10,8 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 
 /**
+ * Repository pour l'entité User
+ * 
  * @extends ServiceEntityRepository<User>
  */
 class UserRepository extends ServiceEntityRepository implements PasswordUpgraderInterface
@@ -36,22 +38,35 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
     /**
      * Recherche les utilisateurs avec filtres optionnels
      * 
-     * @param int|null $roleId     Filtrer par rôle (ID)
-     * @param bool|null $actif     Filtrer par statut actif/inactif (null = tous)
+     * @param int|null $roleId       Filtrer par rôle (ID)
+     * @param bool|null $actif       Filtrer par statut actif/inactif (null = tous)
      * @param string|null $recherche Recherche textuelle (nom, prénom, email)
+     * @param string|null $roleCode  Filtrer par code de rôle (ex: 'ROLE_APPRENTI')
      * @return User[]
      */
-    public function findWithFilters(?int $roleId = null, ?bool $actif = null, ?string $recherche = null): array
-    {
+    public function findWithFilters(
+        ?int $roleId = null, 
+        ?bool $actif = null, 
+        ?string $recherche = null,
+        ?string $roleCode = null
+    ): array {
         $qb = $this->createQueryBuilder('u')
             ->orderBy('u.nom', 'ASC')
             ->addOrderBy('u.prenom', 'ASC');
         
-        // Filtre par rôle
-        if ($roleId !== null) {
-            $qb->innerJoin('u.rolesEntities', 'r')
-               ->andWhere('r.id = :roleId')
-               ->setParameter('roleId', $roleId);
+        // Filtre par rôle (ID) ou code de rôle
+        if ($roleId !== null || $roleCode !== null) {
+            $qb->innerJoin('u.rolesEntities', 'r');
+            
+            if ($roleId !== null) {
+                $qb->andWhere('r.id = :roleId')
+                   ->setParameter('roleId', $roleId);
+            }
+            
+            if ($roleCode !== null) {
+                $qb->andWhere('r.code = :roleCode')
+                   ->setParameter('roleCode', $roleCode);
+            }
         }
         
         // Filtre par statut
@@ -153,24 +168,80 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
     }
 
     /**
- * Recherche des formateurs par terme de recherche
- * @return User[]
- */
-public function searchFormateurs(string $term, int $limit = 20): array
-{
-    return $this->createQueryBuilder('u')
-        ->innerJoin('u.rolesEntities', 'r')
-        ->andWhere('r.code = :roleCode')
-        ->andWhere('u.actif = true')
-        ->andWhere(
-            'LOWER(u.nom) LIKE :term OR LOWER(u.prenom) LIKE :term OR LOWER(u.email) LIKE :term'
-        )
-        ->setParameter('roleCode', 'ROLE_FORMATEUR')
-        ->setParameter('term', '%' . strtolower($term) . '%')
-        ->setMaxResults($limit)
-        ->orderBy('u.nom', 'ASC')
-        ->addOrderBy('u.prenom', 'ASC')
-        ->getQuery()
-        ->getResult();
-}
+     * Recherche des formateurs par terme de recherche
+     * 
+     * @return User[]
+     */
+    public function searchFormateurs(string $term, int $limit = 20): array
+    {
+        return $this->createQueryBuilder('u')
+            ->innerJoin('u.rolesEntities', 'r')
+            ->andWhere('r.code = :roleCode')
+            ->andWhere('u.actif = true')
+            ->andWhere(
+                'LOWER(u.nom) LIKE :term OR LOWER(u.prenom) LIKE :term OR LOWER(u.email) LIKE :term'
+            )
+            ->setParameter('roleCode', 'ROLE_FORMATEUR')
+            ->setParameter('term', '%' . strtolower($term) . '%')
+            ->setMaxResults($limit)
+            ->orderBy('u.nom', 'ASC')
+            ->addOrderBy('u.prenom', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Trouve les apprentis n'ayant pas de présence depuis X jours
+     * 
+     * @return User[]
+     */
+    public function findApprentisAbsentsSince(int $joursDepuis): array
+    {
+        $dateLimite = (new \DateTime())->modify("-{$joursDepuis} days");
+
+        // Sous-requête : apprentis ayant eu une présence après la date limite
+        $subQuery = $this->getEntityManager()->createQueryBuilder()
+            ->select('IDENTITY(p.apprenti)')
+            ->from('App\Entity\Presence', 'p')
+            ->join('p.appel', 'a')
+            ->join('a.seance', 's')
+            ->where('s.date >= :dateLimite')
+            ->andWhere('p.statut IN (:statutsPresents)')
+            ->getDQL();
+
+        return $this->createQueryBuilder('u')
+            ->innerJoin('u.rolesEntities', 'r')
+            ->andWhere('r.code = :roleApprenti')
+            ->andWhere('u.actif = true')
+            ->andWhere('u.id NOT IN (' . $subQuery . ')')
+            ->setParameter('roleApprenti', 'ROLE_APPRENTI')
+            ->setParameter('dateLimite', $dateLimite)
+            ->setParameter('statutsPresents', ['present', 'retard'])
+            ->orderBy('u.nom', 'ASC')
+            ->addOrderBy('u.prenom', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Sauvegarde un utilisateur
+     */
+    public function save(User $user, bool $flush = false): void
+    {
+        $this->getEntityManager()->persist($user);
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    /**
+     * Supprime un utilisateur
+     */
+    public function remove(User $user, bool $flush = false): void
+    {
+        $this->getEntityManager()->remove($user);
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
 }

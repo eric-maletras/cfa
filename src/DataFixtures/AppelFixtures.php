@@ -3,6 +3,7 @@
 namespace App\DataFixtures;
 
 use App\Entity\Appel;
+use App\Entity\MotifAbsence;
 use App\Entity\Presence;
 use App\Entity\SeancePlanifiee;
 use App\Entity\User;
@@ -20,6 +21,7 @@ use Doctrine\Persistence\ObjectManager;
  * Dépendances :
  * - UserFixtures (formateurs et apprentis)
  * - SeancePlanifieeFixtures (séances)
+ * - MotifAbsenceFixtures (motifs d'absence)
  * 
  * Usage :
  *   php bin/console doctrine:fixtures:load --append --group=appel
@@ -37,6 +39,7 @@ class AppelFixtures extends Fixture implements FixtureGroupInterface, DependentF
             // Dépendances réelles
             UserFixtures::class,
             PlanningFixtures::class,
+            MotifAbsenceFixtures::class,
         ];
     }
 
@@ -76,6 +79,9 @@ class AppelFixtures extends Fixture implements FixtureGroupInterface, DependentF
             return;
         }
 
+        // Récupérer un motif d'absence pour les absences justifiées
+        $motifMaladie = $manager->getRepository(MotifAbsence::class)->findOneBy(['code' => 'MALADIE']);
+        
         echo sprintf("Création des fixtures d'appel pour %d séance(s)...\n", count($seances));
 
         foreach ($seances as $index => $seance) {
@@ -176,7 +182,11 @@ class AppelFixtures extends Fixture implements FixtureGroupInterface, DependentF
                     case 4:
                         // Absent justifié
                         $presence->setStatut(StatutPresence::ABSENT_JUSTIFIE)
-                                 ->setMotifAbsence('Certificat médical fourni');
+                                 ->setCommentaireJustification('Certificat médical fourni');
+                        // Ajouter le motif si disponible
+                        if ($motifMaladie) {
+                            $presence->setMotifAbsence($motifMaladie);
+                        }
                         break;
                 }
 

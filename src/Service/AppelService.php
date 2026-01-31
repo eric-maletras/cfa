@@ -229,124 +229,99 @@ class AppelService
             return [
                 'succes' => false,
                 'message' => 'Lien de signature invalide ou expiré.',
-                'code' => 'TOKEN_INVALIDE',
+                'presence' => null,
             ];
         }
 
-        if (!$presence->peutEtreSignee()) {
-            // Déterminer la raison
-            if ($presence->getStatut() === StatutPresence::PRESENT) {
-                return [
-                    'succes' => false,
-                    'message' => 'Vous avez déjà signé votre présence.',
-                    'code' => 'DEJA_SIGNE',
-                    'presence' => $presence,
-                ];
-            }
+        $appel = $presence->getAppel();
 
-            if ($presence->getStatut() === StatutPresence::RETARD && $presence->getDateSignature()) {
-                return [
-                    'succes' => false,
-                    'message' => 'Vous avez déjà signé votre présence (avec retard).',
-                    'code' => 'DEJA_SIGNE',
-                    'presence' => $presence,
-                ];
-            }
-
-            if ($presence->getAppel()->isCloture()) {
-                return [
-                    'succes' => false,
-                    'message' => 'L\'appel a été clôturé par le formateur.',
-                    'code' => 'APPEL_CLOTURE',
-                ];
-            }
-
-            if (!$presence->getAppel()->isLiensValides()) {
-                return [
-                    'succes' => false,
-                    'message' => 'Le délai de signature a expiré.',
-                    'code' => 'LIEN_EXPIRE',
-                ];
-            }
-
+        // Vérifier que l'appel n'est pas clôturé
+        if ($appel->isCloture()) {
             return [
                 'succes' => false,
-                'message' => 'Signature impossible.',
-                'code' => 'ERREUR_INCONNUE',
+                'message' => 'Cet appel est clôturé, la signature n\'est plus possible.',
+                'presence' => $presence,
             ];
         }
 
-        // Effectuer la signature
-        // Si minutesRetard est défini, c'est un retardataire → statut RETARD
-        if ($presence->getMinutesRetard() !== null && $presence->getMinutesRetard() > 0) {
-            $presence->setStatut(StatutPresence::RETARD);
-        } else {
-            $presence->setStatut(StatutPresence::PRESENT);
+        // Vérifier que le lien n'a pas expiré
+        if (!$appel->isLiensValides()) {
+            return [
+                'succes' => false,
+                'message' => sprintf(
+                    'Le délai de signature a expiré à %s.',
+                    $appel->getDateExpiration()->format('H:i')
+                ),
+                'presence' => $presence,
+            ];
         }
-        
-        $presence->setDateSignature(new \DateTime())
-                 ->setIpSignature($ip)
-                 ->setUserAgentSignature($userAgent);
-        
+
+        // Vérifier que la présence peut être signée
+        if (!$presence->peutEtreSignee()) {
+            return [
+                'succes' => false,
+                'message' => 'Cette présence ne peut plus être signée.',
+                'presence' => $presence,
+            ];
+        }
+
+        // Signer la présence
+        $presence->signer($ip, $userAgent);
         $this->em->flush();
 
         $this->logger->info('Présence signée', [
             'presence_id' => $presence->getId(),
             'apprenti' => $presence->getApprenti()->getEmail(),
+            'appel_id' => $appel->getId(),
             'ip' => $ip,
             'statut' => $presence->getStatut()->value,
-            'retard' => $presence->getMinutesRetard(),
+            'minutes_retard' => $presence->getMinutesRetard(),
         ]);
 
+        // Message personnalisé selon le statut
         $message = 'Votre présence a été enregistrée avec succès.';
-        if ($presence->getMinutesRetard()) {
-            $message .= sprintf(' (Retard : %d minutes)', $presence->getMinutesRetard());
+        if ($presence->getStatut() === StatutPresence::RETARD) {
+            $message = sprintf(
+                'Votre présence a été enregistrée avec un retard de %d minutes.',
+                $presence->getMinutesRetard()
+            );
         }
 
         return [
             'succes' => true,
             'message' => $message,
-            'code' => 'OK',
             'presence' => $presence,
         ];
     }
 
     /**
-     * Rouvre un appel clôturé pour permettre aux retardataires de signer
+     * Rouvre un appel pour les retardataires
      * 
-     * - Conserve les signatures existantes
-     * - Génère de nouveaux tokens pour les retardataires sélectionnés
-     * - Calcule automatiquement le retard par blocs de 15mn
-     *   ("un bloc démarré = un bloc consommé")
-     * - Envoie les emails aux retardataires
+     * Cette méthode permet d'ajouter des retardataires APRÈS la clôture initiale.
+     * Elle génère automatiquement le nombre de minutes de retard basé sur l'heure actuelle.
      * 
      * @param Appel $appel L'appel à rouvrir
      * @param array $retardatairesIds IDs des présences à marquer comme retardataires
-     * @param int $expirationMinutes Durée de validité des nouveaux liens (15, 20, 40)
-     * @return array Statistiques de l'opération
+     * @param int $expirationMinutes Nouveau délai de signature en minutes
+     * @return array Résultats de l'opération
      */
-    public function rouvrirAppel(Appel $appel, array $retardatairesIds, int $expirationMinutes = 15): array
-    {
-        // Valider les valeurs autorisées
-        $valeursAutorisees = [15, 20, 40];
-        if (!in_array($expirationMinutes, $valeursAutorisees)) {
-            $expirationMinutes = 15;
-        }
-
-        // Calculer le retard depuis le début de la séance (ou depuis la création de l'appel)
+    public function rouvrirPourRetardataires(
+        Appel $appel, 
+        array $retardatairesIds,
+        int $expirationMinutes = 15
+    ): array {
         $seance = $appel->getSeance();
-        $heureDebut = $seance->getDate()->setTime(
-            (int) $seance->getHeureDebut()->format('H'),
-            (int) $seance->getHeureDebut()->format('i')
+        
+        // Calculer automatiquement les minutes de retard depuis le début du cours
+        $heureDebut = \DateTime::createFromFormat(
+            'Y-m-d H:i:s',
+            $seance->getDate()->format('Y-m-d') . ' ' . $seance->getHeureDebut()->format('H:i:s')
         );
-        
         $maintenant = new \DateTime();
-        $diffMinutes = ($maintenant->getTimestamp() - $heureDebut->getTimestamp()) / 60;
+        $diffMinutes = (int) (($maintenant->getTimestamp() - $heureDebut->getTimestamp()) / 60);
         
-        // Calcul par blocs de 15mn : "un bloc démarré = un bloc consommé"
-        $minutesRetard = (int) ceil($diffMinutes / 15) * 15;
-        
-        // Minimum 15 minutes, maximum raisonnable
+        // Arrondir au bloc de 15 minutes supérieur
+        $minutesRetard = (int) (ceil($diffMinutes / 15) * 15);
         if ($minutesRetard < 15) {
             $minutesRetard = 15;
         }
@@ -442,7 +417,13 @@ class AppelService
     }
 
     /**
-     * Clôture un appel et marque les non-signés
+     * Clôture un appel et convertit les non-signés en absents
+     * 
+     * Lors de la clôture :
+     * 1. Les EN_ATTENTE sont d'abord comptés comme "non signés" (pour info)
+     * 2. Puis convertis en ABSENT (règle métier : non signé = absent)
+     * 
+     * Le statut NON_SIGNE n'existe plus après clôture, seul ABSENT est conservé.
      */
     public function cloturerAppel(Appel $appel): array
     {
@@ -452,10 +433,11 @@ class AppelService
 
         $nbNonSignes = 0;
 
-        // Marquer tous les EN_ATTENTE comme NON_SIGNE
+        // Marquer tous les EN_ATTENTE comme ABSENT (non signé = absent)
         foreach ($appel->getPresences() as $presence) {
             if ($presence->getStatut() === StatutPresence::EN_ATTENTE) {
-                $presence->marquerNonSigne();
+                // Convertir directement en ABSENT (pas de statut intermédiaire NON_SIGNE)
+                $presence->setStatut(StatutPresence::ABSENT);
                 $nbNonSignes++;
             }
         }
@@ -467,13 +449,13 @@ class AppelService
             'appel_id' => $appel->getId(),
             'nb_presents' => $appel->getNbPresents(),
             'nb_absents' => $appel->getNbAbsents(),
-            'nb_non_signes' => $nbNonSignes,
+            'nb_non_signes_convertis' => $nbNonSignes,
         ]);
 
         return [
             'presents' => $appel->getNbPresents(),
             'absents' => $appel->getNbAbsents(),
-            'nonSignes' => $nbNonSignes,
+            'nonSignes' => $nbNonSignes, // Pour info dans le message flash
             'tauxPresence' => $appel->getTauxPresence(),
         ];
     }

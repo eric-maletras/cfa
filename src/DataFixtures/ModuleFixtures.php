@@ -63,6 +63,33 @@ class ModuleFixtures extends Fixture implements DependentFixtureInterface
                 'roles' => [$roleAdmin],
                 'ordre' => 5,
             ],
+            [
+                'nom' => 'Planning & Ressources',
+                'description' => 'Gérer les salles, calendriers et ressources pédagogiques',
+                'icone' => 'calendar-alt',
+                'route' => 'admin_planning',
+                'couleur' => 'primary',
+                'roles' => [$roleAdmin],
+                'ordre' => 6,
+            ],
+            [
+                'nom' => 'Gestion des absences',
+                'description' => 'Suivre et gérer les absences des apprentis',
+                'icone' => 'clipboard-list',
+                'route' => 'admin_absences',
+                'couleur' => 'primary',
+                'roles' => [$roleAdmin],
+                'ordre' => 7,
+            ],
+            [
+                'nom' => 'Motifs d\'absence',
+                'description' => 'Configurer les motifs d\'absence prédéfinis',
+                'icone' => 'list-alt',
+                'route' => 'admin_motifs_absence',
+                'couleur' => 'secondary',
+                'roles' => [$roleAdmin],
+                'ordre' => 8,
+            ],
 
             // ===== MODULES FORMATEUR =====
             [

@@ -1,0 +1,130 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Modifier {{ motif.libelle }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_motif_absence_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la liste
+                </a>
+            </div>
+            <h1 class="dashboard__title">✏️ Modifier le motif</h1>
+            <p class="dashboard__subtitle">{{ motif.libelle }}</p>
+        </header>
+
+        {# Info utilisation #}
+        {% if nbUtilisations > 0 %}
+            <div class="alert alert--info" style="margin-bottom: var(--spacing-lg);">
+                <strong>ℹ️ Information :</strong> 
+                Ce motif est utilisé {{ nbUtilisations }} fois. 
+                La modification du libellé ou du code n'affectera pas les absences déjà justifiées.
+            </div>
+        {% endif %}
+
+        {# Formulaire #}
+        <div class="tabs">
+            <div class="tabs__content">
+                {{ form_start(form, {'attr': {'class': 'form-modern'}}) }}
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        {{ form_label(form.libelle) }}
+                        {{ form_widget(form.libelle) }}
+                        {{ form_errors(form.libelle) }}
+                        {{ form_help(form.libelle) }}
+                    </div>
+
+                    <div class="form-group">
+                        {{ form_label(form.code) }}
+                        {{ form_widget(form.code) }}
+                        {{ form_errors(form.code) }}
+                        {{ form_help(form.code) }}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    {{ form_label(form.description) }}
+                    {{ form_widget(form.description) }}
+                    {{ form_errors(form.description) }}
+                </div>
+
+                <div class="form-grid form-grid--3">
+                    <div class="form-group">
+                        {{ form_label(form.icone) }}
+                        {{ form_widget(form.icone) }}
+                        {{ form_errors(form.icone) }}
+                    </div>
+
+                    <div class="form-group">
+                        {{ form_label(form.couleur) }}
+                        {{ form_widget(form.couleur) }}
+                        {{ form_errors(form.couleur) }}
+                    </div>
+
+                    <div class="form-group">
+                        {{ form_label(form.ordre) }}
+                        {{ form_widget(form.ordre) }}
+                        {{ form_errors(form.ordre) }}
+                        {{ form_help(form.ordre) }}
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group form-group--checkbox">
+                        {{ form_widget(form.justificatifObligatoire) }}
+                        {{ form_label(form.justificatifObligatoire) }}
+                        {{ form_errors(form.justificatifObligatoire) }}
+                        <div class="form-help">{{ form_help(form.justificatifObligatoire) }}</div>
+                    </div>
+
+                    <div class="form-group form-group--checkbox">
+                        {{ form_widget(form.actif) }}
+                        {{ form_label(form.actif) }}
+                        {{ form_errors(form.actif) }}
+                        <div class="form-help">{{ form_help(form.actif) }}</div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <a href="{{ path('admin_motif_absence_index') }}" class="btn btn--secondary">
+                        Annuler
+                    </a>
+                    <button type="submit" class="btn btn--primary">
+                        💾 Enregistrer les modifications
+                    </button>
+                </div>
+
+                {{ form_end(form) }}
+            </div>
+        </div>
+
+        {# Zone de suppression #}
+        {% if nbUtilisations == 0 %}
+            <div class="tabs" style="margin-top: var(--spacing-xl);">
+                <div class="tabs__content">
+                    <h3 style="color: #dc3545; margin-bottom: var(--spacing-md);">⚠️ Zone dangereuse</h3>
+                    <p style="margin-bottom: var(--spacing-md);">
+                        Ce motif n'est pas encore utilisé. Vous pouvez le supprimer définitivement.
+                    </p>
+                    <form method="post" 
+                          action="{{ path('admin_motif_absence_delete', {id: motif.id}) }}"
+                          onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce motif ?')">
+                        <input type="hidden" name="_token" value="{{ csrf_token('delete_motif_' ~ motif.id) }}">
+                        <button type="submit" class="btn btn--danger">
+                            🗑️ Supprimer ce motif
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

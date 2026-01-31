@@ -1,0 +1,496 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Absences - {{ apprenti.nomComplet }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+    .apprenti-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: var(--spacing-xl);
+        margin-bottom: var(--spacing-xl);
+        flex-wrap: wrap;
+    }
+
+    .apprenti-info {
+        flex: 1;
+        min-width: 280px;
+    }
+
+    .apprenti-info__name {
+        font-size: var(--font-size-2xl);
+        color: var(--color-primary);
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .apprenti-info__email {
+        color: var(--color-text-secondary);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .inscriptions-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+    }
+
+    .inscription-badge {
+        display: inline-flex;
+        flex-direction: column;
+        padding: var(--spacing-sm) var(--spacing-md);
+        background: var(--color-off-white);
+        border-radius: var(--border-radius);
+        border-left: 3px solid var(--color-primary);
+    }
+
+    .inscription-badge__session {
+        font-weight: var(--font-weight-semibold);
+        color: var(--color-primary);
+    }
+
+    .inscription-badge__formation {
+        font-size: var(--font-size-xs);
+        color: var(--color-text-secondary);
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: var(--spacing-md);
+    }
+
+    .stat-box {
+        background: var(--color-white);
+        border-radius: var(--border-radius);
+        padding: var(--spacing-md);
+        text-align: center;
+        box-shadow: var(--shadow-sm);
+        border-top: 3px solid var(--color-primary);
+    }
+
+    .stat-box--success { border-top-color: #28a745; }
+    .stat-box--danger { border-top-color: #dc3545; }
+    .stat-box--warning { border-top-color: #ffc107; }
+    .stat-box--info { border-top-color: #17a2b8; }
+
+    .stat-box__value {
+        font-size: var(--font-size-xl);
+        font-weight: var(--font-weight-bold);
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .stat-box--success .stat-box__value { color: #28a745; }
+    .stat-box--danger .stat-box__value { color: #dc3545; }
+    .stat-box--warning .stat-box__value { color: #856404; }
+    .stat-box--info .stat-box__value { color: #17a2b8; }
+
+    .stat-box__label {
+        font-size: var(--font-size-xs);
+        color: var(--color-text-secondary);
+    }
+
+    .section-card {
+        background: var(--color-white);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow);
+        margin-bottom: var(--spacing-xl);
+        overflow: hidden;
+    }
+
+    .section-card__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--spacing-lg);
+        background: var(--color-off-white);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .section-card__title {
+        margin: 0;
+        font-size: var(--font-size-lg);
+        color: var(--color-primary);
+    }
+
+    .section-card__body {
+        padding: var(--spacing-lg);
+    }
+
+    .mois-group {
+        margin-bottom: var(--spacing-xl);
+    }
+
+    .mois-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .mois-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--spacing-sm) var(--spacing-md);
+        background: var(--color-off-white);
+        border-radius: var(--border-radius);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .mois-header__title {
+        font-weight: var(--font-weight-semibold);
+        color: var(--color-primary);
+    }
+
+    .mois-header__stats {
+        display: flex;
+        gap: var(--spacing-md);
+        font-size: var(--font-size-sm);
+    }
+
+    .presence-row {
+        display: grid;
+        grid-template-columns: 100px 1fr 120px 150px;
+        gap: var(--spacing-md);
+        padding: var(--spacing-sm) var(--spacing-md);
+        border-bottom: 1px solid var(--border-color);
+        align-items: center;
+    }
+
+    .presence-row:last-child {
+        border-bottom: none;
+    }
+
+    .presence-row:hover {
+        background: var(--color-off-white);
+    }
+
+    .presence-row__date {
+        font-weight: var(--font-weight-medium);
+    }
+
+    .presence-row__seance {
+        color: var(--color-text-secondary);
+        font-size: var(--font-size-sm);
+    }
+
+    .presence-row__seance strong {
+        color: var(--color-text-primary);
+    }
+
+    .presence-row__duree {
+        text-align: center;
+        font-size: var(--font-size-sm);
+        color: var(--color-text-secondary);
+    }
+
+    .presence-row__statut {
+        text-align: right;
+    }
+
+    .filters-inline {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-md);
+        align-items: flex-end;
+    }
+
+    .filters-inline .form-group {
+        margin-bottom: 0;
+    }
+
+    .taux-global {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+        padding: var(--spacing-md);
+        background: var(--color-off-white);
+        border-radius: var(--border-radius);
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .taux-global__bar {
+        flex: 1;
+        height: 12px;
+        background: #e9ecef;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .taux-global__fill {
+        height: 100%;
+        border-radius: 6px;
+        transition: width 0.3s ease;
+    }
+
+    .taux-global__fill--success { background: linear-gradient(90deg, #28a745, #34ce57); }
+    .taux-global__fill--warning { background: linear-gradient(90deg, #ffc107, #ffda6a); }
+    .taux-global__fill--danger { background: linear-gradient(90deg, #dc3545, #e85d6a); }
+
+    .taux-global__value {
+        font-size: var(--font-size-xl);
+        font-weight: var(--font-weight-bold);
+        min-width: 80px;
+        text-align: right;
+    }
+
+    .empty-month {
+        padding: var(--spacing-lg);
+        text-align: center;
+        color: var(--color-text-secondary);
+    }
+
+    @media (max-width: 768px) {
+        .presence-row {
+            grid-template-columns: 1fr;
+            gap: var(--spacing-xs);
+        }
+
+        .presence-row__duree,
+        .presence-row__statut {
+            text-align: left;
+        }
+
+        .apprenti-header {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# Navigation #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('admin_absence_index') }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la liste
+                </a>
+            </div>
+            <h1 class="dashboard__title">📋 Détail des absences</h1>
+        </header>
+
+        {# En-tête apprenti #}
+        <div class="apprenti-header">
+            <div class="apprenti-info">
+                <h2 class="apprenti-info__name">{{ apprenti.nomComplet }}</h2>
+                <p class="apprenti-info__email">
+                    <a href="mailto:{{ apprenti.email }}">{{ apprenti.email }}</a>
+                </p>
+                <div class="inscriptions-badges">
+                    {% for inscription in inscriptions %}
+                        <div class="inscription-badge">
+                            <span class="inscription-badge__session">{{ inscription.session.code }}</span>
+                            <span class="inscription-badge__formation">{{ inscription.session.formation.intituleCourt ?? inscription.session.formation.intitule }}</span>
+                        </div>
+                    {% else %}
+                        <span class="text-muted">Aucune inscription active</span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {# Statistiques globales #}
+            <div class="stats-grid">
+                <div class="stat-box stat-box--success">
+                    <div class="stat-box__value">{{ statsGlobales.presents ?? 0 }}</div>
+                    <div class="stat-box__label">Présences</div>
+                </div>
+                <div class="stat-box stat-box--danger">
+                    <div class="stat-box__value">{{ statsGlobales.absents ?? 0 }}</div>
+                    <div class="stat-box__label">Absences</div>
+                </div>
+                <div class="stat-box stat-box--info">
+                    <div class="stat-box__value">{{ statsGlobales.absentsJustifies ?? 0 }}</div>
+                    <div class="stat-box__label">Justifiées</div>
+                </div>
+                <div class="stat-box stat-box--warning">
+                    <div class="stat-box__value">{{ statsGlobales.retards ?? 0 }}</div>
+                    <div class="stat-box__label">Retards</div>
+                </div>
+            </div>
+        </div>
+
+        {# Taux de présence global #}
+        {% set tauxGlobal = statsGlobales.tauxPresence ?? 0 %}
+        <div class="taux-global">
+            <span>Taux de présence global :</span>
+            <div class="taux-global__bar">
+                <div class="taux-global__fill taux-global__fill--{{ tauxGlobal >= 90 ? 'success' : (tauxGlobal >= 70 ? 'warning' : 'danger') }}" 
+                     style="width: {{ tauxGlobal }}%"></div>
+            </div>
+            <span class="taux-global__value" style="color: {{ tauxGlobal >= 90 ? '#28a745' : (tauxGlobal >= 70 ? '#856404' : '#dc3545') }}">
+                {{ tauxGlobal }}%
+            </span>
+        </div>
+
+        {# Filtres période #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h3 class="section-card__title">🔍 Filtrer l'historique</h3>
+            </div>
+            <div class="section-card__body">
+                <form method="get" action="{{ path('admin_absence_show', {id: apprenti.id}) }}">
+                    <div class="filters-inline">
+                        <div class="form-group">
+                            <label for="dateDebut">Du</label>
+                            <input type="date" 
+                                   class="form-control" 
+                                   id="dateDebut" 
+                                   name="date_debut" 
+                                   value="{{ dateDebut }}">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="dateFin">Au</label>
+                            <input type="date" 
+                                   class="form-control" 
+                                   id="dateFin" 
+                                   name="date_fin" 
+                                   value="{{ dateFin }}">
+                        </div>
+
+                        {% if sessionsApprenti|length > 1 %}
+                        <div class="form-group">
+                            <label for="filtreSession">Session</label>
+                            <select class="form-control" id="filtreSession" name="session">
+                                <option value="">Toutes</option>
+                                {% for session in sessionsApprenti %}
+                                    <option value="{{ session.id }}" {% if filtreSession == session.id ~ '' %}selected{% endif %}>
+                                        {{ session.code }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+
+                        <div class="form-group">
+                            <label for="filtreStatut">Statut</label>
+                            <select class="form-control" id="filtreStatut" name="statut">
+                                <option value="">Tous</option>
+                                {% for statut in statutsPresence %}
+                                    <option value="{{ statut.value }}" {% if filtreStatut == statut.value %}selected{% endif %}>
+                                        {{ statut.libelle }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn btn--primary btn--sm">Filtrer</button>
+                            <a href="{{ path('admin_absence_show', {id: apprenti.id}) }}" class="btn btn--secondary btn--sm">Réinit.</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {# Statistiques de la période filtrée #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h3 class="section-card__title">📊 Statistiques de la période</h3>
+                <span class="text-muted">{{ dateDebut|date('d/m/Y') }} - {{ dateFin|date('d/m/Y') }}</span>
+            </div>
+            <div class="section-card__body">
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-box__value">{{ statsPeriode.total ?? 0 }}</div>
+                        <div class="stat-box__label">Séances</div>
+                    </div>
+                    <div class="stat-box stat-box--success">
+                        <div class="stat-box__value">{{ statsPeriode.presents ?? 0 }}</div>
+                        <div class="stat-box__label">Présences</div>
+                    </div>
+                    <div class="stat-box stat-box--danger">
+                        <div class="stat-box__value">{{ statsPeriode.absents ?? 0 }}</div>
+                        <div class="stat-box__label">Absences</div>
+                    </div>
+                    <div class="stat-box stat-box--warning">
+                        <div class="stat-box__value">{{ heuresAbsencePeriode|number_format(1, ',', ' ') }}h</div>
+                        <div class="stat-box__label">Heures d'absence</div>
+                    </div>
+                    <div class="stat-box stat-box--info">
+                        <div class="stat-box__value">{{ statsPeriode.tauxPresence ?? 0 }}%</div>
+                        <div class="stat-box__label">Taux présence</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Historique par mois #}
+        <div class="section-card">
+            <div class="section-card__header">
+                <h3 class="section-card__title">📅 Historique des présences</h3>
+            </div>
+            <div class="section-card__body">
+                {% if presencesParMois is empty %}
+                    <div class="empty-month">
+                        <p>Aucune présence enregistrée sur cette période.</p>
+                    </div>
+                {% else %}
+                    {% for moisKey, moisData in presencesParMois %}
+                        <div class="mois-group">
+                            <div class="mois-header">
+                                <span class="mois-header__title">{{ moisData.label }}</span>
+                                <div class="mois-header__stats">
+                                    <span class="badge badge--success">{{ moisData.stats.presents }} présent(s)</span>
+                                    <span class="badge badge--danger">{{ moisData.stats.absents }} absent(s)</span>
+                                    {% if moisData.stats.retards > 0 %}
+                                        <span class="badge badge--warning">{{ moisData.stats.retards }} retard(s)</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            {% for presence in moisData.presences %}
+                                {% set seance = presence.appel.seance %}
+                                {% set statut = presence.statut %}
+                                <div class="presence-row">
+                                    <div class="presence-row__date">
+                                        {{ seance.date|date('d/m/Y') }}
+                                    </div>
+                                    <div class="presence-row__seance">
+                                        <strong>{{ seance.sessionMatiere.matiere.libelle ?? 'Cours' }}</strong>
+                                        <br>
+                                        {{ seance.heureDebut|date('H:i') }} - {{ seance.heureFin|date('H:i') }}
+                                        {% if seance.salle %}
+                                            • {{ seance.salle.libelle }}
+                                        {% endif %}
+                                    </div>
+                                    <div class="presence-row__duree">
+                                        {{ (seance.dureeMinutes / 60)|number_format(1, ',', ' ') }}h
+                                    </div>
+                                    <div class="presence-row__statut">
+                                        <span class="badge {{ statut.badgeClass }}">
+                                            {{ statut.icone }} {{ statut.libelle }}
+                                        </span>
+                                        {% if presence.minutesRetard %}
+                                            <div class="text-muted" style="font-size: var(--font-size-xs); margin-top: 2px;">
+                                                +{{ presence.minutesRetard }} min
+                                            </div>
+                                        {% endif %}
+                                        {% if presence.motifAbsence %}
+                                            <div class="text-muted" style="font-size: var(--font-size-xs); margin-top: 2px;">
+                                                {{ presence.motifAbsence|u.truncate(30, '...') }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        {# Actions #}
+        <div class="form-actions" style="justify-content: space-between;">
+            <a href="{{ path('admin_absence_index') }}" class="btn btn--secondary">
+                ← Retour à la liste
+            </a>
+            {# Placeholder pour l'étape 10-2 : justification #}
+            {# <a href="{{ path('admin_absence_justify', {id: apprenti.id}) }}" class="btn btn--primary">
+                ✏️ Justifier des absences
+            </a> #}
+        </div>
+    </div>
+</section>
+{% endblock %}
