@@ -55,6 +55,7 @@ class AbsenceController extends AbstractController
         $dateDebut = $request->query->get('date_debut');
         $dateFin = $request->query->get('date_fin');
         $recherche = $request->query->get('q');
+        $heuresMin = $request->query->get('heures_min');
 
         // Convertir les dates
         $dateDebutObj = $dateDebut ? new \DateTime($dateDebut) : null;
@@ -82,6 +83,11 @@ class AbsenceController extends AbstractController
                 $dateDebutObj,
                 $dateFinObj
             );
+
+            // Filtrer par heures minimum si spécifié
+            if ($heuresMin !== null && $heuresMin !== '' && $heuresAbsence < (float) $heuresMin) {
+                continue;
+            }
 
             $apprentisStats[] = [
                 'apprenti' => $apprenti,
@@ -111,6 +117,7 @@ class AbsenceController extends AbstractController
             'dateDebut' => $dateDebut,
             'dateFin' => $dateFin,
             'recherche' => $recherche,
+            'heuresMin' => $heuresMin,
         ]);
     }
 
