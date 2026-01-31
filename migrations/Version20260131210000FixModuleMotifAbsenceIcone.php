@@ -19,8 +19,8 @@ final class Version20260131210000FixModuleMotifAbsenceIcone extends AbstractMigr
 
     public function up(Schema $schema): void
     {
-        // Mettre à jour l'icône du module motifs_absence
-        $this->addSql("UPDATE module SET icone = 'list-check' WHERE route = 'admin_motifs_absence' AND (icone IS NULL OR icone = '')");
+        // Mettre à jour l'icône du module motifs_absence (utiliser clipboard-list qui existe)
+        $this->addSql("UPDATE module SET icone = 'clipboard-list' WHERE route = 'admin_motifs_absence'");
     }
 
     public function down(Schema $schema): void

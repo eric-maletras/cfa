@@ -84,7 +84,7 @@ class ModuleFixtures extends Fixture implements DependentFixtureInterface
             [
                 'nom' => 'Motifs d\'absence',
                 'description' => 'Configurer les motifs d\'absence prédéfinis',
-                'icone' => 'list-alt',
+                'icone' => 'list-check',
                 'route' => 'admin_motifs_absence',
                 'couleur' => 'secondary',
                 'roles' => [$roleAdmin],
