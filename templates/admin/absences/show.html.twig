@@ -4,6 +4,14 @@
 
 {% block stylesheets %}
 <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+{# Tokens CSRF pour les justifications individuelles #}
+{% for moisKey, moisData in presencesParMois %}
+    {% for presence in moisData.presences %}
+        {% if presence.peutEtreJustifiee() %}
+<meta name="csrf-token-{{ presence.id }}" content="{{ csrf_token('justifier_' ~ presence.id) }}">
+        {% endif %}
+    {% endfor %}
+{% endfor %}
 <style>
     .apprenti-header {
         display: flex;
@@ -149,7 +157,7 @@
 
     .presence-row {
         display: grid;
-        grid-template-columns: 100px 1fr 120px 150px;
+        grid-template-columns: 40px 100px 1fr 100px 150px 100px;
         gap: var(--spacing-md);
         padding: var(--spacing-sm) var(--spacing-md);
         border-bottom: 1px solid var(--border-color);
@@ -162,6 +170,18 @@
 
     .presence-row:hover {
         background: var(--color-off-white);
+    }
+
+    .presence-row__checkbox {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .presence-row__checkbox input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
     }
 
     .presence-row__date {
@@ -184,6 +204,10 @@
     }
 
     .presence-row__statut {
+        text-align: center;
+    }
+
+    .presence-row__actions {
         text-align: right;
     }
 
@@ -205,54 +229,159 @@
         padding: var(--spacing-md);
         background: var(--color-off-white);
         border-radius: var(--border-radius);
-        margin-bottom: var(--spacing-lg);
+        margin-bottom: var(--spacing-xl);
     }
 
     .taux-global__bar {
         flex: 1;
-        height: 12px;
+        height: 20px;
         background: #e9ecef;
-        border-radius: 6px;
+        border-radius: 10px;
         overflow: hidden;
     }
 
     .taux-global__fill {
         height: 100%;
-        border-radius: 6px;
         transition: width 0.3s ease;
     }
 
-    .taux-global__fill--success { background: linear-gradient(90deg, #28a745, #34ce57); }
-    .taux-global__fill--warning { background: linear-gradient(90deg, #ffc107, #ffda6a); }
-    .taux-global__fill--danger { background: linear-gradient(90deg, #dc3545, #e85d6a); }
+    .taux-global__fill--success { background: #28a745; }
+    .taux-global__fill--warning { background: #ffc107; }
+    .taux-global__fill--danger { background: #dc3545; }
 
     .taux-global__value {
-        font-size: var(--font-size-xl);
         font-weight: var(--font-weight-bold);
-        min-width: 80px;
-        text-align: right;
+        min-width: 50px;
     }
 
-    .empty-month {
+    .motif-info {
+        font-size: var(--font-size-xs);
+        color: var(--color-text-secondary);
+        margin-top: 4px;
+    }
+
+    .motif-info .motif-icone {
+        margin-right: 4px;
+    }
+
+    /* Modal de justification */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: var(--color-white);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-lg);
+        width: 100%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         padding: var(--spacing-lg);
-        text-align: center;
+        background: var(--color-off-white);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .modal-title {
+        margin: 0;
+        font-size: var(--font-size-lg);
+        color: var(--color-primary);
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
         color: var(--color-text-secondary);
     }
 
-    @media (max-width: 768px) {
-        .presence-row {
-            grid-template-columns: 1fr;
-            gap: var(--spacing-xs);
-        }
+    .modal-close:hover {
+        color: var(--color-text-primary);
+    }
 
-        .presence-row__duree,
-        .presence-row__statut {
-            text-align: left;
-        }
+    .modal-body {
+        padding: var(--spacing-lg);
+    }
 
-        .apprenti-header {
-            flex-direction: column;
-        }
+    .modal-footer {
+        padding: var(--spacing-lg);
+        background: var(--color-off-white);
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--spacing-md);
+    }
+
+    /* Barre d'actions de masse */
+    .masse-actions-bar {
+        display: none;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: #17a2b8;
+        color: white;
+        padding: var(--spacing-md) var(--spacing-lg);
+        border-radius: var(--border-radius);
+        margin-bottom: var(--spacing-md);
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .masse-actions-bar.active {
+        display: flex;
+    }
+
+    .masse-actions-bar__count {
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .masse-actions-bar .btn {
+        background: white;
+        color: #17a2b8;
+    }
+
+    .justification-annulee {
+        text-decoration: line-through;
+        opacity: 0.6;
+    }
+
+    /* Header des lignes */
+    .presence-row--header {
+        background: var(--color-off-white);
+        font-weight: var(--font-weight-semibold);
+        font-size: var(--font-size-sm);
+        color: var(--color-text-secondary);
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .presence-row--header:hover {
+        background: var(--color-off-white);
+    }
+
+    .empty-month {
+        text-align: center;
+        padding: var(--spacing-xl);
+        color: var(--color-text-secondary);
     }
 </style>
 {% endblock %}
@@ -260,28 +389,27 @@
 {% block body %}
 <section class="dashboard">
     <div class="container">
-        {# Navigation #}
+        {# En-tête #}
         <header class="dashboard__header">
             <div class="header-actions">
                 <a href="{{ path('admin_absence_index') }}" class="btn btn--secondary btn--sm">
                     ← Retour à la liste
                 </a>
             </div>
-            <h1 class="dashboard__title">📋 Détail des absences</h1>
+            <h1 class="dashboard__title">📋 Suivi des absences</h1>
         </header>
 
-        {# En-tête apprenti #}
+        {# Informations apprenti #}
         <div class="apprenti-header">
             <div class="apprenti-info">
                 <h2 class="apprenti-info__name">{{ apprenti.nomComplet }}</h2>
-                <p class="apprenti-info__email">
-                    <a href="mailto:{{ apprenti.email }}">{{ apprenti.email }}</a>
-                </p>
+                <p class="apprenti-info__email">📧 {{ apprenti.email }}</p>
+                
                 <div class="inscriptions-badges">
                     {% for inscription in inscriptions %}
                         <div class="inscription-badge">
                             <span class="inscription-badge__session">{{ inscription.session.code }}</span>
-                            <span class="inscription-badge__formation">{{ inscription.session.formation.intituleCourt ?? inscription.session.formation.intitule }}</span>
+                            <span class="inscription-badge__formation">{{ inscription.session.formation.intitule }}</span>
                         </div>
                     {% else %}
                         <span class="text-muted">Aucune inscription active</span>
@@ -416,67 +544,132 @@
             </div>
         </div>
 
-        {# Historique par mois #}
+        {# Historique par mois avec justification #}
         <div class="section-card">
             <div class="section-card__header">
                 <h3 class="section-card__title">📅 Historique des présences</h3>
             </div>
             <div class="section-card__body">
+                {# Barre d'actions de masse - apparaît uniquement quand des absences sont cochées #}
+                <div class="masse-actions-bar" id="masseActionsBar">
+                    <span class="masse-actions-bar__count">
+                        <span id="selectedCount">0</span> absence(s) sélectionnée(s)
+                    </span>
+                    <button type="button" class="btn btn--sm" onclick="openModalMasse()">
+                        ✏️ Justifier la sélection
+                    </button>
+                </div>
+
                 {% if presencesParMois is empty %}
                     <div class="empty-month">
                         <p>Aucune présence enregistrée sur cette période.</p>
                     </div>
                 {% else %}
-                    {% for moisKey, moisData in presencesParMois %}
-                        <div class="mois-group">
-                            <div class="mois-header">
-                                <span class="mois-header__title">{{ moisData.label }}</span>
-                                <div class="mois-header__stats">
-                                    <span class="badge badge--success">{{ moisData.stats.presents }} présent(s)</span>
-                                    <span class="badge badge--danger">{{ moisData.stats.absents }} absent(s)</span>
-                                    {% if moisData.stats.retards > 0 %}
-                                        <span class="badge badge--warning">{{ moisData.stats.retards }} retard(s)</span>
-                                    {% endif %}
-                                </div>
-                            </div>
+                    <form id="formJustificationMasse" method="post" action="{{ path('admin_absence_justifier_masse', {id: apprenti.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('justifier_masse_' ~ apprenti.id) }}">
 
-                            {% for presence in moisData.presences %}
-                                {% set seance = presence.appel.seance %}
-                                {% set statut = presence.statut %}
-                                <div class="presence-row">
-                                    <div class="presence-row__date">
-                                        {{ seance.date|date('d/m/Y') }}
-                                    </div>
-                                    <div class="presence-row__seance">
-                                        <strong>{{ seance.sessionMatiere.matiere.libelle ?? 'Cours' }}</strong>
-                                        <br>
-                                        {{ seance.heureDebut|date('H:i') }} - {{ seance.heureFin|date('H:i') }}
-                                        {% if seance.salle %}
-                                            • {{ seance.salle.libelle }}
-                                        {% endif %}
-                                    </div>
-                                    <div class="presence-row__duree">
-                                        {{ (seance.dureeMinutes / 60)|number_format(1, ',', ' ') }}h
-                                    </div>
-                                    <div class="presence-row__statut">
-                                        <span class="badge {{ statut.badgeClass }}">
-                                            {{ statut.icone }} {{ statut.libelle }}
-                                        </span>
-                                        {% if presence.minutesRetard %}
-                                            <div class="text-muted" style="font-size: var(--font-size-xs); margin-top: 2px;">
-                                                +{{ presence.minutesRetard }} min
-                                            </div>
-                                        {% endif %}
-                                        {% if presence.motifAbsence %}
-                                            <div class="text-muted" style="font-size: var(--font-size-xs); margin-top: 2px;">
-                                                {{ presence.motifAbsence|u.truncate(30, '...') }}
-                                            </div>
+                        {# En-tête des colonnes #}
+                        <div class="presence-row presence-row--header">
+                            <div class="presence-row__checkbox">
+                                <input type="checkbox" id="selectAll" title="Tout sélectionner">
+                            </div>
+                            <div>Date</div>
+                            <div>Séance</div>
+                            <div style="text-align: center;">Durée</div>
+                            <div style="text-align: center;">Statut</div>
+                            <div style="text-align: right;">Actions</div>
+                        </div>
+
+                        {% for moisKey, moisData in presencesParMois %}
+                            <div class="mois-group">
+                                <div class="mois-header">
+                                    <span class="mois-header__title">{{ moisData.label }}</span>
+                                    <div class="mois-header__stats">
+                                        <span class="badge badge--success">{{ moisData.stats.presents }} présent(s)</span>
+                                        <span class="badge badge--danger">{{ moisData.stats.absents }} absent(s)</span>
+                                        {% if moisData.stats.retards > 0 %}
+                                            <span class="badge badge--warning">{{ moisData.stats.retards }} retard(s)</span>
                                         {% endif %}
                                     </div>
                                 </div>
-                            {% endfor %}
-                        </div>
-                    {% endfor %}
+
+                                {% for presence in moisData.presences %}
+                                    {% set seance = presence.appel.seance %}
+                                    {% set statut = presence.statut %}
+                                    {% set peutJustifier = presence.peutEtreJustifiee() %}
+                                    
+                                    <div class="presence-row">
+                                        <div class="presence-row__checkbox">
+                                            {% if peutJustifier %}
+                                                <input type="checkbox" 
+                                                       name="presences[]" 
+                                                       value="{{ presence.id }}"
+                                                       class="absence-checkbox"
+                                                       data-date="{{ seance.date|date('d/m/Y') }}">
+                                            {% endif %}
+                                        </div>
+                                        <div class="presence-row__date">
+                                            {{ seance.date|date('d/m/Y') }}
+                                        </div>
+                                        <div class="presence-row__seance">
+                                            <strong>{{ seance.sessionMatiere.matiere.libelle ?? 'Cours' }}</strong>
+                                            <br>
+                                            {{ seance.heureDebut|date('H:i') }} - {{ seance.heureFin|date('H:i') }}
+                                            {% if seance.salle %}
+                                                • {{ seance.salle.libelle }}
+                                            {% endif %}
+                                        </div>
+                                        <div class="presence-row__duree">
+                                            {{ (seance.dureeMinutes / 60)|number_format(1, ',', ' ') }}h
+                                        </div>
+                                        <div class="presence-row__statut">
+                                            <span class="badge {{ statut.badgeClass }}">
+                                                {{ statut.icone }} {{ statut.libelle }}
+                                            </span>
+                                            {% if presence.minutesRetard %}
+                                                <div class="text-muted" style="font-size: var(--font-size-xs); margin-top: 2px;">
+                                                    +{{ presence.minutesRetard }} min
+                                                </div>
+                                            {% endif %}
+                                            {% if statut.value == 'absent_justifie' and presence.motifAbsence %}
+                                                <div class="motif-info">
+                                                    <span class="motif-icone">{{ presence.motifAbsence.icone }}</span>
+                                                    {{ presence.motifAbsence.libelle }}
+                                                </div>
+                                                {% if presence.commentaireJustification %}
+                                                    <div class="motif-info" style="font-style: italic;">
+                                                        "{{ presence.commentaireJustification|u.truncate(40, '...') }}"
+                                                    </div>
+                                                {% endif %}
+                                            {% endif %}
+                                        </div>
+                                        <div class="presence-row__actions">
+                                            {% if peutJustifier %}
+                                                <button type="button" 
+                                                        class="btn btn--primary btn--sm"
+                                                        onclick="openModalIndividuel({{ presence.id }}, '{{ seance.date|date('d/m/Y') }}', '{{ seance.sessionMatiere.matiere.libelle ?? 'Cours' }}')"
+                                                        title="Justifier cette absence">
+                                                    ✏️
+                                                </button>
+                                            {% elseif statut.value == 'absent_justifie' %}
+                                                <form method="post" 
+                                                      action="{{ path('admin_absence_annuler_justification', {id: presence.id}) }}"
+                                                      style="display: inline;"
+                                                      onsubmit="return confirm('Annuler la justification de cette absence ?')">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token('annuler_justif_' ~ presence.id) }}">
+                                                    <button type="submit" 
+                                                            class="btn btn--danger btn--sm"
+                                                            title="Annuler la justification">
+                                                        ❌
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </form>
                 {% endif %}
             </div>
         </div>
@@ -486,11 +679,266 @@
             <a href="{{ path('admin_absence_index') }}" class="btn btn--secondary">
                 ← Retour à la liste
             </a>
-            {# Placeholder pour l'étape 10-2 : justification #}
-            {# <a href="{{ path('admin_absence_justify', {id: apprenti.id}) }}" class="btn btn--primary">
-                ✏️ Justifier des absences
-            </a> #}
         </div>
     </div>
 </section>
+
+{# Modal de justification individuelle #}
+<div class="modal-overlay" id="modalIndividuel">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">✏️ Justifier l'absence</h3>
+            <button type="button" class="modal-close" onclick="closeModal('modalIndividuel')">&times;</button>
+        </div>
+        <form id="formJustificationIndividuel" method="post" action="">
+            <input type="hidden" name="_token" value="">
+            <div class="modal-body">
+                <p id="modalIndividuelInfo" style="margin-bottom: var(--spacing-md); color: var(--color-text-secondary);"></p>
+                
+                <div class="form-group">
+                    <label for="motifIndividuel">Motif d'absence *</label>
+                    <select class="form-control" id="motifIndividuel" name="motif_absence_id" required>
+                        <option value="">-- Sélectionner un motif --</option>
+                        {% for motif in motifsAbsence %}
+                            <option value="{{ motif.id }}">
+                                {{ motif.icone }} {{ motif.libelle }}{% if motif.justificatifObligatoire %} *{% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="commentaireIndividuel">Commentaire (optionnel)</label>
+                    <textarea class="form-control" 
+                              id="commentaireIndividuel" 
+                              name="commentaire" 
+                              rows="3"
+                              placeholder="Précisions supplémentaires..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn--secondary" onclick="closeModal('modalIndividuel')">Annuler</button>
+                <button type="submit" class="btn btn--primary">✅ Justifier</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Modal de justification en masse #}
+<div class="modal-overlay" id="modalMasse">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">✏️ Justifier plusieurs absences</h3>
+            <button type="button" class="modal-close" onclick="closeModal('modalMasse')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="modalMasseInfo" style="margin-bottom: var(--spacing-md); color: var(--color-text-secondary);"></p>
+            
+            <div class="form-group">
+                <label for="motifMasse">Motif d'absence *</label>
+                <select class="form-control" id="motifMasse" required>
+                    <option value="">-- Sélectionner un motif --</option>
+                    {% for motif in motifsAbsence %}
+                        <option value="{{ motif.id }}">
+                            {{ motif.icone }} {{ motif.libelle }}{% if motif.justificatifObligatoire %} *{% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="commentaireMasse">Commentaire (optionnel)</label>
+                <textarea class="form-control" 
+                          id="commentaireMasse" 
+                          rows="3"
+                          placeholder="Précisions supplémentaires..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn--secondary" onclick="closeModal('modalMasse')">Annuler</button>
+            <button type="button" class="btn btn--primary" onclick="submitMasse()">✅ Justifier</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+    // Gestion des checkboxes
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.absence-checkbox');
+    const masseActionsBar = document.getElementById('masseActionsBar');
+    const selectedCountSpan = document.getElementById('selectedCount');
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(cb => cb.checked = this.checked);
+            updateSelectedCount();
+        });
+    }
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateSelectedCount);
+    });
+
+    function updateSelectedCount() {
+        const count = document.querySelectorAll('.absence-checkbox:checked').length;
+        selectedCountSpan.textContent = count;
+        
+        if (count > 0) {
+            masseActionsBar.classList.add('active');
+        } else {
+            masseActionsBar.classList.remove('active');
+        }
+    }
+
+    // Modal individuel
+    // Modal individuel
+    function openModalIndividuel(presenceId, date, matiere) {
+        const modal = document.getElementById('modalIndividuel');
+        const form = document.getElementById('formJustificationIndividuel');
+        const info = document.getElementById('modalIndividuelInfo');
+        
+        const action = '/admin/absences/justifier/' + presenceId;
+        form.action = action;
+        
+        // Le token est généré côté serveur avec le pattern justifier_{id}
+        const tokenMeta = document.querySelector('meta[name="csrf-token-' + presenceId + '"]');
+        const token = tokenMeta ? tokenMeta.content : '';
+        form.querySelector('input[name="_token"]').value = token;
+        
+        console.log('Modal individuel - presenceId:', presenceId);
+        console.log('Modal individuel - action:', action);
+        console.log('Modal individuel - token:', token ? 'OK (' + token.substring(0, 10) + '...)' : 'MANQUANT!');
+        
+        if (!token) {
+            console.warn('Token CSRF manquant pour presence:', presenceId);
+        }
+        
+        info.textContent = 'Absence du ' + date + ' - ' + matiere;
+        
+        // Reset form
+        document.getElementById('motifIndividuel').value = '';
+        document.getElementById('commentaireIndividuel').value = '';
+        
+        modal.classList.add('active');
+    }
+
+    // Modal masse
+    function openModalMasse() {
+        const checked = document.querySelectorAll('.absence-checkbox:checked');
+        if (checked.length === 0) {
+            alert('Veuillez sélectionner au moins une absence à justifier.');
+            return;
+        }
+        
+        const modal = document.getElementById('modalMasse');
+        const info = document.getElementById('modalMasseInfo');
+        
+        // Lister les dates sélectionnées
+        const dates = [];
+        checked.forEach(cb => dates.push(cb.dataset.date));
+        info.textContent = checked.length + ' absence(s) sélectionnée(s) : ' + dates.slice(0, 5).join(', ') + (dates.length > 5 ? '...' : '');
+        
+        // Reset form
+        document.getElementById('motifMasse').value = '';
+        document.getElementById('commentaireMasse').value = '';
+        
+        modal.classList.add('active');
+    }
+
+    function submitMasse() {
+        const motif = document.getElementById('motifMasse').value;
+        if (!motif) {
+            alert('Veuillez sélectionner un motif d\'absence.');
+            return;
+        }
+        
+        const form = document.getElementById('formJustificationMasse');
+        if (!form) {
+            alert('Erreur: formulaire non trouvé');
+            console.error('Formulaire formJustificationMasse non trouvé');
+            return;
+        }
+        
+        // Vérifier les checkboxes
+        const checkedBoxes = form.querySelectorAll('input[name="presences[]"]:checked');
+        console.log('Nombre d\'absences cochées:', checkedBoxes.length);
+        
+        if (checkedBoxes.length === 0) {
+            alert('Aucune absence sélectionnée dans le formulaire');
+            return;
+        }
+        
+        // Ajouter le motif et commentaire au formulaire
+        let hiddenMotif = form.querySelector('input[name="motif_absence_id"]');
+        if (!hiddenMotif) {
+            hiddenMotif = document.createElement('input');
+            hiddenMotif.type = 'hidden';
+            hiddenMotif.name = 'motif_absence_id';
+            form.appendChild(hiddenMotif);
+        }
+        hiddenMotif.value = motif;
+        
+        let hiddenCommentaire = form.querySelector('input[name="commentaire"]');
+        if (!hiddenCommentaire) {
+            hiddenCommentaire = document.createElement('input');
+            hiddenCommentaire.type = 'hidden';
+            hiddenCommentaire.name = 'commentaire';
+            form.appendChild(hiddenCommentaire);
+        }
+        hiddenCommentaire.value = document.getElementById('commentaireMasse').value;
+        
+        console.log('Soumission du formulaire:', form.action);
+        console.log('Motif:', motif);
+        console.log('Presences:', Array.from(checkedBoxes).map(cb => cb.value));
+        
+        form.submit();
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+
+    // Debug: intercepter la soumission du formulaire individuel
+    const formIndividuel = document.getElementById('formJustificationIndividuel');
+    if (formIndividuel) {
+        formIndividuel.addEventListener('submit', function(e) {
+            const motif = document.getElementById('motifIndividuel').value;
+            const token = this.querySelector('input[name="_token"]').value;
+            console.log('Soumission formulaire individuel:');
+            console.log('  - Action:', this.action);
+            console.log('  - Motif:', motif);
+            console.log('  - Token:', token ? 'OK' : 'MANQUANT!');
+            
+            if (!token) {
+                e.preventDefault();
+                alert('Erreur: Token CSRF manquant. Veuillez recharger la page.');
+                return false;
+            }
+            
+            if (!motif) {
+                e.preventDefault();
+                alert('Veuillez sélectionner un motif d\'absence.');
+                return false;
+            }
+        });
+    }
+
+    // Fermer modal en cliquant à l'extérieur
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('active');
+            }
+        });
+    });
+
+    // Fermer avec Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+        }
+    });
+</script>
 {% endblock %}

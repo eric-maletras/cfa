@@ -1,24 +1,41 @@
-# CFA Step 10-3 : Rapport d'heures d'absence
+# CFA Step 10-3 : Justification des absences + Rapport d'heures
 
 ## Contenu
 
-Cette archive contient les fichiers pour ajouter le rapport d'heures d'absence au module de gestion des absences.
+Cette archive fusionne step10-2b (justification) et ajoute le rapport d'heures d'absence.
 
 ### Fichiers inclus
 
-- `src/Controller/Admin/AbsenceController.php` - Contrôleur avec les nouvelles routes rapport
-- `templates/admin/absences/index.html.twig` - Template liste des absences (original step 10-1)
-- `templates/admin/absences/show.html.twig` - Template détail apprenti (original step 10-1)
-- `templates/admin/absences/rapport.html.twig` - **NOUVEAU** Template du rapport d'heures
-- `templates/admin/absences/rapport_pdf.html.twig` - **NOUVEAU** Template PDF du rapport
+**Contrôleurs :**
+- `src/Controller/Admin/AbsenceController.php` - Contrôleur complet avec justification + rapport
+- `src/Controller/ModuleController.php` - Mapping des routes
 
-## Nouvelles routes ajoutées
+**Formulaires :**
+- `src/Form/JustifierAbsenceType.php` - Formulaire de justification
 
+**Templates :**
+- `templates/admin/absences/index.html.twig` - Liste des apprentis
+- `templates/admin/absences/show.html.twig` - Détail avec interface de justification
+- `templates/admin/absences/rapport.html.twig` - **NOUVEAU** Rapport d'heures
+- `templates/admin/absences/rapport_pdf.html.twig` - **NOUVEAU** Version PDF
+
+## Routes disponibles
+
+### Existantes (step 10-2b)
+| Route | Méthode | Description |
+|-------|---------|-------------|
+| `/admin/absences` | GET | Liste des apprentis |
+| `/admin/absences/{id}` | GET | Détail d'un apprenti |
+| `/admin/absences/justifier/{id}` | POST | Justifier une absence |
+| `/admin/absences/{id}/justifier-masse` | POST | Justifier en masse |
+| `/admin/absences/annuler-justification/{id}` | POST | Annuler justification |
+
+### Nouvelles (step 10-3)
 | Route | Méthode | Description |
 |-------|---------|-------------|
 | `/admin/absences/rapport` | GET | Rapport d'heures d'absence |
-| `/admin/absences/rapport/export-csv` | GET | Export CSV du rapport |
-| `/admin/absences/rapport/export-pdf` | GET | Aperçu PDF du rapport |
+| `/admin/absences/rapport/export-csv` | GET | Export CSV |
+| `/admin/absences/rapport/export-pdf` | GET | Aperçu PDF |
 
 ## Installation
 
@@ -29,15 +46,18 @@ cd cfa.ericm.fr
 php bin/console cache:clear
 ```
 
-## Fonctionnalités du rapport
+## Fonctionnalités
 
-- **Filtres** : Formation, session, période, seuil d'alerte
-- **Statistiques globales** : Nombre d'apprentis, heures totales, justifiées, non justifiées, en alerte
-- **Export CSV** : Téléchargement du rapport au format tableur
-- **Aperçu PDF** : Version imprimable avec bouton d'impression
+### Justification (step 10-2b)
+- ☑️ Checkboxes pour sélection multiple
+- ✏️ Bouton de justification individuelle  
+- 📝 Modal avec liste des motifs
+- ❌ Annulation de justification
+- 🔵 Barre d'actions de masse
 
-## Notes
-
-- Les routes existantes (`admin_absence_index`, `admin_absence_show`) sont conservées sans modification
-- Les nouvelles routes utilisent le préfixe `admin_absences_` (avec "s")
-- Le seuil d'alerte par défaut est de 20 heures
+### Rapport (step 10-3)
+- 📊 Statistiques globales
+- 🔍 Filtres (formation, session, période, seuil)
+- ⚠️ Indicateur d'alerte
+- 📥 Export CSV
+- 📄 Export PDF (impression)

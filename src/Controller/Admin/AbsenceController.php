@@ -4,11 +4,15 @@ namespace App\Controller\Admin;
 
 use App\Entity\Formation;
 use App\Entity\Inscription;
+use App\Entity\MotifAbsence;
+use App\Entity\Presence;
 use App\Entity\Session;
 use App\Entity\User;
 use App\Enum\StatutPresence;
+use App\Form\JustifierAbsenceType;
 use App\Repository\FormationRepository;
 use App\Repository\InscriptionRepository;
+use App\Repository\MotifAbsenceRepository;
 use App\Repository\PresenceRepository;
 use App\Repository\SessionRepository;
 use App\Repository\UserRepository;
@@ -22,7 +26,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 /**
  * Contrôleur d'administration des absences
  * 
- * Gère la visualisation et le suivi des absences des apprentis.
+ * Gère la visualisation, le suivi et la justification des absences des apprentis.
  * Accessible uniquement aux administrateurs.
  */
 #[Route('/admin/absences')]
@@ -35,7 +39,8 @@ class AbsenceController extends AbstractController
         private PresenceRepository $presenceRepo,
         private InscriptionRepository $inscriptionRepo,
         private SessionRepository $sessionRepo,
-        private FormationRepository $formationRepo
+        private FormationRepository $formationRepo,
+        private MotifAbsenceRepository $motifRepo
     ) {}
 
     /**
@@ -186,6 +191,9 @@ class AbsenceController extends AbstractController
             $sessionsApprenti[] = $inscription->getSession();
         }
 
+        // Motifs d'absence pour le formulaire de justification
+        $motifsAbsence = $this->motifRepo->findActifs();
+
         return $this->render('admin/absences/show.html.twig', [
             'apprenti' => $apprenti,
             'presencesParMois' => $presencesParMois,
@@ -199,7 +207,178 @@ class AbsenceController extends AbstractController
             'dateFin' => $dateFinObj->format('Y-m-d'),
             'filtreStatut' => $filtreStatut,
             'statutsPresence' => StatutPresence::cases(),
+            'motifsAbsence' => $motifsAbsence,
         ]);
+    }
+
+    /**
+     * Justifier une absence individuelle
+     */
+    #[Route('/justifier/{id}', name: 'admin_absence_justifier', methods: ['POST'])]
+    public function justifier(Request $request, Presence $presence): Response
+    {
+        $apprenti = $presence->getApprenti();
+
+        // Vérification CSRF
+        if (!$this->isCsrfTokenValid('justifier_' . $presence->getId(), $request->request->get('_token'))) {
+            $this->addFlash('error', 'Token de sécurité invalide.');
+            return $this->redirectToRoute('admin_absence_show', ['id' => $apprenti->getId()]);
+        }
+
+        // Vérifier que l'absence peut être justifiée
+        if (!$presence->peutEtreJustifiee()) {
+            $this->addFlash('error', 'Cette présence ne peut pas être justifiée (statut actuel : ' . $presence->getStatut()->getLibelle() . ').');
+            return $this->redirectToRoute('admin_absence_show', ['id' => $apprenti->getId()]);
+        }
+
+        // Récupérer le motif
+        $motifId = $request->request->get('motif_absence_id');
+        $commentaire = trim($request->request->get('commentaire', ''));
+
+        if (!$motifId) {
+            $this->addFlash('error', 'Veuillez sélectionner un motif d\'absence.');
+            return $this->redirectToRoute('admin_absence_show', ['id' => $apprenti->getId()]);
+        }
+
+        $motif = $this->motifRepo->find($motifId);
+        if (!$motif || !$motif->isActif()) {
+            $this->addFlash('error', 'Motif d\'absence invalide.');
+            return $this->redirectToRoute('admin_absence_show', ['id' => $apprenti->getId()]);
+        }
+
+        // Justifier l'absence
+        $presence->justifierAbsence($motif, $commentaire ?: null);
+        $this->em->flush();
+
+        $seance = $presence->getAppel()?->getSeance();
+        $dateSeance = $seance ? $seance->getDate()->format('d/m/Y') : 'inconnue';
+
+        $this->addFlash('success', sprintf(
+            'Absence du %s justifiée avec le motif "%s".',
+            $dateSeance,
+            $motif->getLibelle()
+        ));
+
+        return $this->redirectToRoute('admin_absence_show', ['id' => $apprenti->getId()]);
+    }
+
+    /**
+     * Justifier plusieurs absences en masse
+     */
+    #[Route('/{id}/justifier-masse', name: 'admin_absence_justifier_masse', methods: ['POST'])]
+    public function justifierMasse(Request $request, User $apprenti): Response
+    {
+        // Vérification CSRF
+        if (!$this->isCsrfTokenValid('justifier_masse_' . $apprenti->getId(), $request->request->get('_token'))) {
+            $this->addFlash('error', 'Token de sécurité invalide.');
+            return $this->redirectToRoute('admin_absence_show', ['id' => $apprenti->getId()]);
+        }
+
+        // Récupérer les IDs des présences sélectionnées
+        $presenceIds = $request->request->all('presences');
+        if (empty($presenceIds)) {
+            $this->addFlash('error', 'Veuillez sélectionner au moins une absence à justifier.');
+            return $this->redirectToRoute('admin_absence_show', ['id' => $apprenti->getId()]);
+        }
+
+        // Récupérer le motif
+        $motifId = $request->request->get('motif_absence_id');
+        $commentaire = trim($request->request->get('commentaire', ''));
+
+        if (!$motifId) {
+            $this->addFlash('error', 'Veuillez sélectionner un motif d\'absence.');
+            return $this->redirectToRoute('admin_absence_show', ['id' => $apprenti->getId()]);
+        }
+
+        $motif = $this->motifRepo->find($motifId);
+        if (!$motif || !$motif->isActif()) {
+            $this->addFlash('error', 'Motif d\'absence invalide.');
+            return $this->redirectToRoute('admin_absence_show', ['id' => $apprenti->getId()]);
+        }
+
+        // Justifier chaque absence
+        $nbJustifiees = 0;
+        $nbIgnorees = 0;
+
+        foreach ($presenceIds as $presenceId) {
+            $presence = $this->presenceRepo->find($presenceId);
+            
+            if (!$presence) {
+                $nbIgnorees++;
+                continue;
+            }
+
+            // Vérifier que la présence appartient bien à cet apprenti
+            if ($presence->getApprenti()->getId() !== $apprenti->getId()) {
+                $nbIgnorees++;
+                continue;
+            }
+
+            // Vérifier que l'absence peut être justifiée
+            if (!$presence->peutEtreJustifiee()) {
+                $nbIgnorees++;
+                continue;
+            }
+
+            $presence->justifierAbsence($motif, $commentaire ?: null);
+            $nbJustifiees++;
+        }
+
+        $this->em->flush();
+
+        if ($nbJustifiees > 0) {
+            $this->addFlash('success', sprintf(
+                '%d absence(s) justifiée(s) avec le motif "%s".',
+                $nbJustifiees,
+                $motif->getLibelle()
+            ));
+        }
+
+        if ($nbIgnorees > 0) {
+            $this->addFlash('warning', sprintf(
+                '%d absence(s) ignorée(s) (déjà justifiées ou statut incompatible).',
+                $nbIgnorees
+            ));
+        }
+
+        return $this->redirectToRoute('admin_absence_show', ['id' => $apprenti->getId()]);
+    }
+
+    /**
+     * Annuler la justification d'une absence
+     */
+    #[Route('/annuler-justification/{id}', name: 'admin_absence_annuler_justification', methods: ['POST'])]
+    public function annulerJustification(Request $request, Presence $presence): Response
+    {
+        $apprenti = $presence->getApprenti();
+
+        // Vérification CSRF
+        if (!$this->isCsrfTokenValid('annuler_justif_' . $presence->getId(), $request->request->get('_token'))) {
+            $this->addFlash('error', 'Token de sécurité invalide.');
+            return $this->redirectToRoute('admin_absence_show', ['id' => $apprenti->getId()]);
+        }
+
+        // Vérifier que c'est bien une absence justifiée
+        if ($presence->getStatut() !== StatutPresence::ABSENT_JUSTIFIE) {
+            $this->addFlash('error', 'Cette présence n\'est pas une absence justifiée.');
+            return $this->redirectToRoute('admin_absence_show', ['id' => $apprenti->getId()]);
+        }
+
+        // Annuler la justification
+        $presence->setStatut(StatutPresence::ABSENT);
+        $presence->setMotifAbsence(null);
+        $presence->setCommentaireJustification(null);
+        $this->em->flush();
+
+        $seance = $presence->getAppel()?->getSeance();
+        $dateSeance = $seance ? $seance->getDate()->format('d/m/Y') : 'inconnue';
+
+        $this->addFlash('success', sprintf(
+            'Justification de l\'absence du %s annulée.',
+            $dateSeance
+        ));
+
+        return $this->redirectToRoute('admin_absence_show', ['id' => $apprenti->getId()]);
     }
 
     /**
@@ -247,8 +426,8 @@ class AbsenceController extends AbstractController
         foreach ($presences as $presence) {
             $statut = $presence->getStatut();
             
-            // Compter uniquement les absences (pas les absences justifiées selon la règle métier)
-            if ($statut === StatutPresence::ABSENT || $statut === StatutPresence::NON_SIGNE) {
+            // Compter uniquement les absences non justifiées
+            if ($statut === StatutPresence::ABSENT) {
                 $seance = $presence->getAppel()?->getSeance();
                 if ($seance) {
                     $minutes += $seance->getDureeMinutes();
@@ -478,7 +657,7 @@ class AbsenceController extends AbstractController
     }
 
     /**
-     * Export PDF du rapport
+     * Export PDF du rapport (aperçu HTML)
      */
     #[Route('/rapport/export-pdf', name: 'admin_absences_rapport_pdf', methods: ['GET'])]
     public function rapportExportPdf(Request $request): Response
@@ -533,18 +712,12 @@ class AbsenceController extends AbstractController
 
         usort($rapportData, fn($a, $b) => $b['heuresNonJustifiees'] <=> $a['heuresNonJustifiees']);
 
-        // Générer le HTML pour le PDF
-        $html = $this->renderView('admin/absences/rapport_pdf.html.twig', [
+        return $this->render('admin/absences/rapport_pdf.html.twig', [
             'rapportData' => $rapportData,
             'totaux' => $totaux,
             'dateDebut' => $dateDebut,
             'dateFin' => $dateFin,
             'seuilAlerte' => $seuilAlerte,
-        ]);
-
-        // Retourner en HTML (le PDF serait généré avec Dompdf ou autre)
-        return new Response($html, 200, [
-            'Content-Type' => 'text/html; charset=utf-8',
         ]);
     }
 

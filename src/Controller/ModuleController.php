@@ -21,6 +21,7 @@ class ModuleController extends AbstractController
         'admin_promotions' => 'admin_session_index',
         'admin_users' => 'admin_user_index',
         'admin_absences' => 'admin_absence_index',
+        'admin_motifs_absence' => 'admin_motif_absence_index',  // Nouveau : gestion des motifs
         'admin_evaluations' => 'admin_evaluation_index',
         'admin_planning' => 'admin_planning',           // Module Planning & Ressources
         'admin_salle_index' => 'admin_salle_index',     // Gestion des salles
