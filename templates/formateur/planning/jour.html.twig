@@ -1,0 +1,468 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ nomJour }} {{ date|date('d/m/Y') }} - Mon planning{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+/* ========================================
+   VUE JOUR PLANNING
+   ======================================== */
+.jour-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.jour-navigation__current {
+    padding: 0.75rem 1.5rem;
+    background: var(--color-primary);
+    color: white;
+    border-radius: var(--border-radius);
+    min-width: 250px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.jour-navigation__current--aujourdhui {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+    box-shadow: 0 4px 12px rgba(26, 95, 122, 0.3);
+}
+
+/* Timeline des séances */
+.timeline {
+    position: relative;
+    padding-left: 80px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 65px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border-color, #dee2e6);
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -19px;
+    top: 20px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.timeline-item--confirmee::before {
+    background: #28a745;
+    box-shadow: 0 0 0 2px #28a745;
+}
+
+.timeline-item--annulee::before {
+    background: #dc3545;
+    box-shadow: 0 0 0 2px #dc3545;
+}
+
+.timeline-item--terminee::before {
+    background: #6c757d;
+    box-shadow: 0 0 0 2px #6c757d;
+}
+
+.timeline-item--reportee::before {
+    background: #ffc107;
+    box-shadow: 0 0 0 2px #ffc107;
+}
+
+.timeline-item__heure {
+    position: absolute;
+    left: -80px;
+    top: 12px;
+    width: 55px;
+    text-align: right;
+    font-weight: 600;
+    color: var(--color-primary);
+    font-size: 0.9rem;
+}
+
+.seance-card {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.seance-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.seance-card--annulee {
+    opacity: 0.7;
+}
+
+.seance-card--annulee .seance-card__header {
+    background: #ffebee;
+}
+
+.seance-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    background: var(--color-off-white);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.seance-card__title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.seance-card__subtitle {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    margin-top: 0.25rem;
+}
+
+.seance-card__body {
+    padding: 1.25rem;
+}
+
+.seance-card__info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.seance-info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.seance-info-item__icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.seance-info-item__content {
+    flex: 1;
+}
+
+.seance-info-item__label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.seance-info-item__value {
+    font-weight: 500;
+    color: var(--color-text-primary);
+}
+
+.seance-card__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    background: var(--color-off-white);
+    border-top: 1px solid var(--border-color);
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Stats journée */
+.jour-stats {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    padding: 1rem;
+    background: var(--color-off-white);
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+}
+
+.jour-stat {
+    text-align: center;
+}
+
+.jour-stat__value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.jour-stat__label {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+}
+
+.empty-state__icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state__text {
+    color: var(--color-text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .timeline {
+        padding-left: 0;
+    }
+    
+    .timeline::before {
+        display: none;
+    }
+    
+    .timeline-item::before {
+        display: none;
+    }
+    
+    .timeline-item__heure {
+        position: static;
+        width: auto;
+        text-align: left;
+        margin-bottom: 0.5rem;
+    }
+    
+    .jour-navigation {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_formateur_planning_calendrier', {annee: date.format('Y'), mois: date.format('n')}) }}" 
+                   class="btn btn--secondary btn--sm">
+                    ← Retour au calendrier
+                </a>
+            </div>
+            <h1 class="dashboard__title">📅 {{ nomJour }} {{ date|date('d F Y') }}</h1>
+            <p class="dashboard__subtitle">Détail de mes séances</p>
+        </header>
+
+        {# Navigation entre jours #}
+        <div class="jour-navigation">
+            <a href="{{ path('app_formateur_planning_jour', {date: jourPrecedent.format('Y-m-d')}) }}" 
+               class="btn btn--outline btn--sm">
+                ← {{ jourPrecedent|date('d/m') }}
+            </a>
+            <span class="jour-navigation__current {{ date.format('Y-m-d') == aujourdhui.format('Y-m-d') ? 'jour-navigation__current--aujourdhui' : '' }}">
+                {% if date.format('Y-m-d') == aujourdhui.format('Y-m-d') %}
+                    🔴 AUJOURD'HUI
+                {% else %}
+                    {{ nomJour }} {{ date|date('d/m/Y') }}
+                {% endif %}
+            </span>
+            <a href="{{ path('app_formateur_planning_jour', {date: jourSuivant.format('Y-m-d')}) }}" 
+               class="btn btn--outline btn--sm">
+                {{ jourSuivant|date('d/m') }} →
+            </a>
+        </div>
+
+        {# Statistiques de la journée #}
+        <div class="jour-stats">
+            <div class="jour-stat">
+                <div class="jour-stat__value">{{ stats.total }}</div>
+                <div class="jour-stat__label">Séance(s)</div>
+            </div>
+            <div class="jour-stat">
+                <div class="jour-stat__value">{{ stats.heures }}h</div>
+                <div class="jour-stat__label">de cours</div>
+            </div>
+        </div>
+
+        {# Liste des séances #}
+        {% if seances is empty %}
+            <div class="section-card">
+                <div class="empty-state">
+                    <div class="empty-state__icon">😎</div>
+                    <h3 class="empty-state__title">Aucune séance prévue</h3>
+                    <p class="empty-state__text">
+                        Vous n'avez pas de cours planifié pour cette journée.
+                    </p>
+                    <a href="{{ path('app_formateur_planning_calendrier', {annee: date.format('Y'), mois: date.format('n')}) }}" 
+                       class="btn btn--primary">
+                        Voir le calendrier du mois
+                    </a>
+                </div>
+            </div>
+        {% else %}
+            <div class="timeline">
+                {% for seance in seances %}
+                    <div class="timeline-item timeline-item--{{ seance.statut.value }}">
+                        <div class="timeline-item__heure">
+                            {{ seance.heureDebut|date('H:i') }}
+                        </div>
+                        
+                        <div class="seance-card {{ seance.statut.value == 'annulee' ? 'seance-card--annulee' : '' }}">
+                            <div class="seance-card__header">
+                                <div>
+                                    <h3 class="seance-card__title">
+                                        {% if seance.sessionMatiere and seance.sessionMatiere.matiere %}
+                                            {{ seance.sessionMatiere.matiere.libelle }}
+                                        {% else %}
+                                            Matière non définie
+                                        {% endif %}
+                                    </h3>
+                                    <div class="seance-card__subtitle">
+                                        {{ seance.heureDebut|date('H:i') }} - {{ seance.heureFin|date('H:i') }}
+                                        ({{ (seance.dureeMinutes / 60)|round(1) }}h)
+                                    </div>
+                                </div>
+                                <span class="status status--{{ seance.statut.badgeClass }}">
+                                    {{ seance.statut.icone }} {{ seance.statut.libelle }}
+                                </span>
+                            </div>
+                            
+                            <div class="seance-card__body">
+                                <div class="seance-card__info">
+                                    <div class="seance-info-item">
+                                        <span class="seance-info-item__icon">🎓</span>
+                                        <div class="seance-info-item__content">
+                                            <div class="seance-info-item__label">Session / Classe</div>
+                                            <div class="seance-info-item__value">
+                                                {% if seance.session %}
+                                                    {{ seance.session.code }}
+                                                    <br>
+                                                    <small class="text-muted">{{ seance.session.libelle|u.truncate(40) }}</small>
+                                                {% else %}
+                                                    <span class="text-muted">Non définie</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="seance-info-item">
+                                        <span class="seance-info-item__icon">📍</span>
+                                        <div class="seance-info-item__content">
+                                            <div class="seance-info-item__label">Salle</div>
+                                            <div class="seance-info-item__value">
+                                                {% if seance.salle %}
+                                                    {{ seance.salle.libelle }}
+                                                {% else %}
+                                                    <span class="text-muted">Non assignée</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="seance-info-item">
+                                        <span class="seance-info-item__icon">👥</span>
+                                        <div class="seance-info-item__content">
+                                            <div class="seance-info-item__label">Formateurs</div>
+                                            <div class="seance-info-item__value">
+                                                {% if seance.formateurs|length > 0 %}
+                                                    {% for f in seance.formateurs %}
+                                                        {{ f.nomComplet }}{% if not loop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <span class="text-muted">Non assignés</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="seance-info-item">
+                                        <span class="seance-info-item__icon">👨‍🎓</span>
+                                        <div class="seance-info-item__content">
+                                            <div class="seance-info-item__label">Apprentis</div>
+                                            <div class="seance-info-item__value">
+                                                {% if seance.session %}
+                                                    {{ seance.session.nombreInscrits }} inscrit(s)
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {% if seance.commentaire %}
+                                    <div style="margin-top: 1rem; padding: 0.75rem; background: #fff3e0; border-radius: var(--border-radius); border-left: 3px solid #ff9800;">
+                                        <strong>💬 Note :</strong> {{ seance.commentaire }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="seance-card__footer">
+                                <div class="btn-group">
+                                    <a href="{{ path('app_formateur_planning_seance', {id: seance.id}) }}" 
+                                       class="btn btn--primary btn--sm">
+                                        👁️ Voir détails
+                                    </a>
+                                    
+                                    {% if seance.statut.estModifiable %}
+                                        {# Actions rapides selon le statut #}
+                                        {% if seance.statut.value == 'planifiee' %}
+                                            <form action="{{ path('app_formateur_planning_seance_statut', {id: seance.id}) }}" 
+                                                  method="post" style="display: inline;">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('change_statut_' ~ seance.id) }}">
+                                                <input type="hidden" name="statut" value="confirmee">
+                                                <button type="submit" class="btn btn--success btn--sm">
+                                                    ✅ Confirmer
+                                                </button>
+                                            </form>
+                                        {% elseif seance.statut.value == 'confirmee' %}
+                                            <form action="{{ path('app_formateur_planning_seance_statut', {id: seance.id}) }}" 
+                                                  method="post" style="display: inline;">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('change_statut_' ~ seance.id) }}">
+                                                <input type="hidden" name="statut" value="terminee">
+                                                <button type="submit" class="btn btn--secondary btn--sm">
+                                                    ✔️ Terminer
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                                
+                                {# Indicateur si modifiée manuellement #}
+                                {% if seance.modifieeDepuisCreneau %}
+                                    <small class="text-muted">✏️ Modifiée manuellement</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

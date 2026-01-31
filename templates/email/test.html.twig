@@ -1,0 +1,81 @@
+{% extends 'email/base.html.twig' %}
+
+{% block title %}Test Email - CFA Gestion{% endblock %}
+
+{% block header_title %}✓ Test Email Réussi{% endblock %}
+
+{% block header_subtitle %}
+<p class="subtitle">Configuration vérifiée avec succès</p>
+{% endblock %}
+
+{% block content %}
+<h2>Félicitations !</h2>
+
+<p>
+    Si vous lisez cet email, cela signifie que la configuration du système d'envoi 
+    d'emails de votre plateforme CFA Gestion fonctionne correctement.
+</p>
+
+<div class="info-box success">
+    <strong>✓ Configuration validée</strong>
+    L'envoi d'emails depuis votre serveur est opérationnel.
+</div>
+
+<h2 style="margin-top: 30px;">Informations du test</h2>
+
+<table class="data-table">
+    <tr>
+        <th>Paramètre</th>
+        <th>Valeur</th>
+    </tr>
+    <tr>
+        <td>Date et heure du test</td>
+        <td>{{ test_date|date('d/m/Y à H:i:s') }}</td>
+    </tr>
+    <tr>
+        <td>Serveur</td>
+        <td>{{ server_info.hostname }}</td>
+    </tr>
+    <tr>
+        <td>Version PHP</td>
+        <td>{{ server_info.php_version }}</td>
+    </tr>
+    <tr>
+        <td>Configuration Mailer</td>
+        <td><code>{{ server_info.mailer_dsn|split('://')|first }}://***</code></td>
+    </tr>
+</table>
+
+<h2 style="margin-top: 30px;">Prochaines étapes</h2>
+
+<p>Maintenant que l'envoi d'emails fonctionne, vous pouvez :</p>
+
+<ul style="color: #4a4a4a; line-height: 1.8;">
+    <li>Configurer les notifications automatiques</li>
+    <li>Activer les emails de convocation</li>
+    <li>Mettre en place les rappels d'absence</li>
+    <li>Paramétrer les alertes pour les formateurs</li>
+</ul>
+
+<p style="text-align: center; margin-top: 30px;">
+    <a href="https://cfa.ericm.fr/admin" class="btn">
+        Accéder à l'administration
+    </a>
+</p>
+
+<div class="info-box" style="margin-top: 30px;">
+    <strong>ℹ️ Information</strong>
+    Ce message de test a été déclenché manuellement depuis l'interface d'administration.
+    En production, les emails seront envoyés automatiquement selon les événements configurés.
+</div>
+{% endblock %}
+
+{% block footer %}
+<p>Email de test envoyé depuis CFA Gestion</p>
+<p>
+    <a href="https://cfa.ericm.fr">cfa.ericm.fr</a>
+</p>
+<p style="margin-top: 16px; font-size: 11px; color: #999;">
+    Test effectué le {{ test_date|date('d/m/Y à H:i:s') }}
+</p>
+{% endblock %}

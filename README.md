@@ -1,262 +1,314 @@
-# Module Matières - CFA Application
+# Module Email CFA Gestion - Configuration Production
+
+## Vue d'ensemble
+
+Configuration complète pour l'envoi d'emails avec **authentification DKIM/SPF/DMARC** garantissant une délivrabilité optimale.
+
+```
+Architecture
+─────────────────────────────────────────────────────────
+  Symfony App ──► Postfix ──► OpenDKIM ──► Internet
+                    │            │
+                    │            └── Signature DKIM
+                    └── Envoi SMTP
+─────────────────────────────────────────────────────────
+```
 
 ## Contenu du package
 
-Ce package contient les fichiers pour le module de gestion des matières, leur liaison avec les formations, et la redescente automatique sur les sessions.
-
----
-
-## ÉTAPE 1 : Matières et FormationMatiere (Référentiel)
-
-### Entités
-
-- `src/Entity/Matiere.php` - Référentiel des matières (code, libellé, description)
-- `src/Entity/FormationMatiere.php` - Liaison formation ↔ matière avec volume horaire et coefficient
-- `src/Entity/Formation.php` - **MODIFICATION** - Ajout de la relation `formationMatieres`
-
-### Repositories
-
-- `src/Repository/MatiereRepository.php`
-- `src/Repository/FormationMatiereRepository.php`
-
-### Contrôleurs
-
-- `src/Controller/Admin/MatiereController.php` - CRUD admin des matières
-- `src/Controller/Admin/FormationMatiereController.php` - Gestion des matières par formation
-
-### Formulaires
-
-- `src/Form/MatiereType.php`
-- `src/Form/FormationMatiereType.php`
-
-### Templates
-
-- `templates/admin/matieres/index.html.twig` - Liste des matières
-- `templates/admin/matieres/form.html.twig` - Formulaire matière
-- `templates/admin/matieres/show.html.twig` - Détail matière
-- `templates/admin/matieres/formation_matieres.html.twig` - Matières d'une formation
-- `templates/admin/matieres/formation_matiere_form.html.twig` - Formulaire liaison
-
-### Fixtures
-
-- `src/DataFixtures/MatiereFixtures.php` - 9 matières BTS SIO + liaisons
-
----
-
-## ÉTAPE 2 : SessionMatiere (Redescente sur les sessions)
-
-### Concept
-
-Lors de la création d'une session, les matières du référentiel (FormationMatiere) sont automatiquement copiées vers des SessionMatiere, avec la possibilité d'ajuster les volumes pour cette session spécifique.
-
 ```
-Formation
-    └── FormationMatiere (référentiel)
-            ├── Matiere
-            ├── volumeHeuresReferentiel
-            └── coefficient
-
-    └── Session
-            └── SessionMatiere (copie ajustable)
-                    ├── Matiere
-                    ├── volumeHeuresReferentiel (copié)
-                    ├── volumeHeuresPlanifie (ajustable)
-                    ├── volumeHeuresRealise (suivi)
-                    └── actif (désactivable)
+cfa.ericm.fr/
+├── config/
+│   ├── packages/
+│   │   └── mailer.yaml
+│   └── services_email.yaml.append
+├── scripts/
+│   ├── install_postfix_dkim.sh      # Installation serveur
+│   └── diagnostic_email.sh          # Test et diagnostic
+├── src/
+│   ├── Controller/Admin/
+│   │   └── EmailTestController.php
+│   └── Service/
+│       └── EmailService.php
+├── templates/
+│   ├── admin/email/
+│   │   └── test.html.twig
+│   └── email/
+│       ├── base.html.twig
+│       ├── test.html.twig
+│       └── system_notification.html.twig
+├── env.local.append
+└── README.md
 ```
 
-### Entités
-
-- `src/Entity/SessionMatiere.php` - **NOUVEAU** - Matières d'une session
-- `src/Entity/Session.php` - **MODIFICATION** - Ajout relation `sessionMatieres` et méthode `initMatieresFromFormation()`
-
-### Repositories
-
-- `src/Repository/SessionMatiereRepository.php` - **NOUVEAU**
-
-### Contrôleurs
-
-- `src/Controller/Admin/SessionMatiereController.php` - **NOUVEAU** - Gestion des matières d'une session
-- `src/Controller/SessionController.php` - **MODIFICATION** - Appel automatique de `initMatieresFromFormation()` à la création
-
-### Formulaires
-
-- `src/Form/SessionMatiereType.php` - **NOUVEAU**
-
-### Templates
-
-- `templates/admin/session_matieres/index.html.twig` - Liste des matières de session avec édition en masse
-- `templates/admin/session_matieres/form.html.twig` - Formulaire ajout/modification
-- `templates/admin/session_matieres/_session_matieres_card.html.twig` - Partial pour la fiche session
-
-### Fixtures
-
-- `src/DataFixtures/SessionFixtures.php` - **NOUVEAU** - Sessions BTS SIO avec matières initialisées
-
 ---
 
-## Installation
+## Installation (3 phases)
 
-### 1. Copier les fichiers
+### Phase 1 : Installation serveur (Postfix + OpenDKIM)
 
 ```bash
+# 1. Copier le script sur le serveur
+scp scripts/install_postfix_dkim.sh root@cfa.ericm.fr:/tmp/
+
+# 2. Exécuter l'installation
+ssh root@cfa.ericm.fr
+chmod +x /tmp/install_postfix_dkim.sh
+/tmp/install_postfix_dkim.sh cfa.ericm.fr
+```
+
+Le script va :
+- Installer Postfix et OpenDKIM
+- Générer les clés DKIM (2048 bits)
+- Configurer la signature automatique des emails
+- Générer un fichier avec les enregistrements DNS à créer
+
+### Phase 2 : Configuration DNS
+
+Après l'installation, le script génère `/root/dns_records_cfa.ericm.fr.txt` avec les enregistrements à créer.
+
+#### Chez votre registrar (OVH, Cloudflare, etc.) :
+
+**1. Enregistrement SPF** (autorise votre serveur à envoyer)
+```
+Type  : TXT
+Nom   : cfa.ericm.fr
+Valeur: v=spf1 ip4:VOTRE_IP_SERVEUR -all
+```
+
+**2. Enregistrement DKIM** (signature cryptographique)
+```
+Type  : TXT
+Nom   : mail._domainkey.cfa.ericm.fr
+Valeur: v=DKIM1; k=rsa; p=VOTRE_CLE_PUBLIQUE...
+```
+*(La clé complète est dans le fichier généré)*
+
+**3. Enregistrement DMARC** (politique d'authentification)
+```
+Type  : TXT
+Nom   : _dmarc.cfa.ericm.fr
+Valeur: v=DMARC1; p=quarantine; rua=mailto:postmaster@ericm.fr; pct=100; adkim=s; aspf=s
+```
+
+**4. Reverse DNS (PTR)** - **CRUCIAL !**
+
+À configurer dans le **panneau Scaleway** (pas chez le registrar DNS) :
+- Aller dans Instances > Votre serveur > Réseau
+- Configurer le reverse DNS de l'IP vers `cfa.ericm.fr`
+
+#### Vérification de la propagation DNS
+
+```bash
+# Attendre 1-24h puis vérifier
+dig TXT cfa.ericm.fr +short
+dig TXT mail._domainkey.cfa.ericm.fr +short
+dig TXT _dmarc.cfa.ericm.fr +short
+```
+
+### Phase 3 : Déploiement Symfony
+
+```bash
+# Sur le serveur, dans le répertoire Symfony
 cd /var/www/cfa.ericm.fr
 
-# Entités
-cp -r src/Entity/* /var/www/cfa.ericm.fr/src/Entity/
+# 1. Copier les fichiers
+cp -r cfa.ericm.fr/src/Service/EmailService.php src/Service/
+cp -r cfa.ericm.fr/src/Controller/Admin/EmailTestController.php src/Controller/Admin/
+cp -r cfa.ericm.fr/templates/email templates/
+mkdir -p templates/admin/email
+cp cfa.ericm.fr/templates/admin/email/test.html.twig templates/admin/email/
+cp cfa.ericm.fr/config/packages/mailer.yaml config/packages/
 
-# Repositories
-cp -r src/Repository/* /var/www/cfa.ericm.fr/src/Repository/
+# 2. Ajouter au .env.local
+cat >> .env.local << 'EOF'
+###> symfony/mailer ###
+MAILER_DSN=sendmail://default
+MAILER_FROM_ADDRESS=noreply@cfa.ericm.fr
+MAILER_FROM_NAME="CFA Gestion"
+###< symfony/mailer ###
+EOF
 
-# Contrôleurs
-cp -r src/Controller/* /var/www/cfa.ericm.fr/src/Controller/
+# 3. Ajouter dans config/services.yaml (section services)
+# App\Service\EmailService:
+#     arguments:
+#         $fromAddress: '%env(MAILER_FROM_ADDRESS)%'
+#         $fromName: '%env(MAILER_FROM_NAME)%'
 
-# Formulaires
-cp -r src/Form/* /var/www/cfa.ericm.fr/src/Form/
-
-# Fixtures
-cp -r src/DataFixtures/* /var/www/cfa.ericm.fr/src/DataFixtures/
-
-# Templates
-cp -r templates/admin/* /var/www/cfa.ericm.fr/templates/admin/
-```
-
-### 2. Mise à jour du schéma de base de données
-
-```bash
-cd /var/www/cfa.ericm.fr
-
-# Vérifier les changements
-php bin/console doctrine:schema:update --dump-sql
-
-# Appliquer les changements
-php bin/console doctrine:schema:update --force
-
-# OU avec les migrations (recommandé en production)
-php bin/console make:migration
-php bin/console doctrine:migrations:migrate
-```
-
-### 3. Charger les fixtures (environnement de dev)
-
-```bash
-# Charger toutes les fixtures de base (attention : réinitialise tout)
-php bin/console doctrine:fixtures:load --group=base
-
-# OU charger par étapes (si les données existent déjà)
-php bin/console doctrine:fixtures:load --group=matieres --append
-php bin/console doctrine:fixtures:load --group=sessions --append
-```
-
-### 4. Vider le cache
-
-```bash
+# 4. Vider le cache
 php bin/console cache:clear
 ```
 
 ---
 
-## Routes créées
+## Test et validation
 
-### Étape 1 - Gestion des matières
+### 1. Diagnostic serveur
 
-| Route | URL | Description |
-|-------|-----|-------------|
-| `admin_matiere_index` | `/admin/matieres` | Liste des matières |
-| `admin_matiere_new` | `/admin/matieres/new` | Création matière |
-| `admin_matiere_show` | `/admin/matieres/{id}` | Détail matière |
-| `admin_matiere_edit` | `/admin/matieres/{id}/edit` | Modification |
-| `admin_matiere_delete` | `/admin/matieres/{id}/delete` | Suppression |
-| `admin_matiere_toggle` | `/admin/matieres/{id}/toggle` | Activer/désactiver |
-| `admin_formation_matiere_index` | `/admin/formations/{formationId}/matieres` | Matières formation |
-| `admin_formation_matiere_add` | `/admin/formations/{formationId}/matieres/add` | Ajouter |
-| `admin_formation_matiere_edit` | `/admin/formations/{formationId}/matieres/{id}/edit` | Modifier |
-| `admin_formation_matiere_delete` | `/admin/formations/{formationId}/matieres/{id}/delete` | Retirer |
+```bash
+# Lancer le diagnostic complet
+/tmp/diagnostic_email.sh cfa.ericm.fr
+```
 
-### Étape 2 - Matières de session
+### 2. Test via l'interface admin
 
-| Route | URL | Description |
-|-------|-----|-------------|
-| `admin_session_matiere_index` | `/admin/sessions/{sessionId}/matieres` | Matières session |
-| `admin_session_matiere_init` | `/admin/sessions/{sessionId}/matieres/init` | Initialiser depuis référentiel |
-| `admin_session_matiere_add` | `/admin/sessions/{sessionId}/matieres/add` | Ajouter hors référentiel |
-| `admin_session_matiere_edit` | `/admin/sessions/{sessionId}/matieres/{id}/edit` | Modifier |
-| `admin_session_matiere_toggle` | `/admin/sessions/{sessionId}/matieres/{id}/toggle` | Activer/désactiver |
-| `admin_session_matiere_delete` | `/admin/sessions/{sessionId}/matieres/{id}/delete` | Supprimer |
-| `admin_session_matiere_update_volumes` | `/admin/sessions/{sessionId}/matieres/update-volumes` | Mise à jour en masse |
+Accéder à : `https://cfa.ericm.fr/admin/email/test`
 
----
+### 3. Test externe (recommandé)
 
-## Comportement automatique
+Envoyez un email à : **check-auth@verifier.port25.com**
 
-### À la création d'une session
+Vous recevrez un rapport automatique indiquant :
+- ✅ SPF pass
+- ✅ DKIM pass
+- ✅ DMARC pass
 
-1. L'utilisateur crée une nouvelle session en choisissant une formation
-2. Après validation, `initMatieresFromFormation()` est automatiquement appelé
-3. Toutes les `FormationMatiere` sont copiées en `SessionMatiere`
-4. Les volumes horaires et coefficients du référentiel sont conservés
-5. L'utilisateur peut ensuite ajuster les volumes planifiés si nécessaire
+### 4. Score de délivrabilité
 
-### Données copiées automatiquement
+Testez sur [mail-tester.com](https://www.mail-tester.com/) pour obtenir un score sur 10.
 
-| FormationMatiere | → | SessionMatiere |
-|------------------|---|----------------|
-| matiere | → | matiere |
-| volumeHeuresReferentiel | → | volumeHeuresReferentiel |
-| coefficient | → | coefficient |
-| ordre | → | ordre |
-| — | → | volumeHeuresPlanifie (null) |
-| — | → | volumeHeuresRealise (null) |
-| — | → | actif (true) |
+**Objectif : 9/10 minimum**
 
 ---
 
-## Intégration dans l'interface
+## Dépannage
 
-### Accès aux matières du référentiel
+### Email non reçu
 
-Dans `templates/admin/formations/index.html.twig`, l'onglet "📖 Matières" est déjà ajouté.
+```bash
+# Vérifier la queue
+mailq
 
-### Accès aux matières d'une session
+# Vérifier les logs
+tail -f /var/log/mail.log
 
-Ajouter dans `templates/session/show.html.twig` :
+# Vérifier le statut des services
+systemctl status postfix opendkim
+```
 
-```twig
-{# Section matières #}
-{% include 'admin/session_matieres/_session_matieres_card.html.twig' %}
+### Erreur DKIM
 
-{# OU juste un bouton d'accès #}
-<a href="{{ path('admin_session_matiere_index', {sessionId: session.id}) }}" 
-   class="btn btn--secondary">
-    📖 Gérer les matières
-</a>
+```bash
+# Tester la clé DKIM
+opendkim-testkey -d cfa.ericm.fr -s mail -vvv
+```
+
+Erreurs courantes :
+- `key not found` → L'enregistrement DNS n'est pas encore propagé
+- `key not secure` → Pas grave, signifie que DNSSEC n'est pas utilisé
+
+### Email en spam
+
+Vérifiez :
+1. **Reverse DNS** configuré chez Scaleway
+2. **SPF** avec `-all` (pas `~all`)
+3. **IP non blacklistée** : [mxtoolbox.com/blacklists](https://mxtoolbox.com/blacklists.aspx)
+
+---
+
+## Utilisation dans le code
+
+### Injection du service
+
+```php
+use App\Service\EmailService;
+
+class MonController extends AbstractController
+{
+    public function __construct(
+        private EmailService $emailService
+    ) {}
+}
+```
+
+### Envoi avec template
+
+```php
+$result = $this->emailService->sendTemplatedEmail(
+    'destinataire@example.com',
+    'Sujet de l\'email',
+    'email/mon_template.html.twig',
+    [
+        'variable1' => 'valeur1',
+        'variable2' => 'valeur2',
+    ]
+);
+
+if ($result->success) {
+    // OK
+} else {
+    // Erreur : $result->message
+}
+```
+
+### Envoi en masse (avec délai)
+
+```php
+$recipients = ['email1@test.com', 'email2@test.com', ...];
+
+$results = $this->emailService->sendBulkEmail(
+    $recipients,
+    'Notification',
+    'email/notification.html.twig',
+    ['data' => $data]
+);
+
+// Analyse des résultats
+$failed = array_filter($results, fn($r) => !$r->success);
 ```
 
 ---
 
-## Matières créées par les fixtures
+## Configuration multi-domaines (version commerciale)
 
-| Code | Libellé | Volume SLAM | Volume SISR | Coef |
-|------|---------|-------------|-------------|------|
-| CULT | Culture générale et expression | 120h | 120h | 2.0 |
-| ANGL | Anglais | 120h | 120h | 2.0 |
-| MATH | Mathématiques pour l'informatique | 90h | 90h | 2.0 |
-| CEJM | Culture économique, juridique et managériale | 120h | 120h | 3.0 |
-| SI | Support et mise à disposition de services | 240h | 240h | 4.0 |
-| SLAM | Solutions logicielles et applications métiers | 280h | — | 4.0 |
-| SISR | Administration des systèmes et des réseaux | — | 280h | 4.0 |
-| CYBER-SLAM | Cybersécurité (option SLAM) | 70h | — | 4.0 |
-| CYBER-SISR | Cybersécurité (option SISR) | — | 70h | 4.0 |
+Pour la version avec plusieurs écoles, le script supporte le multi-domaine :
 
-**Total par option : 1040h**
+```bash
+# Installation pour chaque école
+./install_postfix_dkim.sh isce.cfagestion.fr
+./install_postfix_dkim.sh aurlom.cfagestion.fr
+```
 
-## Sessions créées par les fixtures
+Les fichiers de configuration OpenDKIM (`signing.table`, `key.table`) seront à fusionner manuellement.
 
-| Code | Libellé | Statut |
-|------|---------|--------|
-| BTSSIO-SLAM-2024 | BTS SIO option SLAM - Promotion 2024-2026 | En cours |
-| BTSSIO-SISR-2024 | BTS SIO option SISR - Promotion 2024-2026 | En cours |
-| BTSSIO-SLAM-2025 | BTS SIO option SLAM - Promotion 2025-2027 | Inscriptions ouvertes |
-| BTSSIO-SISR-2025 | BTS SIO option SISR - Promotion 2025-2027 | Inscriptions ouvertes |
+---
 
-Les sessions en cours ont ~40% de réalisation simulée.
+## Checklist de mise en production
+
+- [ ] Script `install_postfix_dkim.sh` exécuté
+- [ ] Enregistrement **SPF** créé
+- [ ] Enregistrement **DKIM** créé
+- [ ] Enregistrement **DMARC** créé
+- [ ] **Reverse DNS** configuré chez Scaleway
+- [ ] Test sur mail-tester.com : score ≥ 9/10
+- [ ] Fichiers Symfony déployés
+- [ ] Test depuis `/admin/email/test` OK
+
+---
+
+## Support
+
+### Commandes utiles
+
+```bash
+# Logs temps réel
+tail -f /var/log/mail.log
+
+# Queue des emails
+mailq
+
+# Vider la queue (si bloquée)
+postsuper -d ALL
+
+# Relancer les services
+systemctl restart postfix opendkim
+
+# Recharger la config Postfix
+postfix reload
+```
+
+### Liens utiles
+
+- [MXToolbox](https://mxtoolbox.com/) - Diagnostic DNS/Blacklist
+- [Mail-tester](https://www.mail-tester.com/) - Score délivrabilité
+- [DMARC Analyzer](https://www.dmarcanalyzer.com/) - Rapports DMARC

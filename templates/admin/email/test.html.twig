@@ -1,0 +1,307 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Test Email - Administration{% endblock %}
+
+{% block body %}
+<div class="dashboard">
+    <header class="dashboard__header">
+        <h1>Configuration Email</h1>
+        <p class="dashboard__subtitle">Test et diagnostic de l'envoi d'emails</p>
+    </header>
+
+    <!-- Messages Flash -->
+    {% for type, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert--{{ type }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <div class="dashboard__grid dashboard__grid--2">
+        <!-- Formulaire de test -->
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2 class="section-card__title">Envoyer un email de test</h2>
+            </div>
+            <div class="section-card__content">
+                <form method="post" action="{{ path('admin_email_test') }}">
+                    <div class="form-group">
+                        <label for="test_email" class="form-label">Adresse email de destination</label>
+                        <input 
+                            type="email" 
+                            id="test_email" 
+                            name="test_email" 
+                            class="form-control" 
+                            value="{{ default_email }}"
+                            required
+                            placeholder="exemple@email.com"
+                        >
+                        <small class="form-help">L'email de test sera envoyé à cette adresse.</small>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn--primary">
+                            <span class="btn__icon">📧</span>
+                            Envoyer le test
+                        </button>
+                    </div>
+                </form>
+
+                {% if result %}
+                <div class="result-box result-box--{{ result.success ? 'success' : 'error' }}">
+                    <h4>Résultat de l'envoi</h4>
+                    <dl class="result-details">
+                        <dt>Statut</dt>
+                        <dd>
+                            <span class="badge badge--{{ result.success ? 'success' : 'danger' }}">
+                                {{ result.success ? 'Succès' : 'Échec' }}
+                            </span>
+                        </dd>
+                        <dt>Message</dt>
+                        <dd>{{ result.message }}</dd>
+                        <dt>Destinataire</dt>
+                        <dd>{{ result.recipient }}</dd>
+                        <dt>Heure</dt>
+                        <dd>{{ result.sentAt|date('H:i:s') }}</dd>
+                        {% if result.errorCode %}
+                        <dt>Code erreur</dt>
+                        <dd>{{ result.errorCode }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Diagnostic système -->
+        <div class="section-card">
+            <div class="section-card__header">
+                <h2 class="section-card__title">Diagnostic système</h2>
+            </div>
+            <div class="section-card__content">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Paramètre</th>
+                            <th>Valeur</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for key, diag in diagnostics %}
+                        <tr>
+                            <td>{{ diag.label }}</td>
+                            <td><code>{{ diag.value }}</code></td>
+                            <td>
+                                <span class="status-indicator status-indicator--{{ diag.status }}">
+                                    {% if diag.status == 'ok' %}
+                                        ✓
+                                    {% elseif diag.status == 'warning' %}
+                                        ⚠
+                                    {% else %}
+                                        ✗
+                                    {% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prévisualisation des templates -->
+    <div class="section-card">
+        <div class="section-card__header">
+            <h2 class="section-card__title">Prévisualisation des templates</h2>
+        </div>
+        <div class="section-card__content">
+            <p>Cliquez sur un template pour le prévisualiser dans un nouvel onglet :</p>
+            
+            <div class="template-preview-grid">
+                <a href="{{ path('admin_email_preview', {template: 'test'}) }}" 
+                   target="_blank" 
+                   class="template-preview-card">
+                    <div class="template-preview-card__icon">📧</div>
+                    <div class="template-preview-card__title">Email de test</div>
+                    <div class="template-preview-card__desc">Template utilisé pour les tests de configuration</div>
+                </a>
+                
+                <a href="{{ path('admin_email_preview', {template: 'system'}) }}" 
+                   target="_blank" 
+                   class="template-preview-card">
+                    <div class="template-preview-card__icon">ℹ️</div>
+                    <div class="template-preview-card__title">Notification Info</div>
+                    <div class="template-preview-card__desc">Notification système niveau information</div>
+                </a>
+                
+                <a href="{{ path('admin_email_preview', {template: 'system_warning'}) }}" 
+                   target="_blank" 
+                   class="template-preview-card">
+                    <div class="template-preview-card__icon">⚠️</div>
+                    <div class="template-preview-card__title">Notification Warning</div>
+                    <div class="template-preview-card__desc">Notification système niveau avertissement</div>
+                </a>
+                
+                <a href="{{ path('admin_email_preview', {template: 'system_error'}) }}" 
+                   target="_blank" 
+                   class="template-preview-card">
+                    <div class="template-preview-card__icon">🚨</div>
+                    <div class="template-preview-card__title">Notification Erreur</div>
+                    <div class="template-preview-card__desc">Notification système niveau erreur</div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documentation -->
+    <div class="section-card">
+        <div class="section-card__header">
+            <h2 class="section-card__title">Utilisation du service Email</h2>
+        </div>
+        <div class="section-card__content">
+            <h4>Injection du service</h4>
+            <pre class="code-block"><code>public function __construct(
+    private EmailService $emailService
+) {}</code></pre>
+
+            <h4>Envoi d'un email avec template</h4>
+            <pre class="code-block"><code>$result = $this->emailService->sendTemplatedEmail(
+    'destinataire@example.com',
+    'Sujet de l\'email',
+    'email/mon_template.html.twig',
+    ['variable' => 'valeur']
+);
+
+if ($result->success) {
+    // Email envoyé
+}</code></pre>
+
+            <h4>Envoi d'un email simple</h4>
+            <pre class="code-block"><code>$result = $this->emailService->sendSimpleEmail(
+    'destinataire@example.com',
+    'Sujet',
+    'Contenu texte',
+    '&lt;p&gt;Contenu HTML&lt;/p&gt;' // optionnel
+);</code></pre>
+        </div>
+    </div>
+</div>
+
+<style>
+    .result-box {
+        margin-top: 1.5rem;
+        padding: 1rem 1.25rem;
+        border-radius: 8px;
+        border-left: 4px solid;
+    }
+    .result-box--success {
+        background-color: #f0fff4;
+        border-color: #28a745;
+    }
+    .result-box--error {
+        background-color: #fff5f5;
+        border-color: #dc3545;
+    }
+    .result-box h4 {
+        margin: 0 0 0.75rem;
+        font-size: 0.95rem;
+    }
+    .result-details {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.5rem 1rem;
+        margin: 0;
+        font-size: 0.9rem;
+    }
+    .result-details dt {
+        font-weight: 600;
+        color: #666;
+    }
+    .result-details dd {
+        margin: 0;
+    }
+    
+    .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    .status-indicator--ok {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    .status-indicator--warning {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    .status-indicator--error {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .template-preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .template-preview-card {
+        display: block;
+        padding: 1.25rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+    }
+    .template-preview-card:hover {
+        background: #fff;
+        border-color: #1a73e8;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .template-preview-card__icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    .template-preview-card__title {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    .template-preview-card__desc {
+        font-size: 0.85rem;
+        color: #666;
+    }
+    
+    .code-block {
+        background: #2d2d2d;
+        color: #f8f8f2;
+        padding: 1rem;
+        border-radius: 6px;
+        overflow-x: auto;
+        font-size: 0.85rem;
+        margin: 0.5rem 0 1.5rem;
+    }
+    .code-block code {
+        color: inherit;
+        background: none;
+    }
+    
+    h4 {
+        margin: 1.5rem 0 0.5rem;
+        color: #333;
+    }
+    h4:first-child {
+        margin-top: 0;
+    }
+</style>
+{% endblock %}

@@ -352,4 +352,155 @@ class SeancePlanifieeRepository extends ServiceEntityRepository
             $this->getEntityManager()->flush();
         }
     }
+
+    // ========================================
+    // MÉTHODES POUR LE PLANNING FORMATEUR
+    // ========================================
+
+    /**
+     * Trouve les séances d'un formateur pour une période donnée
+     * 
+     * @return SeancePlanifiee[]
+     */
+    public function findByFormateurAndPeriode(
+        User $formateur,
+        \DateTimeInterface $dateDebut,
+        \DateTimeInterface $dateFin
+    ): array {
+        return $this->createQueryBuilder('s')
+            ->leftJoin('s.session', 'sess')
+            ->leftJoin('s.sessionMatiere', 'sm')
+            ->leftJoin('sm.matiere', 'm')
+            ->leftJoin('s.salle', 'sal')
+            ->leftJoin('s.formateurs', 'f')
+            ->addSelect('sess', 'sm', 'm', 'sal', 'f')
+            ->where(':formateur MEMBER OF s.formateurs')
+            ->andWhere('s.date >= :dateDebut')
+            ->andWhere('s.date <= :dateFin')
+            ->setParameter('formateur', $formateur)
+            ->setParameter('dateDebut', $dateDebut)
+            ->setParameter('dateFin', $dateFin)
+            ->orderBy('s.date', 'ASC')
+            ->addOrderBy('s.heureDebut', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Trouve les séances d'un formateur pour une date précise
+     * 
+     * @return SeancePlanifiee[]
+     */
+    public function findByFormateurAndDate(User $formateur, \DateTimeInterface $date): array
+    {
+        return $this->createQueryBuilder('s')
+            ->leftJoin('s.session', 'sess')
+            ->leftJoin('s.sessionMatiere', 'sm')
+            ->leftJoin('sm.matiere', 'm')
+            ->leftJoin('s.salle', 'sal')
+            ->leftJoin('s.formateurs', 'f')
+            ->addSelect('sess', 'sm', 'm', 'sal', 'f')
+            ->where(':formateur MEMBER OF s.formateurs')
+            ->andWhere('s.date = :date')
+            ->setParameter('formateur', $formateur)
+            ->setParameter('date', $date)
+            ->orderBy('s.heureDebut', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Compte les séances par jour pour un formateur sur un mois
+     * 
+     * @return array<string, int> [date => count]
+     */
+    public function countByDateForFormateurAndMonth(User $formateur, int $annee, int $mois): array
+    {
+        $debut = new \DateTime(sprintf('%d-%02d-01', $annee, $mois));
+        $fin = (clone $debut)->modify('last day of this month');
+
+        $result = $this->createQueryBuilder('s')
+            ->select('s.date as dateSeance, COUNT(s.id) as cnt')
+            ->leftJoin('s.formateurs', 'f')
+            ->where(':formateur MEMBER OF s.formateurs')
+            ->andWhere('s.date >= :debut')
+            ->andWhere('s.date <= :fin')
+            ->andWhere('s.statut != :statutAnnule')
+            ->setParameter('formateur', $formateur)
+            ->setParameter('debut', $debut)
+            ->setParameter('fin', $fin)
+            ->setParameter('statutAnnule', StatutSeance::ANNULEE)
+            ->groupBy('s.date')
+            ->getQuery()
+            ->getResult();
+
+        $counts = [];
+        foreach ($result as $row) {
+            $dateStr = $row['dateSeance']->format('Y-m-d');
+            $counts[$dateStr] = (int) $row['cnt'];
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Trouve les prochaines séances d'un formateur
+     * 
+     * @return SeancePlanifiee[]
+     */
+    public function findProchainesForFormateur(User $formateur, int $limit = 10): array
+    {
+        return $this->createQueryBuilder('s')
+            ->leftJoin('s.session', 'sess')
+            ->leftJoin('s.sessionMatiere', 'sm')
+            ->leftJoin('sm.matiere', 'm')
+            ->leftJoin('s.salle', 'sal')
+            ->addSelect('sess', 'sm', 'm', 'sal')
+            ->where(':formateur MEMBER OF s.formateurs')
+            ->andWhere('s.date >= :today')
+            ->andWhere('s.statut != :statutAnnule')
+            ->setParameter('formateur', $formateur)
+            ->setParameter('today', new \DateTime('today'))
+            ->setParameter('statutAnnule', StatutSeance::ANNULEE)
+            ->orderBy('s.date', 'ASC')
+            ->addOrderBy('s.heureDebut', 'ASC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Calcule les statistiques mensuelles pour un formateur
+     * 
+     * @return array{total: int, heures: float, parStatut: array<string, int>}
+     */
+    public function getStatistiquesMensuelles(User $formateur, int $annee, int $mois): array
+    {
+        $debut = new \DateTime(sprintf('%d-%02d-01', $annee, $mois));
+        $fin = (clone $debut)->modify('last day of this month');
+
+        $seances = $this->findByFormateurAndPeriode($formateur, $debut, $fin);
+
+        $stats = [
+            'total' => count($seances),
+            'heures' => 0,
+            'parStatut' => [],
+        ];
+
+        foreach ($seances as $seance) {
+            $statut = $seance->getStatut()->value;
+            if (!isset($stats['parStatut'][$statut])) {
+                $stats['parStatut'][$statut] = 0;
+            }
+            $stats['parStatut'][$statut]++;
+
+            if ($seance->getStatut() !== StatutSeance::ANNULEE) {
+                $stats['heures'] += $seance->getDureeMinutes() / 60;
+            }
+        }
+
+        $stats['heures'] = round($stats['heures'], 1);
+
+        return $stats;
+    }
 }

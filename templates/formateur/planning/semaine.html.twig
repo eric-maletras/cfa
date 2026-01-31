@@ -1,0 +1,392 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Semaine du {{ lundi|date('d/m/Y') }} - Mon planning{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+/* ========================================
+   VUE SEMAINE PLANNING
+   ======================================== */
+.semaine-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.semaine-navigation__current {
+    padding: 0.75rem 1.5rem;
+    background: var(--color-primary);
+    color: white;
+    border-radius: var(--border-radius);
+    min-width: 280px;
+    text-align: center;
+    font-weight: 600;
+}
+
+/* Grille semaine */
+.semaine-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 992px) {
+    .semaine-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.jour-colonne {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    min-height: 400px;
+}
+
+.jour-colonne--weekend {
+    opacity: 0.6;
+}
+
+.jour-colonne--aujourdhui {
+    box-shadow: 0 0 0 2px var(--color-primary), var(--shadow-lg);
+}
+
+.jour-colonne__header {
+    padding: 1rem;
+    background: var(--color-off-white);
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.jour-colonne__header--aujourdhui {
+    background: var(--color-primary);
+    color: white;
+}
+
+.jour-colonne__nom {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.jour-colonne__date {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-top: 0.25rem;
+}
+
+.jour-colonne__body {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Mini carte séance */
+.seance-mini {
+    padding: 0.75rem;
+    background: var(--color-off-white);
+    border-radius: var(--border-radius);
+    border-left: 3px solid var(--color-primary);
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.seance-mini:hover {
+    transform: translateX(3px);
+    box-shadow: var(--shadow);
+    color: inherit;
+}
+
+.seance-mini--confirmee {
+    border-left-color: #28a745;
+}
+
+.seance-mini--annulee {
+    border-left-color: #dc3545;
+    opacity: 0.6;
+}
+
+.seance-mini--terminee {
+    border-left-color: #6c757d;
+}
+
+.seance-mini--reportee {
+    border-left-color: #ffc107;
+}
+
+.seance-mini__horaire {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    margin-bottom: 0.25rem;
+}
+
+.seance-mini__matiere {
+    font-weight: 500;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.seance-mini__session {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.seance-mini__salle {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    margin-top: 0.25rem;
+}
+
+/* État vide */
+.jour-vide {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+}
+
+.jour-vide__icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Stats semaine */
+.semaine-stats {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    padding: 1rem;
+    background: var(--color-off-white);
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+}
+
+.semaine-stat {
+    text-align: center;
+}
+
+.semaine-stat__value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.semaine-stat__label {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+/* Weekend collapsed */
+.weekend-section {
+    margin-top: 1.5rem;
+}
+
+.weekend-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-off-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+.weekend-toggle:hover {
+    background: #e3f2fd;
+}
+
+.weekend-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+    .weekend-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .semaine-navigation {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# En-tête #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_formateur_planning_calendrier', {annee: lundi.format('Y'), mois: lundi.format('n')}) }}" 
+                   class="btn btn--secondary btn--sm">
+                    ← Retour au calendrier
+                </a>
+            </div>
+            <h1 class="dashboard__title">📆 Ma semaine</h1>
+            <p class="dashboard__subtitle">Vue hebdomadaire de mon emploi du temps</p>
+        </header>
+
+        {# Navigation entre semaines #}
+        <div class="semaine-navigation">
+            <a href="{{ path('app_formateur_planning_semaine', {date: semainePrecedente.format('Y-m-d')}) }}" 
+               class="btn btn--outline btn--sm">
+                ← Semaine précédente
+            </a>
+            <span class="semaine-navigation__current">
+                {{ lundi|date('d') }} - {{ dimanche|date('d F Y') }}
+            </span>
+            <a href="{{ path('app_formateur_planning_semaine', {date: semaineSuivante.format('Y-m-d')}) }}" 
+               class="btn btn--outline btn--sm">
+                Semaine suivante →
+            </a>
+        </div>
+
+        {# Statistiques de la semaine #}
+        <div class="semaine-stats">
+            <div class="semaine-stat">
+                <div class="semaine-stat__value">{{ stats.total }}</div>
+                <div class="semaine-stat__label">Séance(s)</div>
+            </div>
+            <div class="semaine-stat">
+                <div class="semaine-stat__value">{{ stats.heures }}h</div>
+                <div class="semaine-stat__label">de cours</div>
+            </div>
+        </div>
+
+        {# Grille des jours de la semaine (Lundi à Vendredi) #}
+        <div class="semaine-grid">
+            {% for dateStr, jourData in seancesParJour|slice(0, 5) %}
+                {% set estAujourdhui = jourData.date.format('Y-m-d') == aujourdhui.format('Y-m-d') %}
+                <div class="jour-colonne {{ estAujourdhui ? 'jour-colonne--aujourdhui' : '' }}">
+                    <div class="jour-colonne__header {{ estAujourdhui ? 'jour-colonne__header--aujourdhui' : '' }}">
+                        <div class="jour-colonne__nom">{{ jourData.nomJour }}</div>
+                        <div class="jour-colonne__date">{{ jourData.date|date('d') }}</div>
+                        {% if estAujourdhui %}
+                            <small style="font-size: 0.75rem;">Aujourd'hui</small>
+                        {% endif %}
+                    </div>
+                    <div class="jour-colonne__body">
+                        {% if jourData.seances is empty %}
+                            <div class="jour-vide">
+                                <div class="jour-vide__icon">😎</div>
+                                <div>Pas de cours</div>
+                            </div>
+                        {% else %}
+                            {% for seance in jourData.seances %}
+                                <a href="{{ path('app_formateur_planning_seance', {id: seance.id}) }}" 
+                                   class="seance-mini seance-mini--{{ seance.statut.value }}">
+                                    <div class="seance-mini__horaire">
+                                        {{ seance.heureDebut|date('H:i') }} - {{ seance.heureFin|date('H:i') }}
+                                    </div>
+                                    <div class="seance-mini__matiere">
+                                        {% if seance.sessionMatiere and seance.sessionMatiere.matiere %}
+                                            {{ seance.sessionMatiere.matiere.libelle|u.truncate(25) }}
+                                        {% else %}
+                                            Cours
+                                        {% endif %}
+                                    </div>
+                                    <div class="seance-mini__session">
+                                        🎓 {{ seance.session.code|default('') }}
+                                    </div>
+                                    {% if seance.salle %}
+                                        <div class="seance-mini__salle">
+                                            📍 {{ seance.salle.libelle }}
+                                        </div>
+                                    {% endif %}
+                                </a>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        {# Weekend (collapsible) #}
+        {% set samediData = seancesParJour|values|slice(5, 1)|first %}
+        {% set dimancheData = seancesParJour|values|slice(6, 1)|first %}
+        {% set hasWeekendSeances = (samediData.seances|length > 0) or (dimancheData.seances|length > 0) %}
+        
+        {% if hasWeekendSeances %}
+            <div class="weekend-section">
+                <details>
+                    <summary class="weekend-toggle">
+                        🗓️ Weekend ({{ samediData.seances|length + dimancheData.seances|length }} séance(s))
+                    </summary>
+                    <div class="weekend-grid">
+                        {% for jourData in [samediData, dimancheData] %}
+                            <div class="jour-colonne jour-colonne--weekend">
+                                <div class="jour-colonne__header">
+                                    <div class="jour-colonne__nom">{{ jourData.nomJour }}</div>
+                                    <div class="jour-colonne__date">{{ jourData.date|date('d') }}</div>
+                                </div>
+                                <div class="jour-colonne__body">
+                                    {% if jourData.seances is empty %}
+                                        <div class="jour-vide">
+                                            <div class="jour-vide__icon">🏖️</div>
+                                            <div>Repos</div>
+                                        </div>
+                                    {% else %}
+                                        {% for seance in jourData.seances %}
+                                            <a href="{{ path('app_formateur_planning_seance', {id: seance.id}) }}" 
+                                               class="seance-mini seance-mini--{{ seance.statut.value }}">
+                                                <div class="seance-mini__horaire">
+                                                    {{ seance.heureDebut|date('H:i') }} - {{ seance.heureFin|date('H:i') }}
+                                                </div>
+                                                <div class="seance-mini__matiere">
+                                                    {% if seance.sessionMatiere and seance.sessionMatiere.matiere %}
+                                                        {{ seance.sessionMatiere.matiere.libelle|u.truncate(25) }}
+                                                    {% else %}
+                                                        Cours
+                                                    {% endif %}
+                                                </div>
+                                                <div class="seance-mini__session">
+                                                    🎓 {{ seance.session.code|default('') }}
+                                                </div>
+                                            </a>
+                                        {% endfor %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </details>
+            </div>
+        {% endif %}
+
+        {# Actions rapides #}
+        <div class="section-card" style="margin-top: 1.5rem;">
+            <div class="section-card__header">
+                <h2>🚀 Accès rapide</h2>
+            </div>
+            <div class="section-card__content" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <a href="{{ path('app_formateur_planning_jour', {date: aujourdhui.format('Y-m-d')}) }}" 
+                   class="btn btn--primary">
+                    📅 Aujourd'hui
+                </a>
+                <a href="{{ path('app_formateur_sessions_index') }}" class="btn btn--secondary">
+                    📚 Mes sessions
+                </a>
+                <a href="{{ path('app_formateur_notes_index') }}" class="btn btn--secondary">
+                    📝 Notes & évaluations
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

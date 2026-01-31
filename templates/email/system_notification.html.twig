@@ -1,0 +1,72 @@
+{% extends 'email/base.html.twig' %}
+
+{% block title %}Notification Système - CFA Gestion{% endblock %}
+
+{% block header_title %}
+{% if level == 'error' %}
+⚠️ Alerte Système
+{% elseif level == 'warning' %}
+⚡ Avertissement
+{% else %}
+ℹ️ Notification
+{% endif %}
+{% endblock %}
+
+{% block header_subtitle %}
+<p class="subtitle">Message automatique du système</p>
+{% endblock %}
+
+{% block content %}
+<div class="info-box {{ level == 'error' ? 'danger' : (level == 'warning' ? 'warning' : '') }}">
+    <strong>
+        {% if level == 'error' %}
+        Erreur détectée
+        {% elseif level == 'warning' %}
+        Attention requise
+        {% else %}
+        Information
+        {% endif %}
+    </strong>
+    {{ message|nl2br }}
+</div>
+
+<table class="data-table">
+    <tr>
+        <th>Détail</th>
+        <th>Valeur</th>
+    </tr>
+    <tr>
+        <td>Date/Heure</td>
+        <td>{{ timestamp|date('d/m/Y à H:i:s') }}</td>
+    </tr>
+    <tr>
+        <td>Niveau</td>
+        <td>
+            <span style="
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 600;
+                background-color: {{ level == 'error' ? '#dc3545' : (level == 'warning' ? '#ffc107' : '#17a2b8') }};
+                color: {{ level == 'warning' ? '#333' : '#fff' }};
+            ">
+                {{ level|upper }}
+            </span>
+        </td>
+    </tr>
+</table>
+
+<p style="text-align: center; margin-top: 30px;">
+    <a href="https://cfa.ericm.fr/admin" class="btn">
+        Vérifier dans l'administration
+    </a>
+</p>
+{% endblock %}
+
+{% block footer %}
+<p style="color: #999; font-size: 12px;">
+    Notification système automatique - CFA Gestion<br>
+    Ne pas répondre à cet email
+</p>
+{% endblock %}

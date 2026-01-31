@@ -1,0 +1,590 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Séance du {{ seance.date|date('d/m/Y') }} - {{ seance.sessionMatiere.matiere.libelle|default('Détails') }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+/* ========================================
+   DÉTAIL SÉANCE
+   ======================================== */
+.seance-detail {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 1.5rem;
+}
+
+@media (max-width: 992px) {
+    .seance-detail {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* En-tête séance */
+.seance-header {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+    color: white;
+    padding: 2rem;
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 1.5rem;
+}
+
+.seance-header__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255,255,255,0.2);
+    border-radius: 20px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.seance-header__title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.seance-header__subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+.seance-header__date {
+    margin-top: 1rem;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Infos principales */
+.info-section {
+    margin-bottom: 1rem;
+}
+
+.info-section__title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--color-primary);
+    display: inline-block;
+}
+
+.info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.info-item {
+    display: flex;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: var(--color-off-white);
+    border-radius: var(--border-radius);
+}
+
+.info-item__icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.info-item__content {
+    flex: 1;
+}
+
+.info-item__label {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.info-item__value {
+    font-weight: 500;
+}
+
+/* Actions panel */
+.actions-panel {
+    position: sticky;
+    top: 100px;
+}
+
+.actions-card {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.actions-card__header {
+    padding: 1rem 1.25rem;
+    background: var(--color-off-white);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.actions-card__title {
+    font-weight: 600;
+    margin: 0;
+}
+
+.actions-card__body {
+    padding: 1.25rem;
+}
+
+.action-button {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    background: var(--color-off-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    color: var(--color-text-primary);
+    transition: all 0.2s;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.action-button:hover {
+    background: #e3f2fd;
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.action-button:last-child {
+    margin-bottom: 0;
+}
+
+.action-button--primary {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+}
+
+.action-button--primary:hover {
+    background: var(--color-primary-dark);
+    color: white;
+}
+
+.action-button--success {
+    background: #e8f5e9;
+    border-color: #28a745;
+    color: #28a745;
+}
+
+.action-button--success:hover {
+    background: #28a745;
+    color: white;
+}
+
+.action-button--disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.action-button--disabled:hover {
+    background: var(--color-off-white);
+    border-color: var(--border-color);
+    color: var(--color-text-primary);
+}
+
+.action-button__icon {
+    font-size: 1.25rem;
+}
+
+.action-button__text {
+    flex: 1;
+}
+
+.action-button__desc {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: 0.25rem;
+}
+
+/* Changement de statut */
+.statut-actions {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-top: 1px solid var(--border-color);
+}
+
+.statut-actions__title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--color-text-secondary);
+}
+
+.statut-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Liste apprentis */
+.apprentis-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.apprenti-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.apprenti-item:last-child {
+    border-bottom: none;
+}
+
+.apprenti-item__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.apprenti-item__info {
+    flex: 1;
+}
+
+.apprenti-item__name {
+    font-weight: 500;
+}
+
+.apprenti-item__email {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+/* Commentaire */
+.commentaire-box {
+    padding: 1rem;
+    background: #fff8e1;
+    border-left: 4px solid #ffc107;
+    border-radius: var(--border-radius);
+    margin-top: 1rem;
+}
+
+.commentaire-box__title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# Navigation retour #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_formateur_planning_jour', {date: seance.date|date('Y-m-d')}) }}" 
+                   class="btn btn--secondary btn--sm">
+                    ← Retour au {{ seance.date|date('d/m/Y') }}
+                </a>
+            </div>
+        </header>
+
+        {# En-tête de la séance #}
+        <div class="seance-header">
+            <div class="seance-header__badge">
+                <span>{{ seance.statut.icone }}</span>
+                <span>{{ seance.statut.libelle }}</span>
+            </div>
+            <h1 class="seance-header__title">
+                {% if seance.sessionMatiere and seance.sessionMatiere.matiere %}
+                    {{ seance.sessionMatiere.matiere.libelle }}
+                {% else %}
+                    Séance de cours
+                {% endif %}
+            </h1>
+            <p class="seance-header__subtitle">
+                {% if seance.session %}
+                    {{ seance.session.code }} - {{ seance.session.libelle }}
+                {% endif %}
+            </p>
+            <div class="seance-header__date">
+                <span>📅</span>
+                <strong>{{ nomJour }} {{ seance.date|date('d F Y') }}</strong>
+                <span>•</span>
+                <span>{{ seance.heureDebut|date('H:i') }} - {{ seance.heureFin|date('H:i') }}</span>
+                <span>•</span>
+                <span>{{ (seance.dureeMinutes / 60)|round(1) }}h</span>
+            </div>
+        </div>
+
+        <div class="seance-detail">
+            {# Colonne principale - Informations #}
+            <div class="seance-detail__main">
+                {# Informations générales #}
+                <div class="section-card" style="margin-bottom: 1.5rem;">
+                    <div class="section-card__header">
+                        <h2>📋 Informations de la séance</h2>
+                    </div>
+                    <div class="section-card__content">
+                        <div class="info-list">
+                            <div class="info-item">
+                                <span class="info-item__icon">📚</span>
+                                <div class="info-item__content">
+                                    <div class="info-item__label">Matière</div>
+                                    <div class="info-item__value">
+                                        {% if seance.sessionMatiere and seance.sessionMatiere.matiere %}
+                                            <strong>{{ seance.sessionMatiere.matiere.code }}</strong> - 
+                                            {{ seance.sessionMatiere.matiere.libelle }}
+                                        {% else %}
+                                            <span class="text-muted">Non définie</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="info-item">
+                                <span class="info-item__icon">🎓</span>
+                                <div class="info-item__content">
+                                    <div class="info-item__label">Session / Promotion</div>
+                                    <div class="info-item__value">
+                                        {% if seance.session %}
+                                            <strong>{{ seance.session.code }}</strong>
+                                            <br>{{ seance.session.libelle }}
+                                            <br>
+                                            <small class="text-muted">
+                                                {{ seance.session.dateDebut|date('d/m/Y') }} → {{ seance.session.dateFin|date('d/m/Y') }}
+                                            </small>
+                                        {% else %}
+                                            <span class="text-muted">Non définie</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="info-item">
+                                <span class="info-item__icon">🕐</span>
+                                <div class="info-item__content">
+                                    <div class="info-item__label">Horaires</div>
+                                    <div class="info-item__value">
+                                        {{ seance.heureDebut|date('H:i') }} - {{ seance.heureFin|date('H:i') }}
+                                        <br>
+                                        <small class="text-muted">
+                                            Durée : {{ (seance.dureeMinutes / 60)|round(1) }} heure(s)
+                                            ({{ seance.dureeMinutes }} minutes)
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="info-item">
+                                <span class="info-item__icon">📍</span>
+                                <div class="info-item__content">
+                                    <div class="info-item__label">Salle</div>
+                                    <div class="info-item__value">
+                                        {% if seance.salle %}
+                                            <strong>{{ seance.salle.libelle }}</strong>
+                                        {% else %}
+                                            <span class="text-muted">Non assignée</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="info-item">
+                                <span class="info-item__icon">👥</span>
+                                <div class="info-item__content">
+                                    <div class="info-item__label">Formateurs</div>
+                                    <div class="info-item__value">
+                                        {% if seance.formateurs|length > 0 %}
+                                            {% for f in seance.formateurs %}
+                                                {{ f.nomComplet }}
+                                                {% if f == formateur %}
+                                                    <span class="badge badge--info badge--sm">Vous</span>
+                                                {% endif %}
+                                                {% if not loop.last %}<br>{% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">Non assignés</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if seance.commentaire %}
+                            <div class="commentaire-box">
+                                <div class="commentaire-box__title">
+                                    💬 Commentaire / Note
+                                </div>
+                                <p style="margin: 0;">{{ seance.commentaire }}</p>
+                            </div>
+                        {% endif %}
+                        
+                        {% if seance.modifieeDepuisCreneau %}
+                            <div style="margin-top: 1rem; padding: 0.75rem; background: #e3f2fd; border-radius: var(--border-radius);">
+                                <small>✏️ Cette séance a été modifiée manuellement (elle ne sera pas affectée par la régénération des créneaux récurrents).</small>
+                            </div>
+                        {% endif %}
+                        
+                        {% if seance.creneauRecurrent %}
+                            <div style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--color-text-muted);">
+                                🔄 Générée depuis un créneau récurrent
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {# Liste des apprentis #}
+                <div class="section-card">
+                    <div class="section-card__header">
+                        <h2>👨‍🎓 Liste des apprentis</h2>
+                        <span class="badge badge--primary">{{ apprentis|length }}</span>
+                    </div>
+                    <div class="section-card__content">
+                        {% if apprentis is empty %}
+                            <div class="empty-state" style="padding: 2rem;">
+                                <p class="text-muted">Aucun apprenti inscrit dans cette session.</p>
+                            </div>
+                        {% else %}
+                            <div class="apprentis-list">
+                                {% for apprenti in apprentis %}
+                                    <div class="apprenti-item">
+                                        <div class="apprenti-item__avatar">
+                                            {{ apprenti.prenom|first|upper }}{{ apprenti.nom|first|upper }}
+                                        </div>
+                                        <div class="apprenti-item__info">
+                                            <div class="apprenti-item__name">
+                                                {{ apprenti.nom|upper }} {{ apprenti.prenom }}
+                                            </div>
+                                            <div class="apprenti-item__email">
+                                                {{ apprenti.email }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {# Colonne latérale - Actions #}
+            <div class="seance-detail__sidebar">
+                <div class="actions-panel">
+                    <div class="actions-card">
+                        <div class="actions-card__header">
+                            <h3 class="actions-card__title">⚡ Actions rapides</h3>
+                        </div>
+                        <div class="actions-card__body">
+                            {# Faire l'appel #}
+                            <a href="#" class="action-button action-button--disabled" title="Module absences en développement">
+                                <span class="action-button__icon">📋</span>
+                                <div class="action-button__text">
+                                    <strong>Faire l'appel</strong>
+                                    <div class="action-button__desc">Gérer les présences/absences</div>
+                                </div>
+                            </a>
+                            
+                            {# Ajouter une note #}
+                            {% if seance.session %}
+                                <a href="{{ path('app_formateur_notes_new_session', {sessionId: seance.session.id}) }}" 
+                                   class="action-button">
+                                    <span class="action-button__icon">📝</span>
+                                    <div class="action-button__text">
+                                        <strong>Ajouter une note</strong>
+                                        <div class="action-button__desc">Créer un devoir/évaluation</div>
+                                    </div>
+                                </a>
+                            {% endif %}
+                            
+                            {# Cahier de texte - placeholder #}
+                            <a href="#" class="action-button action-button--disabled" title="Fonctionnalité à venir">
+                                <span class="action-button__icon">📖</span>
+                                <div class="action-button__text">
+                                    <strong>Cahier de texte</strong>
+                                    <div class="action-button__desc">À venir...</div>
+                                </div>
+                            </a>
+                            
+                            {# Voir la session #}
+                            {% if seance.session %}
+                                <a href="{{ path('app_formateur_sessions_show', {id: seance.session.id}) }}" 
+                                   class="action-button">
+                                    <span class="action-button__icon">🎓</span>
+                                    <div class="action-button__text">
+                                        <strong>Voir la session</strong>
+                                        <div class="action-button__desc">Détails de la promotion</div>
+                                    </div>
+                                </a>
+                            {% endif %}
+                        </div>
+                        
+                        {# Changement de statut #}
+                        {% if transitionsPossibles|length > 0 %}
+                            <div class="statut-actions">
+                                <div class="statut-actions__title">🔄 Changer le statut</div>
+                                <div class="statut-buttons">
+                                    {% for nouveauStatut in transitionsPossibles %}
+                                        <form action="{{ path('app_formateur_planning_seance_statut', {id: seance.id}) }}" 
+                                              method="post" style="display: inline;">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('change_statut_' ~ seance.id) }}">
+                                            <input type="hidden" name="statut" value="{{ nouveauStatut.value }}">
+                                            <button type="submit" class="btn btn--sm {{ nouveauStatut.badgeClass }}">
+                                                {{ nouveauStatut.icone }} {{ nouveauStatut.libelle }}
+                                            </button>
+                                        </form>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="statut-actions">
+                                <div class="statut-actions__title">🔒 Statut verrouillé</div>
+                                <p class="text-muted" style="font-size: 0.85rem; margin: 0;">
+                                    Cette séance ne peut plus être modifiée.
+                                </p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    {# Légende statuts #}
+                    <div class="section-card" style="margin-top: 1rem;">
+                        <div class="section-card__header">
+                            <h3 style="font-size: 0.9rem; margin: 0;">📊 Statuts possibles</h3>
+                        </div>
+                        <div class="section-card__content" style="padding: 0.75rem;">
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem;">
+                                <div><span class="badge badge--info">📋 Planifiée</span> Séance prévue</div>
+                                <div><span class="badge badge--success">✅ Confirmée</span> Séance validée</div>
+                                <div><span class="badge badge--warning">🔄 Reportée</span> Date à définir</div>
+                                <div><span class="badge badge--secondary">✔️ Terminée</span> Cours effectué</div>
+                                <div><span class="badge badge--danger">❌ Annulée</span> Séance supprimée</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
