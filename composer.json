@@ -25,6 +25,7 @@
         "symfony/twig-bundle": "7.4.*",
         "symfony/validator": "7.4.*",
         "symfony/yaml": "7.4.*",
+        "twig/intl-extra": "^3.23",
         "twig/string-extra": "^3.23"
     },
     "config": {
@@ -79,6 +80,7 @@
     },
     "require-dev": {
         "doctrine/doctrine-fixtures-bundle": "^4.3",
-        "symfony/maker-bundle": "^1.65"
+        "symfony/maker-bundle": "^1.65",
+        "symfony/monolog-bundle": "^4.0"
     }
 }

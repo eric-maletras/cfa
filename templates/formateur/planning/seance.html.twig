@@ -498,7 +498,7 @@
                         </div>
                         <div class="actions-card__body">
                             {# Faire l'appel #}
-                            <a href="#" class="action-button action-button--disabled" title="Module absences en développement">
+                            <a href="{{ path('app_appel_seance', {id: seance.id}) }}" class="action-button action-button--primary">
                                 <span class="action-button__icon">📋</span>
                                 <div class="action-button__text">
                                     <strong>Faire l'appel</strong>

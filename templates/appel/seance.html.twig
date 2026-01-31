@@ -1,0 +1,382 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Appel - {{ seance.date|date('d/m/Y') }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+/* ========================================
+   PAGE CRÉATION APPEL
+   ======================================== */
+
+.appel-header {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    color: white;
+    padding: 2rem;
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 1.5rem;
+}
+
+.appel-header__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.appel-header__subtitle {
+    opacity: 0.9;
+}
+
+/* Formulaire appel */
+.appel-form {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.appel-form__header {
+    padding: 1.25rem;
+    background: var(--color-off-white);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.appel-form__title {
+    font-weight: 600;
+    margin: 0;
+}
+
+.appel-form__body {
+    padding: 1.5rem;
+}
+
+/* Liste des apprentis */
+.apprentis-list {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    max-height: 500px;
+    overflow-y: auto;
+    margin-bottom: 1.5rem;
+}
+
+.apprenti-row {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    gap: 1rem;
+    transition: background 0.2s;
+}
+
+.apprenti-row:last-child {
+    border-bottom: none;
+}
+
+.apprenti-row:hover {
+    background: var(--color-off-white);
+}
+
+.apprenti-row__checkbox {
+    flex-shrink: 0;
+}
+
+.apprenti-row__checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.apprenti-row__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.apprenti-row__info {
+    flex: 1;
+}
+
+.apprenti-row__name {
+    font-weight: 500;
+}
+
+.apprenti-row__email {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+/* Options */
+.appel-options {
+    background: var(--color-off-white);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+}
+
+.appel-options__title {
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.option-group {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.option-group label {
+    font-weight: 500;
+}
+
+.option-group select {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-family: inherit;
+}
+
+/* Actions */
+.appel-actions {
+    display: flex;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Sélection rapide */
+.selection-rapide {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.selection-rapide button {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    background: white;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.selection-rapide button:hover {
+    background: var(--color-off-white);
+    border-color: var(--color-primary);
+}
+
+/* Info box */
+.info-box {
+    background: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    font-size: 0.9rem;
+}
+
+/* Compteur */
+.compteur {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.compteur strong {
+    color: var(--color-primary);
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# Navigation retour #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_formateur_planning_seance', {id: seance.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la séance
+                </a>
+            </div>
+        </header>
+
+        {# En-tête #}
+        <div class="appel-header">
+            <h1 class="appel-header__title">📋 Faire l'appel</h1>
+            <p class="appel-header__subtitle">
+                {% if seance.sessionMatiere and seance.sessionMatiere.matiere %}
+                    {{ seance.sessionMatiere.matiere.libelle }} - 
+                {% endif %}
+                {{ seance.date|date('d/m/Y') }} de {{ seance.heureDebut|date('H:i') }} à {{ seance.heureFin|date('H:i') }}
+                {% if seance.salle %}
+                    - Salle {{ seance.salle.libelle }}
+                {% endif %}
+            </p>
+        </div>
+
+        {# Messages flash #}
+        {% for message in app.flashes('success') %}
+            <div class="alert alert--success">{{ message }}</div>
+        {% endfor %}
+        {% for message in app.flashes('error') %}
+            <div class="alert alert--danger">{{ message }}</div>
+        {% endfor %}
+        {% for message in app.flashes('warning') %}
+            <div class="alert alert--warning">{{ message }}</div>
+        {% endfor %}
+
+        {# Info box #}
+        <div class="info-box">
+            <strong>📝 Instructions :</strong><br>
+            1. Cochez les apprentis <strong>physiquement présents</strong> dans la salle<br>
+            2. Les apprentis non cochés seront marqués <strong>absents</strong><br>
+            3. Un email de signature sera envoyé aux présents pour confirmer leur présence
+        </div>
+
+        {% if apprentis|length > 0 %}
+            {# Formulaire de création d'appel #}
+            <form action="{{ path('app_appel_creer', {id: seance.id}) }}" method="post" id="form-appel">
+                <input type="hidden" name="_token" value="{{ csrf_token('appel_creer_' ~ seance.id) }}">
+                
+                <div class="appel-form">
+                    <div class="appel-form__header">
+                        <h2 class="appel-form__title">👥 Liste des apprentis inscrits</h2>
+                    </div>
+                    <div class="appel-form__body">
+                        {# Sélection rapide #}
+                        <div class="selection-rapide">
+                            <button type="button" onclick="selectionnerTous()">✅ Tous présents</button>
+                            <button type="button" onclick="deselectionnerTous()">❌ Aucun présent</button>
+                        </div>
+
+                        {# Compteur #}
+                        <div class="compteur">
+                            <strong id="compteur-presents">0</strong> présent(s) / {{ apprentis|length }} apprenti(s)
+                        </div>
+
+                        {# Liste des apprentis #}
+                        <div class="apprentis-list">
+                            {% for apprenti in apprentis %}
+                                <div class="apprenti-row">
+                                    <div class="apprenti-row__checkbox">
+                                        <input type="checkbox" 
+                                               name="apprentis_presents[]" 
+                                               value="{{ apprenti.id }}"
+                                               id="apprenti-{{ apprenti.id }}"
+                                               class="checkbox-apprenti">
+                                    </div>
+                                    <label for="apprenti-{{ apprenti.id }}" class="apprenti-row__avatar">
+                                        {{ apprenti.prenom|first|upper }}{{ apprenti.nom|first|upper }}
+                                    </label>
+                                    <label for="apprenti-{{ apprenti.id }}" class="apprenti-row__info" style="cursor: pointer;">
+                                        <div class="apprenti-row__name">
+                                            {{ apprenti.nom|upper }} {{ apprenti.prenom }}
+                                        </div>
+                                        <div class="apprenti-row__email">
+                                            {{ apprenti.email }}
+                                        </div>
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        {# Options #}
+                        <div class="appel-options">
+                            <div class="appel-options__title">⚙️ Options</div>
+                            <div class="option-group">
+                                <label for="expiration_minutes">Durée de validité des liens :</label>
+                                <select name="expiration_minutes" id="expiration_minutes">
+                                    <option value="15">15 minutes</option>
+                                    <option value="20" selected>20 minutes (recommandé)</option>
+                                    <option value="40">40 minutes</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {# Actions #}
+                        <div class="appel-actions">
+                            <a href="{{ path('app_formateur_planning_seance', {id: seance.id}) }}" class="btn btn--secondary">
+                                Annuler
+                            </a>
+                            <button type="submit" class="btn btn--primary">
+                                📧 Créer l'appel et envoyer les emails
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        {% else %}
+            <div class="appel-form">
+                <div class="appel-form__body" style="text-align: center; padding: 3rem;">
+                    <p style="font-size: 1.1rem; color: var(--color-text-muted);">
+                        😕 Aucun apprenti inscrit à cette session.
+                    </p>
+                    <a href="{{ path('app_formateur_planning_seance', {id: seance.id}) }}" class="btn btn--secondary" style="margin-top: 1rem;">
+                        ← Retour à la séance
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+// Mise à jour du compteur
+function updateCompteur() {
+    const total = document.querySelectorAll('.checkbox-apprenti').length;
+    const checked = document.querySelectorAll('.checkbox-apprenti:checked').length;
+    document.getElementById('compteur-presents').textContent = checked;
+}
+
+// Sélectionner tous
+function selectionnerTous() {
+    document.querySelectorAll('.checkbox-apprenti').forEach(cb => {
+        cb.checked = true;
+    });
+    updateCompteur();
+}
+
+// Désélectionner tous
+function deselectionnerTous() {
+    document.querySelectorAll('.checkbox-apprenti').forEach(cb => {
+        cb.checked = false;
+    });
+    updateCompteur();
+}
+
+// Événements sur les checkboxes
+document.querySelectorAll('.checkbox-apprenti').forEach(cb => {
+    cb.addEventListener('change', updateCompteur);
+});
+
+// Initialiser le compteur
+updateCompteur();
+
+// Confirmation avant envoi
+document.getElementById('form-appel')?.addEventListener('submit', function(e) {
+    const checked = document.querySelectorAll('.checkbox-apprenti:checked').length;
+    const total = document.querySelectorAll('.checkbox-apprenti').length;
+    const absents = total - checked;
+    
+    if (checked === 0) {
+        if (!confirm('Aucun apprenti n\'est coché comme présent.\n\nTous les apprentis seront marqués ABSENTS.\n\nContinuer ?')) {
+            e.preventDefault();
+        }
+    } else if (absents > 0) {
+        if (!confirm(`${checked} apprenti(s) coché(s) présent(s).\n${absents} apprenti(s) seront marqué(s) ABSENT(S).\n\nContinuer ?`)) {
+            e.preventDefault();
+        }
+    }
+});
+</script>
+{% endblock %}

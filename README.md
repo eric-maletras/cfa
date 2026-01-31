@@ -1,314 +1,264 @@
-# Module Email CFA Gestion - Configuration Production
+# Module d'Appel avec Signature par Email - CFA Gestion
+## Étape 9
 
-## Vue d'ensemble
+### Description
 
-Configuration complète pour l'envoi d'emails avec **authentification DKIM/SPF/DMARC** garantissant une délivrabilité optimale.
+Ce module permet aux formateurs de gérer les présences des apprentis avec un système de signature par email unique.
+
+**Fonctionnalités principales :**
+- Création d'appels pour les séances planifiées
+- Envoi automatique de liens de signature par email
+- Signature des présences sans authentification (via token unique)
+- Suivi temps réel des signatures
+- Gestion des absences, retards et justificatifs
+- Traitement automatique des appels expirés (cron)
+
+---
+
+## Structure des fichiers
 
 ```
-Architecture
-─────────────────────────────────────────────────────────
-  Symfony App ──► Postfix ──► OpenDKIM ──► Internet
-                    │            │
-                    │            └── Signature DKIM
-                    └── Envoi SMTP
-─────────────────────────────────────────────────────────
-```
-
-## Contenu du package
-
-```
-cfa.ericm.fr/
-├── config/
-│   ├── packages/
-│   │   └── mailer.yaml
-│   └── services_email.yaml.append
-├── scripts/
-│   ├── install_postfix_dkim.sh      # Installation serveur
-│   └── diagnostic_email.sh          # Test et diagnostic
+cfa-module-appel/
 ├── src/
-│   ├── Controller/Admin/
-│   │   └── EmailTestController.php
+│   ├── Command/
+│   │   └── TraiterAppelsExpiresCommand.php    # Commande cron
+│   ├── Controller/
+│   │   ├── AppelController.php                # Gestion appels (formateur)
+│   │   └── SignatureController.php            # Signature publique
+│   ├── DataFixtures/
+│   │   └── AppelFixtures.php                  # Données de test
+│   ├── Entity/
+│   │   ├── Appel.php                          # Entité Appel
+│   │   └── Presence.php                       # Entité Présence
+│   ├── Enum/
+│   │   └── StatutPresence.php                 # Enum des statuts
+│   ├── Repository/
+│   │   ├── AppelRepository.php
+│   │   └── PresenceRepository.php
 │   └── Service/
-│       └── EmailService.php
+│       └── AppelService.php                   # Logique métier
 ├── templates/
-│   ├── admin/email/
-│   │   └── test.html.twig
-│   └── email/
-│       ├── base.html.twig
-│       ├── test.html.twig
-│       └── system_notification.html.twig
-├── env.local.append
-└── README.md
+│   ├── appel/
+│   │   ├── seance.html.twig                   # Sélection des présents
+│   │   └── suivi.html.twig                    # Suivi temps réel
+│   ├── email/
+│   │   └── signature_presence.html.twig       # Template email
+│   └── signature/
+│       ├── confirmer.html.twig                # Page confirmation
+│       ├── succes.html.twig                   # Signature réussie
+│       ├── erreur.html.twig                   # Page erreur
+│       └── deja_signe.html.twig               # Déjà signé
+├── migrations/
+│   ├── Version20260131_AppelModule.php        # Migration Doctrine
+│   └── migration_appel.sql                    # Script SQL brut
+└── README.md                                  # Ce fichier
 ```
 
 ---
 
-## Installation (3 phases)
+## Instructions de déploiement
 
-### Phase 1 : Installation serveur (Postfix + OpenDKIM)
-
-```bash
-# 1. Copier le script sur le serveur
-scp scripts/install_postfix_dkim.sh root@cfa.ericm.fr:/tmp/
-
-# 2. Exécuter l'installation
-ssh root@cfa.ericm.fr
-chmod +x /tmp/install_postfix_dkim.sh
-/tmp/install_postfix_dkim.sh cfa.ericm.fr
-```
-
-Le script va :
-- Installer Postfix et OpenDKIM
-- Générer les clés DKIM (2048 bits)
-- Configurer la signature automatique des emails
-- Générer un fichier avec les enregistrements DNS à créer
-
-### Phase 2 : Configuration DNS
-
-Après l'installation, le script génère `/root/dns_records_cfa.ericm.fr.txt` avec les enregistrements à créer.
-
-#### Chez votre registrar (OVH, Cloudflare, etc.) :
-
-**1. Enregistrement SPF** (autorise votre serveur à envoyer)
-```
-Type  : TXT
-Nom   : cfa.ericm.fr
-Valeur: v=spf1 ip4:VOTRE_IP_SERVEUR -all
-```
-
-**2. Enregistrement DKIM** (signature cryptographique)
-```
-Type  : TXT
-Nom   : mail._domainkey.cfa.ericm.fr
-Valeur: v=DKIM1; k=rsa; p=VOTRE_CLE_PUBLIQUE...
-```
-*(La clé complète est dans le fichier généré)*
-
-**3. Enregistrement DMARC** (politique d'authentification)
-```
-Type  : TXT
-Nom   : _dmarc.cfa.ericm.fr
-Valeur: v=DMARC1; p=quarantine; rua=mailto:postmaster@ericm.fr; pct=100; adkim=s; aspf=s
-```
-
-**4. Reverse DNS (PTR)** - **CRUCIAL !**
-
-À configurer dans le **panneau Scaleway** (pas chez le registrar DNS) :
-- Aller dans Instances > Votre serveur > Réseau
-- Configurer le reverse DNS de l'IP vers `cfa.ericm.fr`
-
-#### Vérification de la propagation DNS
+### 1. Copie des fichiers
 
 ```bash
-# Attendre 1-24h puis vérifier
-dig TXT cfa.ericm.fr +short
-dig TXT mail._domainkey.cfa.ericm.fr +short
-dig TXT _dmarc.cfa.ericm.fr +short
-```
-
-### Phase 3 : Déploiement Symfony
-
-```bash
-# Sur le serveur, dans le répertoire Symfony
+# Sur le serveur de production
 cd /var/www/cfa.ericm.fr
 
-# 1. Copier les fichiers
-cp -r cfa.ericm.fr/src/Service/EmailService.php src/Service/
-cp -r cfa.ericm.fr/src/Controller/Admin/EmailTestController.php src/Controller/Admin/
-cp -r cfa.ericm.fr/templates/email templates/
-mkdir -p templates/admin/email
-cp cfa.ericm.fr/templates/admin/email/test.html.twig templates/admin/email/
-cp cfa.ericm.fr/config/packages/mailer.yaml config/packages/
+# Copier les fichiers PHP
+cp -r cfa-module-appel/src/Entity/* src/Entity/
+cp -r cfa-module-appel/src/Enum/* src/Enum/
+cp -r cfa-module-appel/src/Repository/* src/Repository/
+cp -r cfa-module-appel/src/Service/* src/Service/
+cp -r cfa-module-appel/src/Controller/* src/Controller/
+cp -r cfa-module-appel/src/Command/* src/Command/
+cp -r cfa-module-appel/src/DataFixtures/* src/DataFixtures/
 
-# 2. Ajouter au .env.local
-cat >> .env.local << 'EOF'
-###> symfony/mailer ###
-MAILER_DSN=sendmail://default
-MAILER_FROM_ADDRESS=noreply@cfa.ericm.fr
-MAILER_FROM_NAME="CFA Gestion"
-###< symfony/mailer ###
-EOF
-
-# 3. Ajouter dans config/services.yaml (section services)
-# App\Service\EmailService:
-#     arguments:
-#         $fromAddress: '%env(MAILER_FROM_ADDRESS)%'
-#         $fromName: '%env(MAILER_FROM_NAME)%'
-
-# 4. Vider le cache
-php bin/console cache:clear
+# Copier les templates
+cp -r cfa-module-appel/templates/appel templates/
+cp -r cfa-module-appel/templates/signature templates/
+cp -r cfa-module-appel/templates/email/signature_presence.html.twig templates/email/
 ```
 
----
+### 2. Migration de base de données
 
-## Test et validation
+**Option A : Via Doctrine (recommandé)**
+```bash
+# Générer la migration automatiquement
+php bin/console doctrine:migrations:diff
 
-### 1. Diagnostic serveur
+# Ou copier la migration existante
+cp cfa-module-appel/migrations/Version20260131_AppelModule.php migrations/
+
+# Exécuter la migration
+php bin/console doctrine:migrations:migrate
+```
+
+**Option B : Script SQL direct**
+```bash
+mysql -u root -p cfa_gestion < cfa-module-appel/migrations/migration_appel.sql
+```
+
+### 3. Vider le cache
 
 ```bash
-# Lancer le diagnostic complet
-/tmp/diagnostic_email.sh cfa.ericm.fr
+php bin/console cache:clear --env=prod
 ```
 
-### 2. Test via l'interface admin
+### 4. Configuration du cron (optionnel mais recommandé)
 
-Accéder à : `https://cfa.ericm.fr/admin/email/test`
-
-### 3. Test externe (recommandé)
-
-Envoyez un email à : **check-auth@verifier.port25.com**
-
-Vous recevrez un rapport automatique indiquant :
-- ✅ SPF pass
-- ✅ DKIM pass
-- ✅ DMARC pass
-
-### 4. Score de délivrabilité
-
-Testez sur [mail-tester.com](https://www.mail-tester.com/) pour obtenir un score sur 10.
-
-**Objectif : 9/10 minimum**
-
----
-
-## Dépannage
-
-### Email non reçu
+Ajouter au crontab (`crontab -e`) :
 
 ```bash
-# Vérifier la queue
-mailq
-
-# Vérifier les logs
-tail -f /var/log/mail.log
-
-# Vérifier le statut des services
-systemctl status postfix opendkim
+# Traitement automatique des appels expirés - toutes les 15 minutes
+*/15 * * * * cd /var/www/cfa.ericm.fr && php bin/console app:appel:traiter-expires --env=prod >> /var/log/cfa-appels.log 2>&1
 ```
 
-### Erreur DKIM
+### 5. Test de la commande cron
 
 ```bash
-# Tester la clé DKIM
-opendkim-testkey -d cfa.ericm.fr -s mail -vvv
+# Mode dry-run (sans modification)
+php bin/console app:appel:traiter-expires --dry-run
+
+# Exécution réelle
+php bin/console app:appel:traiter-expires
 ```
 
-Erreurs courantes :
-- `key not found` → L'enregistrement DNS n'est pas encore propagé
-- `key not secure` → Pas grave, signifie que DNSSEC n'est pas utilisé
-
-### Email en spam
-
-Vérifiez :
-1. **Reverse DNS** configuré chez Scaleway
-2. **SPF** avec `-all` (pas `~all`)
-3. **IP non blacklistée** : [mxtoolbox.com/blacklists](https://mxtoolbox.com/blacklists.aspx)
-
----
-
-## Utilisation dans le code
-
-### Injection du service
-
-```php
-use App\Service\EmailService;
-
-class MonController extends AbstractController
-{
-    public function __construct(
-        private EmailService $emailService
-    ) {}
-}
-```
-
-### Envoi avec template
-
-```php
-$result = $this->emailService->sendTemplatedEmail(
-    'destinataire@example.com',
-    'Sujet de l\'email',
-    'email/mon_template.html.twig',
-    [
-        'variable1' => 'valeur1',
-        'variable2' => 'valeur2',
-    ]
-);
-
-if ($result->success) {
-    // OK
-} else {
-    // Erreur : $result->message
-}
-```
-
-### Envoi en masse (avec délai)
-
-```php
-$recipients = ['email1@test.com', 'email2@test.com', ...];
-
-$results = $this->emailService->sendBulkEmail(
-    $recipients,
-    'Notification',
-    'email/notification.html.twig',
-    ['data' => $data]
-);
-
-// Analyse des résultats
-$failed = array_filter($results, fn($r) => !$r->success);
-```
-
----
-
-## Configuration multi-domaines (version commerciale)
-
-Pour la version avec plusieurs écoles, le script supporte le multi-domaine :
+### 6. Charger les fixtures de test (optionnel)
 
 ```bash
-# Installation pour chaque école
-./install_postfix_dkim.sh isce.cfagestion.fr
-./install_postfix_dkim.sh aurlom.cfagestion.fr
+# En développement uniquement
+php bin/console doctrine:fixtures:load --append --group=appel
 ```
-
-Les fichiers de configuration OpenDKIM (`signing.table`, `key.table`) seront à fusionner manuellement.
 
 ---
 
-## Checklist de mise en production
+## Modification du template existant
 
-- [ ] Script `install_postfix_dkim.sh` exécuté
-- [ ] Enregistrement **SPF** créé
-- [ ] Enregistrement **DKIM** créé
-- [ ] Enregistrement **DMARC** créé
-- [ ] **Reverse DNS** configuré chez Scaleway
-- [ ] Test sur mail-tester.com : score ≥ 9/10
-- [ ] Fichiers Symfony déployés
-- [ ] Test depuis `/admin/email/test` OK
+Modifier le fichier `templates/formateur/planning/seance.html.twig` pour activer le bouton "Faire l'appel" :
+
+**Avant :**
+```twig
+<a href="#" class="action-button action-button--disabled" title="Module absences en développement">
+    <span class="action-button__icon">📋</span>
+    <div class="action-button__text">
+        <strong>Faire l'appel</strong>
+        <div class="action-button__desc">Gérer les présences/absences</div>
+    </div>
+</a>
+```
+
+**Après :**
+```twig
+<a href="{{ path('app_appel_seance', {id: seance.id}) }}" class="action-button action-button--primary">
+    <span class="action-button__icon">📋</span>
+    <div class="action-button__text">
+        <strong>Faire l'appel</strong>
+        <div class="action-button__desc">Gérer les présences/absences</div>
+    </div>
+</a>
+```
+
+---
+
+## Routes créées
+
+| Route | Méthode | URL | Description |
+|-------|---------|-----|-------------|
+| `app_appel_seance` | GET | `/module/formateur_planning/appel/seance/{id}` | Page sélection présents |
+| `app_appel_creer` | POST | `/module/formateur_planning/appel/creer/{id}` | Créer un appel |
+| `app_appel_suivi` | GET | `/module/formateur_planning/appel/suivi/{id}` | Suivi temps réel |
+| `app_appel_envoyer_emails` | POST | `/module/formateur_planning/appel/envoyer-emails/{id}` | Envoyer emails |
+| `app_appel_renvoyer_email` | POST | `/module/formateur_planning/appel/renvoyer-email/{id}` | Renvoyer un email |
+| `app_appel_modifier_presence` | POST | `/module/formateur_planning/appel/modifier-presence/{id}` | Modifier statut |
+| `app_appel_cloturer` | POST | `/module/formateur_planning/appel/cloturer/{id}` | Clôturer appel |
+| `app_appel_etat` | GET | `/module/formateur_planning/appel/etat/{id}` | État JSON (AJAX) |
+| `app_appel_supprimer` | POST | `/module/formateur_planning/appel/supprimer/{id}` | Supprimer appel |
+| `app_signature_signer` | GET/POST | `/signature/{token}` | Signature publique |
+
+---
+
+## Workflow utilisateur
+
+### Côté Formateur
+
+1. Accéder à une séance : `/module/formateur_planning/seance/{id}`
+2. Cliquer sur "Faire l'appel"
+3. Cocher les apprentis présents physiquement
+4. Configurer le délai d'expiration (1-12h)
+5. Créer l'appel
+6. Envoyer les emails de signature
+7. Suivre les signatures en temps réel (refresh automatique 5s)
+8. Modifier les statuts si nécessaire (retard, absence justifiée...)
+9. Clôturer l'appel
+
+### Côté Apprenti
+
+1. Recevoir l'email de signature
+2. Cliquer sur le lien unique
+3. Voir les détails du cours
+4. Confirmer sa présence
+5. Recevoir la confirmation
+
+---
+
+## Statuts de présence
+
+| Statut | Description | Couleur |
+|--------|-------------|---------|
+| `en_attente` | Lien envoyé, en attente de signature | Orange |
+| `present` | Présent et a signé | Vert |
+| `absent` | Marqué absent par le formateur | Rouge |
+| `absent_justifie` | Absent avec justification | Bleu |
+| `retard` | Arrivé en retard | Orange foncé |
+| `non_signe` | N'a pas signé dans le délai | Gris |
+
+---
+
+## Sécurité
+
+- **Tokens UUID v4** : 64 caractères hexadécimaux uniques par présence
+- **Protection CSRF** : Sur tous les formulaires
+- **Vérification accès formateur** : Le formateur doit être assigné à la séance/session
+- **Signature publique** : Le token fait office d'authentification
+- **Traçabilité** : IP + User-Agent enregistrés à la signature
+- **Protection double signature** : Vérification avant chaque signature
+- **Expiration automatique** : Les liens ont une durée de validité limitée
+
+---
+
+## Dépendances
+
+Ce module utilise les services existants :
+- `EmailService` : Envoi des emails (configuré étape 8b)
+- `SeancePlanifiee` : Séances du planning
+- `Session` : Sessions de formation
+- `User` : Utilisateurs (formateurs et apprentis)
+- `Inscription` : Inscriptions validées
+
+---
+
+## Troubleshooting
+
+### Les emails ne sont pas envoyés
+- Vérifier la configuration MAILER_DSN dans `.env`
+- Consulter les logs : `tail -f var/log/prod.log`
+- Tester l'envoi : `php bin/console app:email:test test@example.com`
+
+### Le cron ne fonctionne pas
+- Vérifier le crontab : `crontab -l`
+- Tester manuellement : `php bin/console app:appel:traiter-expires`
+- Consulter les logs : `tail -f /var/log/cfa-appels.log`
+
+### Erreur 500 sur les pages
+- Vider le cache : `php bin/console cache:clear --env=prod`
+- Vérifier les permissions : `chown -R www-data:www-data var/`
+- Consulter les logs Symfony et Nginx
 
 ---
 
 ## Support
 
-### Commandes utiles
-
-```bash
-# Logs temps réel
-tail -f /var/log/mail.log
-
-# Queue des emails
-mailq
-
-# Vider la queue (si bloquée)
-postsuper -d ALL
-
-# Relancer les services
-systemctl restart postfix opendkim
-
-# Recharger la config Postfix
-postfix reload
-```
-
-### Liens utiles
-
-- [MXToolbox](https://mxtoolbox.com/) - Diagnostic DNS/Blacklist
-- [Mail-tester](https://www.mail-tester.com/) - Score délivrabilité
-- [DMARC Analyzer](https://www.dmarcanalyzer.com/) - Rapports DMARC
+Pour toute question ou problème, consulter :
+- La documentation Symfony : https://symfony.com/doc
+- Le référentiel GitHub du projet
+- Les logs applicatifs dans `var/log/`

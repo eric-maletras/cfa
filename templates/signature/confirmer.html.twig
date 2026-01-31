@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signature de présence - CFA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 500px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .card__header {
+            background: linear-gradient(135deg, #2196f3, #1976d2);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .card__icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .card__title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .card__subtitle {
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+
+        .card__body {
+            padding: 2rem;
+        }
+
+        .info-block {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-block__title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-item__icon {
+            font-size: 1.25rem;
+        }
+
+        .info-item__text {
+            flex: 1;
+        }
+
+        .info-item__label {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .info-item__value {
+            font-weight: 500;
+        }
+
+        .warning-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 1rem 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .btn--primary {
+            background: linear-gradient(135deg, #4caf50, #388e3c);
+            color: white;
+        }
+
+        .btn--primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn--primary:active {
+            transform: translateY(0);
+        }
+
+        .expiration {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .expiration strong {
+            color: #f44336;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 1rem 2rem 2rem;
+            font-size: 0.8rem;
+            color: #999;
+        }
+
+        @media (max-width: 480px) {
+            .card__header {
+                padding: 1.5rem;
+            }
+
+            .card__body {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="card__header">
+            <div class="card__icon">✍️</div>
+            <h1 class="card__title">Signature de présence</h1>
+            <p class="card__subtitle">Confirmez votre présence au cours</p>
+        </div>
+
+        <div class="card__body">
+            <div class="info-block">
+                <div class="info-block__title">Bonjour {{ apprenti.prenom }} !</div>
+                <div class="info-item">
+                    <span class="info-item__icon">📚</span>
+                    <div class="info-item__text">
+                        <div class="info-item__label">Matière</div>
+                        <div class="info-item__value">
+                            {% if seance.sessionMatiere and seance.sessionMatiere.matiere %}
+                                {{ seance.sessionMatiere.matiere.libelle }}
+                            {% else %}
+                                Cours
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__icon">📅</span>
+                    <div class="info-item__text">
+                        <div class="info-item__label">Date</div>
+                        <div class="info-item__value">{{ seance.date|date('l d F Y') }}</div>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-item__icon">🕐</span>
+                    <div class="info-item__text">
+                        <div class="info-item__label">Horaires</div>
+                        <div class="info-item__value">{{ seance.heureDebut|date('H:i') }} - {{ seance.heureFin|date('H:i') }}</div>
+                    </div>
+                </div>
+                {% if seance.salle %}
+                <div class="info-item">
+                    <span class="info-item__icon">📍</span>
+                    <div class="info-item__text">
+                        <div class="info-item__label">Salle</div>
+                        <div class="info-item__value">{{ seance.salle.libelle }}</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="warning-box">
+                ⚠️ En cliquant sur "Confirmer ma présence", vous attestez être physiquement présent(e) à ce cours.
+            </div>
+
+            <form method="post" action="{{ path('app_signature_signer', {token: token}) }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('signature_' ~ token) }}">
+                <button type="submit" class="btn btn--primary">
+                    ✅ Confirmer ma présence
+                </button>
+            </form>
+
+            <div class="expiration">
+                Ce lien expire le <strong>{{ appel.dateExpiration|date('d/m/Y à H:i') }}</strong>
+            </div>
+        </div>
+
+        <div class="footer">
+            CFA Gestion - Système de signature électronique de présence
+        </div>
+    </div>
+</body>
+</html>

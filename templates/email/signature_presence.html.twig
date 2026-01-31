@@ -1,0 +1,141 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Signature de présence - CFA</title>
+</head>
+<body>
+    <table class="body" data-made-with-foundation>
+        <tr>
+            <td class="center" align="center" valign="top">
+                <center>
+                    <table class="container" style="max-width: 600px;">
+                        <tr>
+                            <td>
+                                <!-- En-tête -->
+                                <table class="row" style="background-color: {% if estRetardataire|default(false) %}#ff9800{% else %}#1976d2{% endif %}; border-radius: 8px 8px 0 0;">
+                                    <tr>
+                                        <td style="padding: 30px; text-align: center;">
+                                            <h1 style="color: white; margin: 0; font-size: 24px;">
+                                                {% if estRetardataire|default(false) %}
+                                                    ⏰ Signature de présence - RETARD
+                                                {% elseif estRappel|default(false) %}
+                                                    📧 RAPPEL - Signature de présence
+                                                {% else %}
+                                                    ✅ Signature de présence
+                                                {% endif %}
+                                            </h1>
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <!-- Contenu principal -->
+                                <table class="row" style="background-color: #ffffff; border: 1px solid #e0e0e0; border-top: none;">
+                                    <tr>
+                                        <td style="padding: 30px;">
+                                            <p style="margin: 0 0 20px; font-size: 16px;">
+                                                Bonjour <strong>{{ apprenti.prenom }}</strong>,
+                                            </p>
+
+                                            {% if estRetardataire|default(false) %}
+                                                <div style="background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 15px; margin-bottom: 20px; border-radius: 0 4px 4px 0;">
+                                                    <strong style="color: #e65100;">⏰ Retard enregistré : {{ minutesRetard }} minutes</strong>
+                                                    <p style="margin: 5px 0 0; font-size: 14px; color: #666;">
+                                                        Votre formateur vous a identifié comme retardataire. Veuillez signer votre présence en cliquant sur le bouton ci-dessous.
+                                                    </p>
+                                                </div>
+                                            {% else %}
+                                                <p style="margin: 0 0 20px; color: #666;">
+                                                    Votre présence a été notée au cours suivant. Veuillez confirmer votre présence en cliquant sur le bouton ci-dessous.
+                                                </p>
+                                            {% endif %}
+
+                                            <!-- Détails du cours -->
+                                            <table style="width: 100%; background-color: #f5f5f5; border-radius: 8px; margin-bottom: 25px;">
+                                                <tr>
+                                                    <td style="padding: 20px;">
+                                                        <p style="margin: 0 0 10px;">
+                                                            <strong>📚 Matière :</strong> 
+                                                            {{ seance.sessionMatiere.matiere.libelle|default('Cours') }}
+                                                        </p>
+                                                        <p style="margin: 0 0 10px;">
+                                                            <strong>📅 Date :</strong> 
+                                                            {{ seance.date|format_datetime('full', 'none', locale='fr') }}
+                                                        </p>
+                                                        <p style="margin: 0 0 10px;">
+                                                            <strong>🕐 Horaires :</strong> 
+                                                            {{ seance.heureDebut|date('H:i') }} - {{ seance.heureFin|date('H:i') }}
+                                                        </p>
+                                                        {% if seance.salle %}
+                                                        <p style="margin: 0;">
+                                                            <strong>🏫 Salle :</strong> 
+                                                            {{ seance.salle.libelle }}
+                                                        </p>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            </table>
+
+                                            <!-- Bouton de signature -->
+                                            <table style="width: 100%;">
+                                                <tr>
+                                                    <td style="text-align: center; padding: 20px 0;">
+                                                        <a href="{{ lienSignature }}" 
+                                                           style="display: inline-block; 
+                                                                  background-color: {% if estRetardataire|default(false) %}#ff9800{% else %}#4caf50{% endif %}; 
+                                                                  color: white; 
+                                                                  padding: 15px 40px; 
+                                                                  text-decoration: none; 
+                                                                  border-radius: 8px; 
+                                                                  font-weight: bold; 
+                                                                  font-size: 18px;">
+                                                            ✍️ SIGNER MA PRÉSENCE
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            </table>
+
+                                            <!-- Avertissement expiration -->
+                                            <div style="background-color: #fff8e1; border: 1px solid #ffcc80; border-radius: 8px; padding: 15px; margin-top: 20px;">
+                                                <p style="margin: 0; font-size: 14px; color: #e65100;">
+                                                    <strong>⚠️ Important :</strong> Ce lien expire le 
+                                                    <strong>{{ dateExpiration|format_datetime('medium', 'short', locale='fr') }}</strong>.
+                                                    <br>Passé ce délai, vous ne pourrez plus signer votre présence.
+                                                </p>
+                                            </div>
+
+                                            <!-- Lien alternatif -->
+                                            <p style="margin: 25px 0 0; font-size: 12px; color: #999;">
+                                                Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
+                                                <a href="{{ lienSignature }}" style="color: #1976d2; word-break: break-all;">{{ lienSignature }}</a>
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <!-- Pied de page -->
+                                <table class="row" style="background-color: #f5f5f5; border-radius: 0 0 8px 8px;">
+                                    <tr>
+                                        <td style="padding: 20px; text-align: center;">
+                                            <p style="margin: 0; font-size: 12px; color: #999;">
+                                                Cet email a été envoyé automatiquement par le système de gestion CFA.
+                                                <br>Merci de ne pas y répondre.
+                                            </p>
+                                            <p style="margin: 10px 0 0; font-size: 11px; color: #bbb;">
+                                                © {{ "now"|date("Y") }} CFA Gestion - Tous droits réservés
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </table>
+
+                            </td>
+                        </tr>
+                    </table>
+                </center>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+

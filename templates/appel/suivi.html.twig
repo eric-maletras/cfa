@@ -1,0 +1,767 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Suivi de l'appel - {{ seance.date|date('d/m/Y') }}{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<style>
+/* ========================================
+   PAGE SUIVI APPEL
+   ======================================== */
+
+.suivi-header {
+    background: linear-gradient(135deg, #4caf50, #388e3c);
+    color: white;
+    padding: 2rem;
+    border-radius: var(--border-radius-lg);
+    margin-bottom: 1.5rem;
+}
+
+.suivi-header--cloture {
+    background: linear-gradient(135deg, #9e9e9e, #757575);
+}
+
+.suivi-header--expire {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+}
+
+.suivi-header__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255,255,255,0.2);
+    border-radius: 20px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.suivi-header__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.suivi-header__expiration {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: rgba(255,255,255,0.15);
+    border-radius: var(--border-radius);
+    font-size: 0.9rem;
+}
+
+/* Stats en temps réel */
+.stats-realtime {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    padding: 1.25rem;
+    text-align: center;
+    box-shadow: var(--shadow);
+}
+
+.stat-card__value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.stat-card__label {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: 0.5rem;
+}
+
+.stat-card--presents .stat-card__value { color: #28a745; }
+.stat-card--absents .stat-card__value { color: #dc3545; }
+.stat-card--attente .stat-card__value { color: #ffc107; }
+.stat-card--retards .stat-card__value { color: #fd7e14; }
+.stat-card--taux .stat-card__value { color: var(--color-primary); }
+
+/* Actions panel */
+.actions-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.action-btn--primary {
+    background: var(--color-primary);
+    color: white;
+}
+
+.action-btn--primary:hover {
+    background: var(--color-primary-dark);
+}
+
+.action-btn--success {
+    background: #28a745;
+    color: white;
+}
+
+.action-btn--success:hover {
+    background: #218838;
+}
+
+.action-btn--danger {
+    background: #dc3545;
+    color: white;
+}
+
+.action-btn--danger:hover {
+    background: #c82333;
+}
+
+.action-btn--warning {
+    background: #fd7e14;
+    color: white;
+}
+
+.action-btn--warning:hover {
+    background: #e76a00;
+}
+
+.action-btn--secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.action-btn--secondary:hover {
+    background: #5a6268;
+}
+
+.action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Liste des présences */
+.presences-list {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.presences-list__header {
+    padding: 1.25rem;
+    background: var(--color-off-white);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.presences-list__title {
+    font-weight: 600;
+    margin: 0;
+}
+
+.presence-row {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    gap: 1rem;
+}
+
+.presence-row:last-child {
+    border-bottom: none;
+}
+
+.presence-row__checkbox {
+    flex-shrink: 0;
+}
+
+.presence-row__avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.presence-row__avatar--present { background: #e8f5e9; color: #2e7d32; }
+.presence-row__avatar--absent { background: #ffebee; color: #c62828; }
+.presence-row__avatar--attente { background: #fff8e1; color: #f57f17; }
+.presence-row__avatar--retard { background: #fff3e0; color: #e65100; }
+
+.presence-row__info {
+    flex: 1;
+    min-width: 0;
+}
+
+.presence-row__name {
+    font-weight: 500;
+}
+
+.presence-row__email {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+.presence-row__signature {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: 0.25rem;
+}
+
+.presence-row__status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.presence-row__actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Modales */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal {
+    background: white;
+    border-radius: var(--border-radius-lg);
+    padding: 1.5rem;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal__title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.modal__actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+/* Refresh indicator */
+.refresh-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+.refresh-indicator__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #28a745;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Animation nouvelle signature */
+@keyframes highlight {
+    0% { background: #e8f5e9; }
+    100% { background: transparent; }
+}
+
+.presence-row--just-signed {
+    animation: highlight 3s ease-out;
+}
+
+/* Info box */
+.info-box {
+    background: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+    font-size: 0.9rem;
+}
+
+.info-box--warning {
+    background: #fff3e0;
+    border-left-color: #ff9800;
+}
+
+/* Liste retardataires dans modale */
+.retardataires-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    margin: 1rem 0;
+}
+
+.retardataire-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.retardataire-item:last-child {
+    border-bottom: none;
+}
+
+.retardataire-item label {
+    flex: 1;
+    cursor: pointer;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<section class="dashboard">
+    <div class="container">
+        {# Navigation retour #}
+        <header class="dashboard__header">
+            <div class="header-actions">
+                <a href="{{ path('app_formateur_planning_seance', {id: seance.id}) }}" class="btn btn--secondary btn--sm">
+                    ← Retour à la séance
+                </a>
+            </div>
+        </header>
+
+        {# En-tête avec statut #}
+        <div class="suivi-header {{ appel.cloture ? 'suivi-header--cloture' : (not appel.liensValides ? 'suivi-header--expire' : '') }}">
+            <div class="suivi-header__badge">
+                {% if appel.cloture %}
+                    🔒 Appel clôturé
+                {% elseif not appel.liensValides %}
+                    ⚠️ Liens expirés
+                {% else %}
+                    🟢 Appel en cours
+                {% endif %}
+            </div>
+            <h1 class="suivi-header__title">Suivi de l'appel</h1>
+            <p>
+                {% if seance.sessionMatiere and seance.sessionMatiere.matiere %}
+                    {{ seance.sessionMatiere.matiere.libelle }} - 
+                {% endif %}
+                {{ seance.date|date('d/m/Y') }} de {{ seance.heureDebut|date('H:i') }} à {{ seance.heureFin|date('H:i') }}
+            </p>
+            
+            {% if not appel.cloture %}
+                <div class="suivi-header__expiration">
+                    ⏱️ Expiration des liens : <strong>{{ appel.dateExpiration|date('d/m/Y à H:i') }}</strong>
+                    {% if appel.liensValides %}
+                        <span style="margin-left: 1rem;">(encore valides)</span>
+                    {% else %}
+                        <span style="margin-left: 1rem; color: #ffeb3b;">(expirés)</span>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+
+        {# Messages flash #}
+        {% for message in app.flashes('success') %}
+            <div class="alert alert--success">{{ message }}</div>
+        {% endfor %}
+        {% for message in app.flashes('error') %}
+            <div class="alert alert--danger">{{ message }}</div>
+        {% endfor %}
+        {% for message in app.flashes('warning') %}
+            <div class="alert alert--warning">{{ message }}</div>
+        {% endfor %}
+
+        {# Info box - explication du système #}
+        <div class="info-box">
+            <strong>ℹ️ Conformité OPCO :</strong> La présence ne peut être validée que par signature électronique de l'apprenti. 
+            Le formateur peut uniquement justifier une absence ou rouvrir l'appel pour les retardataires.
+        </div>
+
+        {# Statistiques temps réel #}
+        <div class="stats-realtime" id="stats-container">
+            <div class="stat-card stat-card--presents">
+                <div class="stat-card__value" id="stat-presents">{{ stats.presents }}</div>
+                <div class="stat-card__label">Présent(s)</div>
+            </div>
+            <div class="stat-card stat-card--retards">
+                <div class="stat-card__value" id="stat-retards">{{ stats.retards }}</div>
+                <div class="stat-card__label">Retard(s)</div>
+            </div>
+            <div class="stat-card stat-card--absents">
+                <div class="stat-card__value" id="stat-absents">{{ stats.absents + stats.absentsJustifies + stats.nonSignes }}</div>
+                <div class="stat-card__label">Absent(s)</div>
+            </div>
+            <div class="stat-card stat-card--attente">
+                <div class="stat-card__value" id="stat-attente">{{ stats.enAttente }}</div>
+                <div class="stat-card__label">En attente</div>
+            </div>
+            <div class="stat-card stat-card--taux">
+                <div class="stat-card__value" id="stat-taux">{{ stats.tauxPresence }}%</div>
+                <div class="stat-card__label">Taux présence</div>
+            </div>
+        </div>
+
+        {# Actions #}
+        <div class="actions-panel">
+            {% if not appel.cloture %}
+                {% if not appel.emailsEnvoyes %}
+                    <form action="{{ path('app_appel_envoyer_emails', {id: appel.id}) }}" method="post" style="display: inline;">
+                        <input type="hidden" name="_token" value="{{ csrf_token('appel_emails_' ~ appel.id) }}">
+                        <button type="submit" class="action-btn action-btn--primary">
+                            📧 Envoyer les emails de signature
+                        </button>
+                    </form>
+                {% else %}
+                    <span class="action-btn action-btn--secondary" style="cursor: default;">
+                        ✓ Emails envoyés le {{ appel.dateEnvoiEmails|date('d/m à H:i') }}
+                    </span>
+                {% endif %}
+
+                <form action="{{ path('app_appel_cloturer', {id: appel.id}) }}" method="post" 
+                      style="display: inline;"
+                      onsubmit="return confirm('Voulez-vous clôturer cet appel ?\n\nLes apprentis n\'ayant pas signé seront marqués comme \'Non signé\'.');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('appel_cloturer_' ~ appel.id) }}">
+                    <button type="submit" class="action-btn action-btn--danger">
+                        🔒 Clôturer l'appel
+                    </button>
+                </form>
+
+                <form action="{{ path('app_appel_supprimer', {id: appel.id}) }}" method="post" 
+                      style="display: inline;"
+                      onsubmit="return confirm('Supprimer cet appel ? Cette action est irréversible.');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('appel_supprimer_' ~ appel.id) }}">
+                    <button type="submit" class="action-btn action-btn--secondary">
+                        🗑️ Supprimer
+                    </button>
+                </form>
+            {% else %}
+                {# Appel clôturé - afficher date et bouton rouvrir #}
+                <span class="action-btn action-btn--secondary" style="cursor: default;">
+                    🔒 Clôturé le {{ appel.dateCloture|date('d/m/Y à H:i') }}
+                </span>
+
+                {# Bouton rouvrir si des absents/non-signés existent #}
+                {% set absentsOuNonSignes = [] %}
+                {% for presence in presences %}
+                    {% if presence.statut.value in ['absent', 'non_signe'] %}
+                        {% set absentsOuNonSignes = absentsOuNonSignes|merge([presence]) %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if absentsOuNonSignes|length > 0 %}
+                    <button type="button" class="action-btn action-btn--warning" onclick="ouvrirModalRouvrir()">
+                        🔓 Rouvrir pour retardataires ({{ absentsOuNonSignes|length }})
+                    </button>
+                {% endif %}
+            {% endif %}
+
+            <div style="margin-left: auto;" class="refresh-indicator">
+                <span class="refresh-indicator__dot"></span>
+                <span id="last-refresh">Actualisation automatique</span>
+            </div>
+        </div>
+
+        {# Liste des présences #}
+        <div class="presences-list">
+            <div class="presences-list__header">
+                <h2 class="presences-list__title">👥 Liste des apprentis ({{ presences|length }})</h2>
+            </div>
+            <div id="presences-container">
+                {% for presence in presences %}
+                    <div class="presence-row" data-presence-id="{{ presence.id }}">
+                        <div class="presence-row__avatar presence-row__avatar--{{ presence.statut.value == 'present' ? 'present' : (presence.statut.value == 'retard' ? 'retard' : (presence.statut.value == 'en_attente' ? 'attente' : 'absent')) }}">
+                            {{ presence.apprenti.prenom|first|upper }}{{ presence.apprenti.nom|first|upper }}
+                        </div>
+                        <div class="presence-row__info">
+                            <div class="presence-row__name">
+                                {{ presence.apprenti.nom|upper }} {{ presence.apprenti.prenom }}
+                            </div>
+                            <div class="presence-row__email">
+                                {{ presence.apprenti.email }}
+                            </div>
+                            {% if presence.dateSignature %}
+                                <div class="presence-row__signature">
+                                    ✍️ Signé le {{ presence.dateSignature|date('d/m/Y à H:i:s') }}
+                                </div>
+                            {% endif %}
+                            {% if presence.minutesRetard %}
+                                <div class="presence-row__signature" style="color: #e65100;">
+                                    ⏰ {{ presence.minutesRetard }} minutes de retard
+                                </div>
+                            {% endif %}
+                            {% if presence.motifAbsence %}
+                                <div class="presence-row__signature" style="color: #1976d2;">
+                                    📝 Justificatif : {{ presence.motifAbsence }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="presence-row__status">
+                            <span class="badge {{ presence.statut.badgeClass }}">
+                                {{ presence.statut.icone }} {{ presence.statut.libelle }}
+                            </span>
+                        </div>
+                        <div class="presence-row__actions">
+                            {# Bouton renvoyer email si en attente et appel non clôturé #}
+                            {% if not appel.cloture and presence.statut.value == 'en_attente' and appel.emailsEnvoyes %}
+                                <form action="{{ path('app_appel_renvoyer_email', {id: presence.id}) }}" method="post" style="display: inline;">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('renvoyer_email_' ~ presence.id) }}">
+                                    <button type="submit" class="btn btn--sm btn--secondary" title="Renvoyer l'email">
+                                        📧
+                                    </button>
+                                </form>
+                            {% endif %}
+                            
+                            {# Bouton justifier absence si absent ou non signé #}
+                            {% if presence.statut.value in ['absent', 'non_signe'] and not presence.motifAbsence %}
+                                <button type="button" class="btn btn--sm btn--secondary btn-justifier" 
+                                        data-presence-id="{{ presence.id }}"
+                                        data-apprenti-nom="{{ presence.apprenti.nomComplet }}"
+                                        title="Justifier l'absence">
+                                    📋
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+
+{# Modale justifier absence #}
+<div class="modal-overlay" id="modal-justifier">
+    <div class="modal">
+        <h3 class="modal__title">📋 Justifier l'absence</h3>
+        <p id="modal-justifier-nom" style="margin-bottom: 1rem;"></p>
+        
+        <form id="form-justifier-absence" method="post" action="">
+            <input type="hidden" name="_token" id="modal-justifier-csrf" value="">
+            
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Motif de l'absence :</label>
+                <textarea name="motif" id="modal-justifier-motif" rows="3" required
+                          placeholder="Ex: Certificat médical, convocation officielle..."
+                          style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius);"></textarea>
+            </div>
+            
+            <div class="modal__actions">
+                <button type="button" class="btn btn--secondary" onclick="fermerModalJustifier()">Annuler</button>
+                <button type="submit" class="btn btn--primary">Justifier l'absence</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Modale réouverture pour retardataires #}
+<div class="modal-overlay" id="modal-rouvrir">
+    <div class="modal">
+        <h3 class="modal__title">🔓 Rouvrir l'appel pour les retardataires</h3>
+        
+        <div class="info-box info-box--warning" style="margin: 1rem 0;">
+            <strong>⏰ Calcul automatique du retard :</strong><br>
+            Le retard sera calculé par blocs de 15 minutes depuis le début du cours.
+            <br><em>"Un bloc démarré = un bloc consommé"</em>
+        </div>
+        
+        <form id="form-rouvrir" method="post" action="{{ path('app_appel_rouvrir', {id: appel.id}) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('appel_rouvrir_' ~ appel.id) }}">
+            
+            <p style="margin-bottom: 0.5rem; font-weight: 500;">Sélectionnez les retardataires :</p>
+            
+            <div class="retardataires-list">
+                {% for presence in presences %}
+                    {% if presence.statut.value in ['absent', 'non_signe'] %}
+                        <div class="retardataire-item">
+                            <input type="checkbox" name="retardataires[]" value="{{ presence.id }}" 
+                                   id="retard-{{ presence.id }}" class="checkbox-retardataire">
+                            <label for="retard-{{ presence.id }}">
+                                <strong>{{ presence.apprenti.nom|upper }} {{ presence.apprenti.prenom }}</strong>
+                                <br><small style="color: var(--color-text-muted);">{{ presence.apprenti.email }}</small>
+                            </label>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            
+            <div style="margin: 1rem 0;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
+                    Durée de validité des liens :
+                </label>
+                <select name="expiration_minutes" style="padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius);">
+                    <option value="15" selected>15 minutes</option>
+                    <option value="20">20 minutes</option>
+                    <option value="40">40 minutes</option>
+                </select>
+            </div>
+            
+            <div style="margin-top: 1rem; padding: 0.75rem; background: #f5f5f5; border-radius: var(--border-radius);">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="select-all-retardataires">
+                    <span>Sélectionner tous</span>
+                </label>
+            </div>
+            
+            <div class="modal__actions">
+                <button type="button" class="btn btn--secondary" onclick="fermerModalRouvrir()">Annuler</button>
+                <button type="submit" class="btn btn--warning">🔓 Rouvrir et notifier</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+const appelId = {{ appel.id }};
+const appelCloture = {{ appel.cloture ? 'true' : 'false' }};
+let lastSignatures = {};
+
+// Initialiser le suivi des signatures existantes
+document.querySelectorAll('.presence-row').forEach(row => {
+    const id = row.dataset.presenceId;
+    const signatureEl = row.querySelector('.presence-row__signature');
+    lastSignatures[id] = signatureEl ? signatureEl.textContent : null;
+});
+
+// Actualisation automatique toutes les 5 secondes si appel non clôturé
+{% if not appel.cloture %}
+setInterval(actualiserEtat, 5000);
+{% endif %}
+
+function actualiserEtat() {
+    fetch('{{ path('app_appel_etat', {id: appel.id}) }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Mettre à jour les stats
+                document.getElementById('stat-presents').textContent = data.stats.presents;
+                document.getElementById('stat-retards').textContent = data.stats.retards;
+                document.getElementById('stat-absents').textContent = data.stats.absents + data.stats.absentsJustifies + data.stats.nonSignes;
+                document.getElementById('stat-attente').textContent = data.stats.enAttente;
+                document.getElementById('stat-taux').textContent = data.stats.tauxPresence + '%';
+                
+                // Mettre à jour l'heure
+                document.getElementById('last-refresh').textContent = 'Dernière mise à jour : ' + new Date().toLocaleTimeString();
+                
+                // Détecter les nouvelles signatures
+                data.presences.forEach(p => {
+                    if (p.dateSignature && !lastSignatures[p.id]) {
+                        // Nouvelle signature !
+                        const row = document.querySelector(`[data-presence-id="${p.id}"]`);
+                        if (row) {
+                            row.classList.add('presence-row--just-signed');
+                            setTimeout(() => row.classList.remove('presence-row--just-signed'), 3000);
+                        }
+                        lastSignatures[p.id] = p.dateSignature;
+                    }
+                });
+                
+                // Si l'appel est clôturé, recharger la page
+                if (data.cloture && !appelCloture) {
+                    location.reload();
+                }
+            }
+        })
+        .catch(err => console.error('Erreur actualisation:', err));
+}
+
+// === Modale Justifier Absence ===
+function ouvrirModalJustifier(presenceId, apprentiNom) {
+    document.getElementById('modal-justifier-nom').textContent = apprentiNom;
+    document.getElementById('modal-justifier-csrf').value = '{{ csrf_token('justifier_absence_PLACEHOLDER') }}'.replace('PLACEHOLDER', presenceId);
+    document.getElementById('form-justifier-absence').action = '/module/formateur_planning/appel/justifier-absence/' + presenceId;
+    document.getElementById('modal-justifier-motif').value = '';
+    document.getElementById('modal-justifier').classList.add('active');
+}
+
+function fermerModalJustifier() {
+    document.getElementById('modal-justifier').classList.remove('active');
+}
+
+// Boutons justifier
+document.querySelectorAll('.btn-justifier').forEach(btn => {
+    btn.addEventListener('click', function() {
+        ouvrirModalJustifier(
+            this.dataset.presenceId,
+            this.dataset.apprentiNom
+        );
+    });
+});
+
+// Fermer la modale en cliquant dehors
+document.getElementById('modal-justifier').addEventListener('click', function(e) {
+    if (e.target === this) fermerModalJustifier();
+});
+
+// === Modale Rouvrir ===
+function ouvrirModalRouvrir() {
+    document.getElementById('modal-rouvrir').classList.add('active');
+}
+
+function fermerModalRouvrir() {
+    document.getElementById('modal-rouvrir').classList.remove('active');
+}
+
+// Fermer la modale en cliquant dehors
+document.getElementById('modal-rouvrir').addEventListener('click', function(e) {
+    if (e.target === this) fermerModalRouvrir();
+});
+
+// Sélectionner/désélectionner tous les retardataires
+document.getElementById('select-all-retardataires')?.addEventListener('change', function() {
+    document.querySelectorAll('.checkbox-retardataire').forEach(cb => {
+        cb.checked = this.checked;
+    });
+});
+
+// Validation avant soumission réouverture
+document.getElementById('form-rouvrir')?.addEventListener('submit', function(e) {
+    const checked = document.querySelectorAll('.checkbox-retardataire:checked');
+    if (checked.length === 0) {
+        e.preventDefault();
+        alert('Veuillez sélectionner au moins un retardataire.');
+    }
+});
+</script>
+{% endblock %}

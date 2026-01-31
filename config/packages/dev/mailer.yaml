@@ -1,0 +1,6 @@
+# Configuration mailer spécifique au développement
+# Redirige tous les emails vers une adresse de test
+framework:
+    mailer:
+        envelope:
+            recipients: ['erictomcat1@googlemail.com']
